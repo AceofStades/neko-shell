@@ -80,6 +80,8 @@ QtObject {
     property color background: root.composed("bar.background", "bar.background-alpha", root.background, 1.0)
     property color text: root.pick("bar.text", root.foreground)
     property color active: root.pick("bar.active", root.urgent)
+    // Pill behind each widget; fully clear unless a theme sets capsule-alpha
+    property color capsule: root.composed("bar.capsule", "bar.capsule-alpha", root.foreground, 0.0)
   }
   readonly property QtObject popups: QtObject {
     property color background: root.composed("popups.background", "popups.background-alpha", root.background, 1.0)
