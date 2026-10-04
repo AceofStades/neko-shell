@@ -31,24 +31,31 @@ hl.layer_rule({
   animation = "none",
 })
 
--- Media keys and the menu
-local keys = {
-  "XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute",
-  "XF86MonBrightnessUp", "XF86MonBrightnessDown", "XF86AudioPlay", "XF86AudioPause",
-  "SUPER + ALT + SPACE",
-}
-for _, key in ipairs(keys) do
-  hl.unbind(key)
+-- Media keys and the menu, only while neko is the running shell: neko-session
+-- start sets the flag and stop clears it, so loading this file permanently
+-- never steals the keys from another shell.
+local flag = io.open(os.getenv("HOME") .. "/.local/state/neko/active", "r")
+if flag then
+  flag:close()
+
+  local keys = {
+    "XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute",
+    "XF86MonBrightnessUp", "XF86MonBrightnessDown", "XF86AudioPlay", "XF86AudioPause",
+    "SUPER + ALT + SPACE",
+  }
+  for _, key in ipairs(keys) do
+    hl.unbind(key)
+  end
+
+  local run = "env NEKO_PATH=" .. neko_path .. " PATH=" .. neko_path .. "/bin:$PATH "
+
+  hl.bind("XF86AudioRaiseVolume", hl.dsp.global("neko:audio.raise"), { locked = true, repeating = true })
+  hl.bind("XF86AudioLowerVolume", hl.dsp.global("neko:audio.lower"), { locked = true, repeating = true })
+  hl.bind("XF86AudioMute", hl.dsp.global("neko:audio.mute-toggle"), { locked = true })
+  hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(run .. "neko-audio-input-mute"), { locked = true })
+  hl.bind("XF86MonBrightnessUp", hl.dsp.global("neko:brightness.raise"), { locked = true, repeating = true })
+  hl.bind("XF86MonBrightnessDown", hl.dsp.global("neko:brightness.lower"), { locked = true, repeating = true })
+  hl.bind("XF86AudioPlay", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
+  hl.bind("XF86AudioPause", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
+  hl.bind("SUPER + ALT + SPACE", hl.dsp.global("neko:menu.root"))
 end
-
-local run = "env NEKO_PATH=" .. neko_path .. " PATH=" .. neko_path .. "/bin:$PATH "
-
-hl.bind("XF86AudioRaiseVolume", hl.dsp.global("neko:audio.raise"), { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume", hl.dsp.global("neko:audio.lower"), { locked = true, repeating = true })
-hl.bind("XF86AudioMute", hl.dsp.global("neko:audio.mute-toggle"), { locked = true })
-hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(run .. "neko-audio-input-mute"), { locked = true })
-hl.bind("XF86MonBrightnessUp", hl.dsp.global("neko:brightness.raise"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.global("neko:brightness.lower"), { locked = true, repeating = true })
-hl.bind("XF86AudioPlay", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
-hl.bind("XF86AudioPause", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
-hl.bind("SUPER + ALT + SPACE", hl.dsp.global("neko:menu.root"))
