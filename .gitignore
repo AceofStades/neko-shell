@@ -1,0 +1,4 @@
+# QML compiler and language server caches
+*.qmlc
+*.jsc
+.qmlls.ini
