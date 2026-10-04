@@ -8,6 +8,7 @@
 declare -A LUA_BIND_KEY_MAP
 declare -A LUA_BIND_DISPATCHER_MAP
 declare -A LUA_BIND_ARG_MAP
+declare -A LUA_BIND_BY_KEY
 
 # Hyprland reports XKB keycodes for code: bindings. Resolve them to symbols
 # via the compiled keymap, with a small fallback for common keys so the menu
@@ -77,6 +78,7 @@ build_lua_bind_cache() {
     [[ -z $modmask || -z $description || -z $key ]] && continue
 
     LUA_BIND_KEY_MAP["$modmask,$description"]="$key"
+    LUA_BIND_BY_KEY["$modmask,${key^^}"]="$description"
     cache_key="$modmask,$description,$key"
     LUA_BIND_DISPATCHER_MAP["$cache_key"]="$dispatcher"
     LUA_BIND_ARG_MAP["$cache_key"]="$arg"
@@ -157,6 +159,43 @@ local function call_expression(path, ...)
   return path .. "(" .. table.concat(args, ", ") .. ")"
 end
 
+-- A readable label for binds without a description: the command an exec bind
+-- runs, or the dispatcher and its values ("window fullscreen toggle").
+local function auto_label(kind, arg)
+  local text = tostring(arg or "")
+
+  if kind == "exec" then
+    text = text:gsub("^env%s+", "")
+    while text:match("^[%w_]+=%S*%s+") do
+      text = text:gsub("^[%w_]+=%S*%s+", "", 1)
+    end
+    text = text:gsub("^uwsm%-app%s+%-%-%s+", "")
+    local command, rest = text:match("^(%S+)%s*(.*)$")
+    if not command then return "" end
+    command = command:gsub("^.*/", "")
+    text = rest ~= "" and (command .. " " .. rest) or command
+  else
+    local name = text:match("^hl%.dsp%.([%w_%.]+)")
+    if not name then return "" end
+    -- Table arguments read as "key value" ({ workspace = 10 }), plain ones as their value
+    local values = {}
+    for name_part, value in text:gmatch('([%a_][%w_]*)%s*=%s*"?([^",}]+)"?') do
+      values[#values + 1] = name_part .. " " .. value:gsub("%s+$", "")
+    end
+    if #values == 0 then
+      for value in text:gmatch('"([^"]*)"') do
+        values[#values + 1] = value
+      end
+    end
+    text = name:gsub("[._]", " ") .. (#values > 0 and (" " .. table.concat(values, " ")) or "")
+  end
+
+  if #text > 60 then
+    text = text:sub(1, 57) .. "..."
+  end
+  return (text:gsub("^%l", string.upper))
+end
+
 local function dispatcher(kind, arg, expr)
   return {
     __neko_dispatcher = true,
@@ -199,23 +238,28 @@ hl = setmetatable({
   bind = function(keys, bind_dispatcher, opts)
     opts = opts or {}
 
-    if opts.description and opts.description ~= "" then
-      local modmask, key = split_keys(keys)
-      local kind = ""
-      local arg = ""
+    local modmask, key = split_keys(keys)
+    local kind = ""
+    local arg = ""
 
-      if type(bind_dispatcher) == "table" and bind_dispatcher.__neko_dispatcher then
-        kind = bind_dispatcher.kind or ""
-        arg = bind_dispatcher.arg or bind_dispatcher.expr or ""
-      elseif type(bind_dispatcher) == "string" and bind_dispatcher ~= "" then
-        kind = "exec"
-        arg = bind_dispatcher
-      elseif o and o.bind_commands and o.bind_commands[bind_dispatcher] then
-        kind = "exec"
-        arg = o.bind_commands[bind_dispatcher]
-      end
+    if type(bind_dispatcher) == "table" and bind_dispatcher.__neko_dispatcher then
+      kind = bind_dispatcher.kind or ""
+      arg = bind_dispatcher.arg or bind_dispatcher.expr or ""
+    elseif type(bind_dispatcher) == "string" and bind_dispatcher ~= "" then
+      kind = "exec"
+      arg = bind_dispatcher
+    elseif o and o.bind_commands and o.bind_commands[bind_dispatcher] then
+      kind = "exec"
+      arg = o.bind_commands[bind_dispatcher]
+    end
 
-      print(table.concat({ tostring(modmask), opts.description, key, kind, arg }, "\t"))
+    local description = opts.description
+    if not description or description == "" then
+      description = auto_label(kind, arg)
+    end
+
+    if key ~= "" and description ~= "" then
+      print(table.concat({ tostring(modmask), description, key, kind, arg }, "\t"))
     end
 
     return noop
@@ -229,8 +273,21 @@ hl = setmetatable({
   end,
 })
 
-local config = os.getenv("HOME") .. "/.config/hypr/hyprland.lua"
+local config_dir = os.getenv("HOME") .. "/.config/hypr"
+local config = config_dir .. "/hyprland.lua"
 local file = io.open(config, "r")
+
+-- Resolve require("configs.keybinds") the way Hyprland does, and keep the scan
+-- from running anything the config would run while it loads
+package.path = config_dir .. "/?.lua;" .. config_dir .. "/?/init.lua;" .. package.path
+os.execute = function() return true end
+io.popen = function()
+  return {
+    read = function() return "" end,
+    lines = function() return function() end end,
+    close = function() return true end,
+  }
+end
 
 if file then
   file:close()
@@ -301,6 +358,11 @@ dynamic_bindings() {
         key="${LUA_BIND_KEY_MAP["$modmask,$description"]}"
       fi
 
+      # Binds without a description show up by key alone; the source scan named them
+      if [[ $dispatcher == "__lua" && -z $description && -n $key ]]; then
+        description="${LUA_BIND_BY_KEY["$modmask,${key^^}"]}"
+      fi
+
       if [[ $dispatcher == "__lua" && -n $description && -n $key ]]; then
         cache_key="$modmask,$description,$key"
         dispatcher="${LUA_BIND_DISPATCHER_MAP["$cache_key"]}"
@@ -326,12 +388,6 @@ dynamic_bindings() {
 
       printf '%s,%s,%s,%s,%s\n' "$modifiers" "$key" "$description" "$dispatcher" "$arg"
     done
-}
-
-# Hardcoded bindings, like the copy-url extension and such
-static_bindings() {
-  echo "SHIFT ALT,L,Copy URL from Web App,sendshortcut,SHIFT ALT,L,"
-  echo "SHIFT ALT,D,Download Video from Web App,sendshortcut,SHIFT ALT,D,"
 }
 
 # Actions Neko binds to a second chord meant as an alternative, named one at
@@ -517,10 +573,7 @@ output_binding_records_uncached() {
   build_lua_bind_cache
   dynamic=$(dynamic_bindings)
 
-  {
-    [[ -n $dynamic ]] && printf '%s\n' "$dynamic"
-    static_bindings
-  } |
+  [[ -n $dynamic ]] && printf '%s\n' "$dynamic" |
     dedupe_binding_records |
     parse_keycodes |
     parse_binding_records |
@@ -536,6 +589,9 @@ keybindings_cache_key() {
     printf 'v14\n'
     hyprctl devices 2>/dev/null | grep -F 'active keymap:'
     hyprctl binds 2>/dev/null
+    # Labels come from the config source and this script, not only from Hyprland
+    sha256sum "$0"
+    find "$HOME/.config/hypr" -name '*.lua' -printf '%p %T@\n' 2>/dev/null | sort
   } | sha256sum | awk '{ print $1 }'
 }
 
