@@ -104,6 +104,8 @@ start() {
   launch
   touch "$XDG_RUNTIME_DIR/neko-active"
   load_hyprland_rules
+  # Rotation is a transient timer, so it needs arming again after a reboot
+  neko-wallpaper auto resume
   echo "neko-shell started"
 }
 

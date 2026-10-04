@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# neko:summary=Pick, randomize or rotate the wallpaper
+# neko:args=<pick|random|set <image>|auto <minutes|off>|status>
+# neko:examples=neko-wallpaper pick|neko-wallpaper random|neko-wallpaper auto 30|neko-wallpaper auto off
+
+# Wallpapers come from NEKO_WALLPAPER_DIR (default ~/Pictures/wallpapers).
+# While the Material theme is active, every new wallpaper re-themes neko from
+# its colors. Rotation runs as a systemd user timer, re-armed by
+# neko-session start after a reboot.
+
+dir=${NEKO_WALLPAPER_DIR:-$HOME/Pictures/wallpapers}
+state=$HOME/.local/state/neko
+rotation_file=$HOME/.config/neko/wallpaper-rotation
+unit=neko-wallpaper-rotate
+
+current() {
+  readlink -f "$state/current/background" 2> /dev/null
+}
+
+# Qt reads WebP only through qt6-imageformats
+wallpapers() {
+  local pattern='\.(jpe?g|png)$'
+  if pacman -Q qt6-imageformats &> /dev/null; then
+    pattern='\.(jpe?g|png|webp)$'
+  fi
+  find -L "$dir" -maxdepth 2 -type f -regextype posix-extended -iregex ".*$pattern" | sort
+}
+
+set_wallpaper() {
+  local image
+  image=$(realpath "$1")
+  if [[ ! -f $image ]]; then
+    echo "No image at $1" >&2
+    exit 1
+  fi
+
+  neko-theme-bg-set "$image"
+  if [[ $(cat "$state/current/theme.name" 2> /dev/null) == "material" ]]; then
+    neko-theme-material "$image" > /dev/null
+  fi
+}
+
+pick() {
+  local choice
+  choice=$(neko-menu-images --selected "$(current)" --lazy-thumbnails --filterable "$dir")
+  if [[ -n $choice ]]; then
+    set_wallpaper "$choice"
+  fi
+}
+
+random_wallpaper() {
+  local now choice
+  now=$(current)
+  choice=$(wallpapers | grep -vxF "$now" | shuf -n 1)
+  if [[ -z $choice ]]; then
+    echo "No wallpapers in $dir" >&2
+    exit 1
+  fi
+  set_wallpaper "$choice"
+}
+
+# A transient timer carrying the environment the commands need
+arm_rotation() {
+  local minutes=$1
+  systemctl --user stop "$unit.timer" &> /dev/null
+  systemd-run --user --quiet --unit="$unit" \
+    --on-active="${minutes}m" --on-unit-active="${minutes}m" \
+    --setenv=NEKO_PATH="$NEKO_PATH" --setenv=PATH="$NEKO_PATH/bin:$PATH" \
+    --setenv=NEKO_QUICKSHELL="${NEKO_QUICKSHELL:-quickshell}" \
+    --setenv=NEKO_WALLPAPER_DIR="$dir" \
+    --setenv=WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+    --setenv=HYPRLAND_INSTANCE_SIGNATURE="$HYPRLAND_INSTANCE_SIGNATURE" \
+    "$NEKO_PATH/bin/neko-wallpaper" random
+}
+
+auto() {
+  case $1 in
+    off)
+      systemctl --user stop "$unit.timer" &> /dev/null
+      rm -f "$rotation_file"
+      echo "Wallpaper rotation off"
+      ;;
+    resume)
+      if [[ -f $rotation_file ]]; then
+        arm_rotation "$(cat "$rotation_file")"
+      fi
+      ;;
+    '' | *[!0-9]*)
+      echo "Usage: neko-wallpaper auto <minutes|off>" >&2
+      exit 1
+      ;;
+    *)
+      mkdir -p "$(dirname "$rotation_file")"
+      echo "$1" > "$rotation_file"
+      arm_rotation "$1"
+      echo "New wallpaper every $1 minutes"
+      ;;
+  esac
+}
+
+status() {
+  echo "wallpaper: $(current)"
+  if [[ -f $rotation_file ]] && systemctl --user is-active --quiet "$unit.timer"; then
+    echo "rotation: every $(cat "$rotation_file") minutes"
+  else
+    echo "rotation: off"
+  fi
+}
+
+case $1 in
+  pick) pick ;;
+  random) random_wallpaper ;;
+  set) set_wallpaper "$2" ;;
+  auto) auto "$2" ;;
+  status) status ;;
+  *)
+    echo "Usage: neko-wallpaper <pick|random|set <image>|auto <minutes|off>|status>" >&2
+    exit 1
+    ;;
+esac
