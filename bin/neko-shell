@@ -64,7 +64,7 @@ fi
 socket_id=$(printf '%s\n%s' "$NEKO_PATH/shell" "${WAYLAND_DISPLAY:-}" | md5sum)
 socket="${XDG_RUNTIME_DIR:-/run/user/$UID}/neko-shell-${socket_id:0:16}.sock"
 request="$*"
-if [[ -S $socket && $request != *$'\x1e'* && $request != *$'\x1f'* ]]; then
+if [[ -S $socket && $request != *$'\x1e'* && $request != *$'\x1f'* ]] && command -v socat > /dev/null; then
   saved_ifs=$IFS
   IFS=$'\x1f'
   request="$*"
