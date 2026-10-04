@@ -81,10 +81,10 @@ fi
 # so the client gets time to see that through, and the wait below covers a
 # client that timed out anyway: the fresh shell refuses to start next to a
 # still-dying instance (-n), which is how a restart used to end with no bar.
-while timeout 30 quickshell kill -p "$CONFIG_DIR" --any-display >/dev/null 2>&1; do :; done
+while timeout 30 "${NEKO_QUICKSHELL:-quickshell}" kill -p "$CONFIG_DIR" --any-display >/dev/null 2>&1; do :; done
 
 shell_instance_running() {
-  quickshell list -a -j 2>/dev/null |
+  "${NEKO_QUICKSHELL:-quickshell}" list -a -j 2>/dev/null |
     jq -e --arg dir "$CONFIG_DIR/" 'any(.[]; .config_path | startswith($dir))' >/dev/null 2>&1
 }
 

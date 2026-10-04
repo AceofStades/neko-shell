@@ -16,7 +16,7 @@
 # generation behind that turns the next restart's IPC kill into a crash.
 run_shell() {
   QS_DISABLE_FILE_WATCHER=1 QS_NO_RELOAD_POPUP=1 \
-    systemd-cat -t neko-shell -- quickshell -n -p "$NEKO_PATH/shell" &
+    systemd-cat -t neko-shell -- "${NEKO_QUICKSHELL:-quickshell}" -n -p "$NEKO_PATH/shell" &
   shell_pid=$!
 
   local status

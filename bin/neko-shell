@@ -100,7 +100,7 @@ fi
 # positionals. qs reports connection failures with a nonzero exit, but IPC-level
 # failures (unknown target/function, bad arguments) go to stdout with exit 0.
 ipc_timeout=${NEKO_SHELL_IPC_TIMEOUT:-2s}
-output=$(timeout --kill-after=1s "$ipc_timeout" qs ipc -n -p "$NEKO_PATH/shell" call -- "$@" 2>/dev/null)
+output=$(timeout --kill-after=1s "$ipc_timeout" "${NEKO_QUICKSHELL:-quickshell}" ipc -n -p "$NEKO_PATH/shell" call -- "$@" 2>/dev/null)
 ipc_status=$?
 
 if (( ipc_status == 124 || ipc_status == 137 )); then
