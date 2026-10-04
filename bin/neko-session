@@ -26,9 +26,16 @@ state=$HOME/.local/state/neko/current
 render_theme() {
   local theme=$(cat "$state/theme.name" 2> /dev/null)
   theme=${theme:-${NEKO_THEME:-neko}}
+
+  # Your own themes win over the ones that ship with neko
+  local source=$HOME/.config/neko/themes/$theme
+  if [[ ! -d $source ]]; then
+    source=$NEKO_PATH/themes/$theme
+  fi
+
   rm -rf "$state/next-theme"
   mkdir -p "$state/next-theme"
-  cp -r "$NEKO_PATH/themes/$theme/." "$state/next-theme/"
+  cp -r "$source/." "$state/next-theme/"
   neko-theme-set-templates
   rm -rf "$state/theme"
   mv "$state/next-theme" "$state/theme"
