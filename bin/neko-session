@@ -87,7 +87,7 @@ launch() {
 start() {
   if [[ -n $(neko_pids) ]]; then
     echo "neko-shell is already running"
-    touch "$HOME/.local/state/neko/active"
+    touch "$XDG_RUNTIME_DIR/neko-active"
     load_hyprland_rules
     return
   fi
@@ -100,7 +100,7 @@ start() {
   fi
 
   launch
-  touch "$HOME/.local/state/neko/active"
+  touch "$XDG_RUNTIME_DIR/neko-active"
   load_hyprland_rules
   echo "neko-shell started"
 }
@@ -130,7 +130,7 @@ stop() {
   fi
 
   # Without the flag a reload gives the media keys back to your own binds
-  rm -f "$HOME/.local/state/neko/active"
+  rm -f "$XDG_RUNTIME_DIR/neko-active"
   hyprctl reload > /dev/null
 
   if [[ -n $NEKO_RESTORES ]]; then

@@ -32,9 +32,10 @@ hl.layer_rule({
 })
 
 -- Media keys and the menu, only while neko is the running shell: neko-session
--- start sets the flag and stop clears it, so loading this file permanently
--- never steals the keys from another shell.
-local flag = io.open(os.getenv("HOME") .. "/.local/state/neko/active", "r")
+-- start sets the flag (in XDG_RUNTIME_DIR, gone after a reboot) and stop
+-- clears it, so loading this file permanently never steals the keys from
+-- another shell.
+local flag = io.open((os.getenv("XDG_RUNTIME_DIR") or "/tmp") .. "/neko-active", "r")
 if flag then
   flag:close()
 
