@@ -1,0 +1,16 @@
+# neko theme colors for tmux; sourced from your tmux.conf
+
+set -g status-style "bg={{ dark_background }},fg={{ foreground }}"
+set -g status-left-style "bg={{ accent }},fg={{ background }},bold"
+set -g status-right-style "fg={{ dark_foreground }}"
+set -g window-status-style "fg={{ dark_foreground }}"
+set -g window-status-current-style "fg={{ accent }},bold"
+set -g window-status-activity-style "fg={{ yellow }}"
+set -g pane-border-style "fg={{ muted }}"
+set -g pane-active-border-style "fg={{ accent }}"
+set -g message-style "bg={{ lighter_background }},fg={{ foreground }}"
+set -g message-command-style "bg={{ lighter_background }},fg={{ accent }}"
+set -g mode-style "bg={{ selection }},fg={{ bright_foreground }}"
+set -g display-panes-active-colour "{{ accent }}"
+set -g display-panes-colour "{{ muted }}"
+set -g clock-mode-colour "{{ accent }}"
