@@ -2,7 +2,7 @@
 
 # neko:summary=Send files to a machine on your tailnet with Taildrop
 # neko:args=<machine> [file...]
-# neko:examples=neko tailscale send dhh-fd | neko tailscale send dhh-fd ~/Downloads/notes.pdf
+# neko:examples=neko tailscale send laptop | neko tailscale send laptop ~/Downloads/notes.pdf
 
 set -euo pipefail
 

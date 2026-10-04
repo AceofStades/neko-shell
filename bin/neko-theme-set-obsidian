@@ -19,8 +19,7 @@ jq -r '.vaults | values[].path' ~/.config/obsidian/obsidian.json 2>/dev/null | w
   "version": "1.0.0",
   "minAppVersion": "0.16.0",
   "description": "Automatically syncs with your current Neko system theme colors and fonts",
-  "author": "Neko",
-  "authorUrl": "https://omarchy.org"
+  "author": "Neko"
 }
 EOF
 
