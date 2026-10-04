@@ -71,9 +71,11 @@ gnome_accent() {
   }'
 }
 
-# Dark or light mode and the accent; the GTK theme and icons you picked stay as they are
+# Dark or light mode, the accent, and every named GTK color. With adw-gtk3
+# installed it becomes the GTK theme, since it paints only with named colors and
+# so follows the palette completely; otherwise your theme keeps its own look.
 theme_gtk() {
-  local mode accent
+  local mode accent import gtk4_css
   mode=$(neko-theme-color --file "$theme/colors.toml" mode)
   accent=$(neko-theme-color --file "$theme/colors.toml" accent)
 
@@ -84,7 +86,24 @@ theme_gtk() {
   fi
   gsettings set org.gnome.desktop.interface accent-color "$(gnome_accent "$accent")" 2> /dev/null
 
-  ensure_line "$HOME/.config/gtk-3.0/gtk.css" "@import url(\"file://$theme/gtk.css\");" "neko-shell accent colors"
+  if [[ -d /usr/share/themes/adw-gtk3 ]]; then
+    if [[ $mode == "light" ]]; then
+      gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3
+    else
+      gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3-dark
+    fi
+  fi
+
+  import="@import url(\"file://$theme/gtk.css\");"
+  ensure_line "$HOME/.config/gtk-3.0/gtk.css" "$import" "neko-shell colors"
+
+  # GTK 4 reads one gtk.css; a theme tool may have linked it to a theme's own
+  # file. Keep that link beside it so switching back is a rename.
+  gtk4_css=$HOME/.config/gtk-4.0/gtk.css
+  if [[ -L $gtk4_css && ! -e $gtk4_css.before-neko ]]; then
+    mv "$gtk4_css" "$gtk4_css.before-neko"
+  fi
+  ensure_line "$gtk4_css" "$import" "neko-shell colors"
 }
 
 for app in "${apps[@]}"; do
