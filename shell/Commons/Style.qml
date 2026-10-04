@@ -302,6 +302,12 @@ QtObject {
     return Math.max(1, Math.round(base))
   }
 
+  // Gap and corner radius of a bar floating off its screen edge; 0 docks it
+  function barFloatToken(key) {
+    var n = Number(barOverrides[key])
+    return (isFinite(n) && n > 0) ? Math.round(n) : 0
+  }
+
   function boolToken(value, fallback) {
     if (value === undefined || value === null) return fallback
     var s = String(value).replace(/^\s+|\s+$/g, "").toLowerCase()
@@ -346,6 +352,8 @@ QtObject {
     readonly property int iconCanvas:     root.barToken("icon-canvas",     16)
     readonly property int iconFont:       root.barToken("icon-font",       13)
     readonly property int statusSlot:     root.barToken("status-slot",     21)
+    readonly property int floatMargin:    root.barFloatToken("float-margin")
+    readonly property int floatRadius:    root.barFloatToken("float-radius")
   }
 
   // Off with Hyprland's own animations, as `neko toggle animations` turns
@@ -416,7 +424,7 @@ QtObject {
       } else if (section === "bar") {
         if (key === "scale-with-font") {
           nextBarScaleWithFont = boolToken(raw, nextBarScaleWithFont)
-        } else if (key === "size-horizontal" || key === "size-vertical") {
+        } else if (key === "size-horizontal" || key === "size-vertical" || key === "float-margin" || key === "float-radius") {
           var b = parseInt(raw, 10)
           if (isFinite(b)) barOut[key] = b
         }

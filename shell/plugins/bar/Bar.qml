@@ -1260,11 +1260,22 @@ Item {
       window: barWindow
     }
 
+    // A floating bar keeps a gap to its screen edge and to both ends; hiding
+    // still parks it just past the edge.
+    readonly property int floatMargin: Style.bar.floatMargin
+    readonly property bool floating: floatMargin > 0
+
+    function edgeMargin(side) {
+      if (side === root.position) return root.barHidden ? -root.barSize : floatMargin
+      var alongBar = root.vertical ? (side === "top" || side === "bottom") : (side === "left" || side === "right")
+      return alongBar ? floatMargin : 0
+    }
+
     margins {
-      top: root.barHidden && root.position === "top" ? -root.barSize : 0
-      bottom: root.barHidden && root.position === "bottom" ? -root.barSize : 0
-      left: root.barHidden && root.position === "left" ? -root.barSize : 0
-      right: root.barHidden && root.position === "right" ? -root.barSize : 0
+      top: barWindow.edgeMargin("top")
+      bottom: barWindow.edgeMargin("bottom")
+      left: barWindow.edgeMargin("left")
+      right: barWindow.edgeMargin("right")
     }
 
     anchors {
@@ -1276,13 +1287,27 @@ Item {
 
     implicitWidth: root.vertical ? root.barSize : 0
     implicitHeight: root.vertical ? 0 : root.barSize
-    color: root.transparent ? "transparent" : root.background
+    color: root.transparent || floating ? "transparent" : root.background
     surfaceFormat.opaque: false
     WlrLayershell.namespace: "neko-bar"
     WlrLayershell.layer: WlrLayer.Top
 
-    Loader {
+    // A floating bar draws its own rounded background instead of filling the window
+    Rectangle {
       anchors.fill: parent
+      visible: barWindow.floating && !root.transparent
+      color: root.background
+      radius: Style.bar.floatRadius
+    }
+
+    Loader {
+      readonly property int endPadding: barWindow.floating ? Math.round(Style.bar.floatRadius / 2) : 0
+
+      anchors.fill: parent
+      anchors.leftMargin: root.vertical ? 0 : endPadding
+      anchors.rightMargin: root.vertical ? 0 : endPadding
+      anchors.topMargin: root.vertical ? endPadding : 0
+      anchors.bottomMargin: root.vertical ? endPadding : 0
       sourceComponent: root.vertical ? verticalBar : horizontalBar
 
       // A child of the loader, not a sibling of the sections: an ancestor stays
