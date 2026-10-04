@@ -60,6 +60,10 @@ Item {
   property string doneFile: ""
   property int dmenuWidth: 300
   property int dmenuMaxHeight: 0
+  // Callers of `neko-menu-select --font-size` can ask for smaller rows; 0 keeps the default
+  property int dmenuFontSize: 0
+  readonly property bool dmenuCompact: dmenuActive && dmenuFontSize > 0
+  readonly property int rowLabelSize: dmenuCompact ? dmenuFontSize : Style.font.heading
   property bool requestActive: false
   property bool rowsLoaded: false
   property string activeMenu: "root"
@@ -99,7 +103,9 @@ Item {
   property int contentMargin: Style.spacing.panelPadding
   property int headerHeight: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
   property int contentSpacing: Style.spacing.md
-  property int baseRowHeight: Math.max(Style.space(50), Style.font.body + Style.spacing.rowPaddingX * 2)
+  property int baseRowHeight: dmenuCompact
+    ? Math.max(Style.space(32), dmenuFontSize + Style.spacing.rowPaddingX * 2)
+    : Math.max(Style.space(50), Style.font.body + Style.spacing.rowPaddingX * 2)
   property int detailRowHeight: Math.max(Style.space(58), Style.font.body + Style.font.caption + Style.spacing.rowPaddingX * 2)
   // How much of the first hidden row stays visible at the fold — enough to
   // read as a cut-off row rather than a bottom border.
@@ -871,6 +877,7 @@ Item {
     requestActive = !!doneFile
     dmenuWidth = Math.max(1, Number(payload.width || 300))
     dmenuMaxHeight = Math.max(0, Number(payload.maxHeight || 0))
+    dmenuFontSize = Math.max(0, Number(payload.fontSize || 0))
     activeMenu = "root"
     navStack = []
     filterText = ""
@@ -1334,7 +1341,7 @@ Item {
                   text: row.label
                   color: row.hasCursor ? root.selectedText : root.foreground
                   font.family: root.fontFamily
-                  font.pixelSize: Style.font.heading
+                  font.pixelSize: root.rowLabelSize
                   font.weight: Font.Medium
                   elide: Text.ElideRight
                 }

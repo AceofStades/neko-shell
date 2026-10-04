@@ -4,7 +4,7 @@
 # neko:group=menu
 # neko:name=select
 # neko:args=prompt [option...] [-- menu args...]
-# neko:examples=neko menu select Format jpg png|neko-menu-select Resolution 4k 1080p 720p -- --width 400
+# neko:examples=neko menu select Format jpg png|neko-menu-select Resolution 4k 1080p 720p -- --width 400 --font-size 13
 
 # An option may lead with an icon, as "<glyph><TAB><label>", and may trail a
 # subtext shown under the label, as "<glyph><TAB><label><TAB><subtext>". The
@@ -25,6 +25,7 @@ shift
 options=()
 menu_width=""
 menu_maxheight=""
+menu_font_size=""
 
 while (( $# > 0 )); do
   if [[ $1 == "--" ]]; then
@@ -38,6 +39,14 @@ while (( $# > 0 )); do
             exit 1
           fi
           menu_width="$1"
+          ;;
+        --font-size)
+          shift
+          if (( $# == 0 )); then
+            echo "neko-menu-select: --font-size requires a value" >&2
+            exit 1
+          fi
+          menu_font_size="$1"
           ;;
         --height|--maxheight)
           arg="$1"
@@ -83,8 +92,9 @@ payload=$(perl -MEncode=decode -MJSON::PP=encode_json,decode_json -e '
   };
   $payload->{width} = int($ARGV[4]) if length($ARGV[4] // "");
   $payload->{maxHeight} = int($ARGV[5]) if length($ARGV[5] // "");
+  $payload->{fontSize} = int($ARGV[6]) if length($ARGV[6] // "");
   print encode_json($payload)
-' "$prompt" "$options_json" "$selection_file" "$done_file" "$menu_width" "$menu_maxheight")
+' "$prompt" "$options_json" "$selection_file" "$done_file" "$menu_width" "$menu_maxheight" "$menu_font_size")
 
 neko-shell shell summon neko.menu "$payload" >/dev/null
 
