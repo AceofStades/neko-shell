@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# neko:summary=Start or stop neko-shell as this Hyprland session's desktop shell
+# neko:args=<start|stop>
+
+# Machine-specific settings live in ~/.config/neko/env, sourced when present:
+#   NEKO_QUICKSHELL  Quickshell binary to run (default: quickshell)
+#   NEKO_THEME       theme from themes/ to start with (default: neko)
+#   NEKO_WALLPAPER   image to use until a background has been picked
+#   NEKO_REPLACES    command that stops the shell neko takes over from
+#   NEKO_RESTORES    command that brings that shell back on stop
+
+env_file=$HOME/.config/neko/env
+if [[ -f $env_file ]]; then
+  source "$env_file"
+fi
+
+export NEKO_PATH=${NEKO_PATH:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
+export PATH="$NEKO_PATH/bin:$PATH"
+
+state=$HOME/.local/state/neko/current
+
+# The shell reads its theme from state; render one the first time
+ensure_theme() {
+  if [[ -f $state/theme/colors.toml ]]; then
+    return
+  fi
+
+  local theme=${NEKO_THEME:-neko}
+  rm -rf "$state/next-theme"
+  mkdir -p "$state/next-theme"
+  cp -r "$NEKO_PATH/themes/$theme/." "$state/next-theme/"
+  neko-theme-set-templates
+  rm -rf "$state/theme"
+  mv "$state/next-theme" "$state/theme"
+  echo "$theme" > "$state/theme.name"
+}
+
+ensure_background() {
+  if [[ ! -e $state/background && -n $NEKO_WALLPAPER && -f $NEKO_WALLPAPER ]]; then
+    ln -sfn "$NEKO_WALLPAPER" "$state/background"
+  fi
+}
+
+# The launcher, shell and clipboard watchers started from this checkout, and
+# nothing else that merely mentions it (an editor with a QML file open)
+neko_pids() {
+  local pid
+  for pid in $(pgrep -f -- "$NEKO_PATH/bin/neko-launch-shell\$|-p $NEKO_PATH/shell\$|--watch $NEKO_PATH/shell/plugins/"); do
+    if (( pid != $$ )); then
+      echo "$pid"
+    fi
+  done
+}
+
+# Media keys and a menu key reach the shell through its global shortcuts, so a
+# keypress spawns nothing. Runtime only: `hyprctl reload` restores your binds.
+bind_keys() {
+  local run="env NEKO_PATH=$NEKO_PATH PATH=$NEKO_PATH/bin:\$PATH"
+  hyprctl eval "
+for _, key in ipairs({ 'XF86AudioRaiseVolume', 'XF86AudioLowerVolume', 'XF86AudioMute', 'XF86AudioMicMute',
+                       'XF86MonBrightnessUp', 'XF86MonBrightnessDown', 'XF86AudioPlay', 'XF86AudioPause' }) do
+  hl.unbind(key)
+end
+hl.bind('XF86AudioRaiseVolume', hl.dsp.global('neko:audio.raise'), { locked = true, repeating = true })
+hl.bind('XF86AudioLowerVolume', hl.dsp.global('neko:audio.lower'), { locked = true, repeating = true })
+hl.bind('XF86AudioMute', hl.dsp.global('neko:audio.mute-toggle'), { locked = true })
+hl.bind('XF86AudioMicMute', hl.dsp.exec_cmd('$run neko-audio-input-mute'), { locked = true })
+hl.bind('XF86MonBrightnessUp', hl.dsp.global('neko:brightness.raise'), { locked = true, repeating = true })
+hl.bind('XF86MonBrightnessDown', hl.dsp.global('neko:brightness.lower'), { locked = true, repeating = true })
+hl.bind('XF86AudioPlay', hl.dsp.global('neko:ipc.media.playPause'), { locked = true })
+hl.bind('XF86AudioPause', hl.dsp.global('neko:ipc.media.playPause'), { locked = true })
+hl.bind('SUPER + ALT + SPACE', hl.dsp.global('neko:menu.root'))
+" > /dev/null
+}
+
+start() {
+  if [[ -n $(neko_pids) ]]; then
+    echo "neko-shell is already running"
+    bind_keys
+    return
+  fi
+
+  ensure_theme
+  ensure_background
+
+  if [[ -n $NEKO_REPLACES ]]; then
+    eval "$NEKO_REPLACES"
+  fi
+
+  # Launch through Hyprland so the shell outlives this command, like any autostarted shell
+  local launch="env NEKO_PATH=$NEKO_PATH NEKO_QUICKSHELL=${NEKO_QUICKSHELL:-quickshell} PATH=$NEKO_PATH/bin:\$PATH neko-launch-shell"
+  hyprctl dispatch "hl.dsp.exec_cmd(\"$launch\")" > /dev/null
+  bind_keys
+  echo "neko-shell started"
+}
+
+stop() {
+  local pids=$(neko_pids)
+  if [[ -n $pids ]]; then
+    kill $pids 2> /dev/null
+  fi
+
+  hyprctl reload > /dev/null
+
+  if [[ -n $NEKO_RESTORES ]]; then
+    eval "$NEKO_RESTORES"
+  fi
+  echo "neko-shell stopped"
+}
+
+case $1 in
+  start) start ;;
+  stop) stop ;;
+  *)
+    echo "Usage: neko-session <start|stop>" >&2
+    exit 1
+    ;;
+esac
