@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # neko:summary=Start or stop neko-shell as this Hyprland session's desktop shell
-# neko:args=<start|stop>
+# neko:args=<start|stop|theme>
 
 # Machine-specific settings live in ~/.config/neko/env, sourced when present:
 #   NEKO_QUICKSHELL  Quickshell binary to run (default: quickshell)
@@ -12,7 +12,9 @@
 
 env_file=$HOME/.config/neko/env
 if [[ -f $env_file ]]; then
+  set -a
   source "$env_file"
+  set +a
 fi
 
 export NEKO_PATH=${NEKO_PATH:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
@@ -20,13 +22,10 @@ export PATH="$NEKO_PATH/bin:$PATH"
 
 state=$HOME/.local/state/neko/current
 
-# The shell reads its theme from state; render one the first time
-ensure_theme() {
-  if [[ -f $state/theme/colors.toml ]]; then
-    return
-  fi
-
-  local theme=${NEKO_THEME:-neko}
+# The shell reads its theme from state
+render_theme() {
+  local theme=$(cat "$state/theme.name" 2> /dev/null)
+  theme=${theme:-${NEKO_THEME:-neko}}
   rm -rf "$state/next-theme"
   mkdir -p "$state/next-theme"
   cp -r "$NEKO_PATH/themes/$theme/." "$state/next-theme/"
@@ -34,6 +33,19 @@ ensure_theme() {
   rm -rf "$state/theme"
   mv "$state/next-theme" "$state/theme"
   echo "$theme" > "$state/theme.name"
+}
+
+ensure_theme() {
+  if [[ ! -f $state/theme/colors.toml ]]; then
+    render_theme
+  fi
+}
+
+# Re-render the theme and hand it to the running shell, no restart needed
+apply_theme() {
+  render_theme
+  neko-shell shell applyTheme "$(base64 -w 0 "$state/theme/colors.toml")" "$(base64 -w 0 "$state/theme/shell.toml")" > /dev/null
+  echo "theme $(cat "$state/theme.name") applied"
 }
 
 ensure_background() {
@@ -112,8 +124,9 @@ stop() {
 case $1 in
   start) start ;;
   stop) stop ;;
+  theme) apply_theme ;;
   *)
-    echo "Usage: neko-session <start|stop>" >&2
+    echo "Usage: neko-session <start|stop|theme>" >&2
     exit 1
     ;;
 esac
