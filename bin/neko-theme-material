@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# neko:summary=Build a Material You theme from the wallpaper and apply it
+# neko:args=[image]
+
+# Surfaces, text, accent and outlines come from the wallpaper's Material
+# palette (via matugen); terminal colors stay those of the neko theme. The
+# result is a regular theme in ~/.config/neko/themes/material.
+
+set -e
+
+image=${1:-$HOME/.local/state/neko/current/background}
+matugen=${NEKO_MATUGEN:-matugen}
+base=$NEKO_PATH/themes/neko
+theme=$HOME/.config/neko/themes/material
+
+if ! command -v "$matugen" > /dev/null; then
+  echo "matugen is needed to read colors from the wallpaper (pacman -S matugen)" >&2
+  exit 1
+fi
+
+if [[ ! -f $image ]]; then
+  echo "No image at $image" >&2
+  exit 1
+fi
+
+palette=$("$matugen" image "$(readlink -f "$image")" --json hex --dry-run --prefer saturation 2> /dev/null)
+role() {
+  jq -r --arg role "$1" '.colors[$role].dark.color' <<< "$palette"
+}
+
+declare -A roles
+for name in surface surface_container_lowest surface_container_low surface_container_high surface_container_highest \
+  on_surface on_surface_variant outline outline_variant primary error inverse_surface scrim; do
+  roles[$name]=$(role "$name")
+done
+
+mkdir -p "$theme"
+
+# The palette, with neko's terminal colors
+{
+  echo 'mode = "dark"'
+  echo
+  echo "accent = \"${roles[primary]}\""
+  echo "selection = \"${roles[surface_container_highest]}\""
+  echo "muted = \"${roles[outline_variant]}\""
+  echo
+  echo "background = \"${roles[surface]}\""
+  echo "dark_background = \"${roles[surface_container_low]}\""
+  echo "darker_background = \"${roles[surface_container_lowest]}\""
+  echo "lighter_background = \"${roles[surface_container_high]}\""
+  echo
+  echo "foreground = \"${roles[on_surface]}\""
+  echo "dark_foreground = \"${roles[outline]}\""
+  echo "light_foreground = \"${roles[on_surface_variant]}\""
+  echo "bright_foreground = \"${roles[inverse_surface]}\""
+  echo
+  sed -n '/^red = /,$p' "$base/colors.toml"
+} > "$theme/colors.toml"
+
+# The neko theme's translucent surfaces, recolored with the palette's roles
+for file in "$base"/shell.*.toml; do
+  sed -e "s/#0f131c/${roles[surface]}/g" \
+      -e "s/#1c2029/${roles[surface_container_high]}/g" \
+      -e "s/#dfe2ef/${roles[on_surface]}/g" \
+      -e "s/#3f4759/${roles[outline_variant]}/g" \
+      -e "s/#54d6f3/${roles[primary]}/g" \
+      -e "s/#07090e/${roles[surface_container_lowest]}/g" \
+      -e "s/#f9515d/${roles[error]}/g" \
+      "$file" > "$theme/${file##*/}"
+done
+
+echo material > "$HOME/.local/state/neko/current/theme.name"
+neko-session theme
