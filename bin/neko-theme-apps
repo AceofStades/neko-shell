@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# neko:summary=Bring the apps listed in NEKO_THEME_APPS in line with the current theme
+# neko:args=[app...]
+
+# Each app is pointed once at a file the theme renders under
+# ~/.local/state/neko/current/theme (an include line, a symlink, a
+# setting), then told to reload. Supported: kitty btop tmux gtk.
+# Nothing happens to an app unless it is listed.
+
+theme=$HOME/.local/state/neko/current/theme
+
+if (( $# > 0 )); then
+  apps=("$@")
+else
+  read -ra apps <<< "${NEKO_THEME_APPS:-}"
+fi
+
+# Append a line to a config file unless it is already there, creating the file if needed
+ensure_line() {
+  local file=$1 line=$2 comment=$3
+  mkdir -p "$(dirname "$file")"
+  if ! grep -qxF "$line" "$file" 2> /dev/null; then
+    printf '\n# %s\n%s\n' "$comment" "$line" >> "$file"
+  fi
+}
+
+theme_kitty() {
+  ensure_line "$HOME/.config/kitty/kitty.conf" "include $theme/kitty.conf" "neko-shell theme colors"
+  pkill -USR1 -x kitty
+}
+
+theme_btop() {
+  local config=$HOME/.config/btop/btop.conf
+  mkdir -p "$HOME/.config/btop/themes"
+  ln -sfn "$theme/btop.theme" "$HOME/.config/btop/themes/neko.theme"
+  if [[ -f $config ]]; then
+    sed -i 's/^color_theme = .*/color_theme = "neko"/' "$config"
+  fi
+  pkill -USR2 -x btop
+}
+
+theme_tmux() {
+  ensure_line "$HOME/.config/tmux/tmux.conf" "source-file -q $theme/tmux.conf" "neko-shell theme colors"
+  if tmux list-sessions &> /dev/null; then
+    tmux source-file "$theme/tmux.conf"
+  fi
+}
+
+# GNOME's named accent closest to the theme accent's hue (slate when it is nearly gray)
+gnome_accent() {
+  local hex=${1#\#}
+  awk -v r=$((16#${hex:0:2})) -v g=$((16#${hex:2:2})) -v b=$((16#${hex:4:2})) 'BEGIN {
+    r /= 255; g /= 255; b /= 255
+    max = r; if (g > max) max = g; if (b > max) max = b
+    min = r; if (g < min) min = g; if (b < min) min = b
+    delta = max - min
+    if (delta < 0.12) { print "slate"; exit }
+    if (max == r) hue = 60 * (((g - b) / delta) % 6)
+    else if (max == g) hue = 60 * ((b - r) / delta + 2)
+    else hue = 60 * ((r - g) / delta + 4)
+    if (hue < 0) hue += 360
+    if (hue < 15 || hue >= 345) print "red"
+    else if (hue < 45) print "orange"
+    else if (hue < 70) print "yellow"
+    else if (hue < 160) print "green"
+    else if (hue < 195) print "teal"
+    else if (hue < 250) print "blue"
+    else if (hue < 290) print "purple"
+    else print "pink"
+  }'
+}
+
+# Dark or light mode and the accent; the GTK theme and icons you picked stay as they are
+theme_gtk() {
+  local mode accent
+  mode=$(neko-theme-color --file "$theme/colors.toml" mode)
+  accent=$(neko-theme-color --file "$theme/colors.toml" accent)
+
+  if [[ $mode == "light" ]]; then
+    gsettings set org.gnome.desktop.interface color-scheme prefer-light
+  else
+    gsettings set org.gnome.desktop.interface color-scheme prefer-dark
+  fi
+  gsettings set org.gnome.desktop.interface accent-color "$(gnome_accent "$accent")" 2> /dev/null
+
+  ensure_line "$HOME/.config/gtk-3.0/gtk.css" "@import url(\"file://$theme/gtk.css\");" "neko-shell accent colors"
+}
+
+for app in "${apps[@]}"; do
+  case $app in
+    kitty | btop | tmux | gtk) "theme_$app" ;;
+    *) echo "neko-theme-apps: don't know how to theme $app" >&2 ;;
+  esac
+done
