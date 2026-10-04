@@ -9,6 +9,7 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Run it as the session's shell
 - [x] Look: translucent blurred surfaces, floating bar with capsules
 - [x] Material You colors from the wallpaper (`neko-theme-material`, needs matugen)
+- [x] Wallpaper picker, randomizer and rotation (`neko-wallpaper`, Style > Wallpaper)
 - [x] Keybindings with descriptions and a searchable cheat sheet (`SUPER+/`; add `{ description = "..." }` to a bind to name it)
 - [x] Media keys through global shortcuts instead of a process per keypress (`default/hypr/neko.lua`)
 - [x] One palette for every app: kitty, btop, tmux, GTK (`NEKO_THEME_APPS`)
@@ -32,6 +33,8 @@ Machine settings go in `~/.config/neko/env`, which `neko-session` sources:
 | `NEKO_QUICKSHELL` | Quickshell binary, for when the packaged one lags behind Qt (default `quickshell`) |
 | `NEKO_THEME` | Theme from `themes/` to start with (default `neko`) |
 | `NEKO_WALLPAPER` | Image to use until a background has been picked |
+| `NEKO_WALLPAPER_DIR` | Folder `neko-wallpaper` picks from (default `~/Pictures/wallpapers`) |
+| `NEKO_THEME_APPS` | Apps that follow the theme: any of `kitty btop tmux gtk` |
 | `NEKO_REPLACES` | Command that stops the shell neko takes over from |
 | `NEKO_RESTORES` | Command that brings that shell back on stop |
 
