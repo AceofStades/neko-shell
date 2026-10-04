@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# neko:summary=Step screen brightness along a perceptual curve and show it on the OSD
+# neko:args=<up|down|fine-up|fine-down> [--no-osd]
+# neko:examples=neko-brightness-step up|neko-brightness-step fine-down
+
+# 16 steps for the brightness keys, each split into 4 fine steps (64 in all),
+# spaced on a gamma 2.5 power curve so every step looks like the same change:
+# small at the dark end, larger near full brightness. Each fine step is at
+# least one backlight unit above the one before, so none of them is a no-op.
+
+direction=$1
+osd=1
+if [[ $2 == "--no-osd" ]]; then
+  osd=0
+fi
+
+case $direction in
+  up) delta=4 ;;
+  down) delta=-4 ;;
+  fine-up) delta=1 ;;
+  fine-down) delta=-1 ;;
+  *)
+    echo "Usage: neko-brightness-step <up|down|fine-up|fine-down> [--no-osd]" >&2
+    exit 1
+    ;;
+esac
+
+# device,class,current,percent,max
+IFS=, read -r _ _ current _ max < <(brightnessctl -m)
+if [[ -z $current || -z $max ]]; then
+  echo "No backlight found" >&2
+  exit 1
+fi
+
+read -r step raw < <(awk -v current="$current" -v max="$max" -v delta="$delta" '
+  BEGIN {
+    steps = 64; gamma = 2.5; floor_value = 1
+    previous = 0
+    for (i = 0; i <= steps; i++) {
+      value = int(((i / steps) ^ gamma) * (max - floor_value) + floor_value + 0.5)
+      if (i > 0 && value <= previous) value = previous + 1
+      if (value > max) value = max
+      curve[i] = value
+      previous = value
+    }
+
+    # Where the backlight sits now: the closest point on the curve
+    nearest = 0
+    for (i = 1; i <= steps; i++) {
+      if ((curve[i] - current) ^ 2 < (curve[nearest] - current) ^ 2) nearest = i
+    }
+
+    target = nearest + delta
+    if (target < 0) target = 0
+    if (target > steps) target = steps
+    print target, curve[target]
+  }
+')
+
+brightnessctl -q set "$raw"
+
+if (( osd )); then
+  neko-osd -i brightness -p "$(( (step * 100 + 32) / 64 ))"
+fi

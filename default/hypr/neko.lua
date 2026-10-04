@@ -41,7 +41,8 @@ if flag then
 
   local keys = {
     "XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute",
-    "XF86MonBrightnessUp", "XF86MonBrightnessDown", "XF86AudioPlay", "XF86AudioPause",
+    "XF86MonBrightnessUp", "XF86MonBrightnessDown", "SUPER + XF86MonBrightnessUp", "SUPER + XF86MonBrightnessDown",
+    "XF86AudioPlay", "XF86AudioPause",
     "SUPER + ALT + SPACE", "SUPER + SLASH",
   }
   for _, key in ipairs(keys) do
@@ -54,8 +55,11 @@ if flag then
   hl.bind("XF86AudioLowerVolume", hl.dsp.global("neko:audio.lower"), { locked = true, repeating = true })
   hl.bind("XF86AudioMute", hl.dsp.global("neko:audio.mute-toggle"), { locked = true })
   hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(run .. "neko-audio-input-mute"), { locked = true })
-  hl.bind("XF86MonBrightnessUp", hl.dsp.global("neko:brightness.raise"), { locked = true, repeating = true })
-  hl.bind("XF86MonBrightnessDown", hl.dsp.global("neko:brightness.lower"), { locked = true, repeating = true })
+  -- Brightness moves along a perceptual curve: 16 steps, SUPER for 4 finer ones each
+  hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(run .. "neko-brightness-step up"), { locked = true, repeating = true })
+  hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(run .. "neko-brightness-step down"), { locked = true, repeating = true })
+  hl.bind("SUPER + XF86MonBrightnessUp", hl.dsp.exec_cmd(run .. "neko-brightness-step fine-up"), { locked = true, repeating = true })
+  hl.bind("SUPER + XF86MonBrightnessDown", hl.dsp.exec_cmd(run .. "neko-brightness-step fine-down"), { locked = true, repeating = true })
   hl.bind("XF86AudioPlay", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
   hl.bind("XF86AudioPause", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
   hl.bind("SUPER + ALT + SPACE", hl.dsp.global("neko:menu.root"), { description = "Neko menu" })
