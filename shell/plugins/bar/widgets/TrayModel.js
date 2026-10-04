@@ -35,7 +35,6 @@ function layoutHasWidget(layout, id) {
 // doesn't stick either: LocalSend picks a fresh tray id every launch.
 function ownedByOmarchy(item, layout) {
   return itemNamed(item, "localsend")
-    || (layoutHasWidget(layout, "omarchy.dropbox") && itemNamed(item, "dropbox"))
 }
 
 if (typeof module !== "undefined") {
