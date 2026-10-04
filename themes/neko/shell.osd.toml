@@ -1,0 +1,10 @@
+[osd]
+background       = "#1c2029"
+background-alpha = 0.6
+text             = "#dfe2ef"
+icon             = "#54d6f3"
+track            = "#54d6f3"
+track-alpha      = 0.25
+fill             = "#54d6f3"
+border           = "#3f4759"
+border-alpha     = 0.5
