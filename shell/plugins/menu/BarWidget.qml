@@ -12,8 +12,8 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "\ue900"
-    fontFamily: "omarchy"
+    // nf-md-cat from the bar's Nerd Font
+    text: "\udb80\udd1b"
     centerFigures: false
     horizontalMargin: 7.5
     onPressed: function(button) {
