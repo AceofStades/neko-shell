@@ -10,10 +10,11 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Look: translucent blurred surfaces, floating bar with capsules
 - [x] Material You colors from the wallpaper (`neko-theme-material`, needs matugen)
 - [ ] Keybindings with descriptions and a searchable cheat sheet
-- [ ] Media keys through global shortcuts instead of a process per keypress
+- [x] Media keys through global shortcuts instead of a process per keypress (`default/hypr/neko.lua`)
 - [ ] One palette for every app (theme templates)
 - [ ] Laptop lid and external monitor handling
-- [ ] Panels: Wi-Fi QR code, speed test, AI agent usage, Tailscale
+- [x] Panels: Wi-Fi QR code, speed test, AI agent usage, Tailscale
+- [ ] Agents panel: drop the launch and account actions that relied on installers
 - [ ] Self-documenting `neko` commands and hooks
 - [ ] A Claude Code skill describing the setup
 
