@@ -8,3 +8,5 @@ size-horizontal  = 26
 size-vertical    = 28
 float-margin     = 6
 float-radius     = 12
+capsule          = "#1c2029"
+capsule-alpha    = 0.5
