@@ -65,31 +65,16 @@ neko_pids() {
   done
 }
 
-# Media keys and a menu key reach the shell through its global shortcuts, so a
-# keypress spawns nothing. Runtime only: `hyprctl reload` restores your binds.
-bind_keys() {
-  local run="env NEKO_PATH=$NEKO_PATH PATH=$NEKO_PATH/bin:\$PATH"
-  hyprctl eval "
-for _, key in ipairs({ 'XF86AudioRaiseVolume', 'XF86AudioLowerVolume', 'XF86AudioMute', 'XF86AudioMicMute',
-                       'XF86MonBrightnessUp', 'XF86MonBrightnessDown', 'XF86AudioPlay', 'XF86AudioPause' }) do
-  hl.unbind(key)
-end
-hl.bind('XF86AudioRaiseVolume', hl.dsp.global('neko:audio.raise'), { locked = true, repeating = true })
-hl.bind('XF86AudioLowerVolume', hl.dsp.global('neko:audio.lower'), { locked = true, repeating = true })
-hl.bind('XF86AudioMute', hl.dsp.global('neko:audio.mute-toggle'), { locked = true })
-hl.bind('XF86AudioMicMute', hl.dsp.exec_cmd('$run neko-audio-input-mute'), { locked = true })
-hl.bind('XF86MonBrightnessUp', hl.dsp.global('neko:brightness.raise'), { locked = true, repeating = true })
-hl.bind('XF86MonBrightnessDown', hl.dsp.global('neko:brightness.lower'), { locked = true, repeating = true })
-hl.bind('XF86AudioPlay', hl.dsp.global('neko:ipc.media.playPause'), { locked = true })
-hl.bind('XF86AudioPause', hl.dsp.global('neko:ipc.media.playPause'), { locked = true })
-hl.bind('SUPER + ALT + SPACE', hl.dsp.global('neko:menu.root'))
-" > /dev/null
+# Blur, layer rules and keys from default/hypr/neko.lua. Runtime only:
+# `hyprctl reload` restores your config, unless it loads neko.lua itself.
+load_hyprland_rules() {
+  hyprctl eval "dofile('$NEKO_PATH/default/hypr/neko.lua')" > /dev/null
 }
 
 start() {
   if [[ -n $(neko_pids) ]]; then
     echo "neko-shell is already running"
-    bind_keys
+    load_hyprland_rules
     return
   fi
 
@@ -103,7 +88,7 @@ start() {
   # Launch through Hyprland so the shell outlives this command, like any autostarted shell
   local launch="env NEKO_PATH=$NEKO_PATH NEKO_QUICKSHELL=${NEKO_QUICKSHELL:-quickshell} PATH=$NEKO_PATH/bin:\$PATH neko-launch-shell"
   hyprctl dispatch "hl.dsp.exec_cmd(\"$launch\")" > /dev/null
-  bind_keys
+  load_hyprland_rules
   echo "neko-shell started"
 }
 
