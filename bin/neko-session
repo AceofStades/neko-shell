@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # neko:summary=Start or stop neko-shell as this Hyprland session's desktop shell
-# neko:args=<start|stop|theme>
+# neko:args=<start|stop|restart|theme>
 
 # Machine-specific settings live in ~/.config/neko/env, sourced when present:
 #   NEKO_QUICKSHELL  Quickshell binary to run (default: quickshell)
@@ -71,6 +71,12 @@ load_hyprland_rules() {
   hyprctl eval "dofile('$NEKO_PATH/default/hypr/neko.lua')" > /dev/null
 }
 
+# Through Hyprland, so the shell outlives this command like any autostarted shell
+launch() {
+  local command="env NEKO_PATH=$NEKO_PATH NEKO_QUICKSHELL=${NEKO_QUICKSHELL:-quickshell} PATH=$NEKO_PATH/bin:\$PATH neko-launch-shell"
+  hyprctl dispatch "hl.dsp.exec_cmd(\"$command\")" > /dev/null
+}
+
 start() {
   if [[ -n $(neko_pids) ]]; then
     echo "neko-shell is already running"
@@ -85,11 +91,27 @@ start() {
     eval "$NEKO_REPLACES"
   fi
 
-  # Launch through Hyprland so the shell outlives this command, like any autostarted shell
-  local launch="env NEKO_PATH=$NEKO_PATH NEKO_QUICKSHELL=${NEKO_QUICKSHELL:-quickshell} PATH=$NEKO_PATH/bin:\$PATH neko-launch-shell"
-  hyprctl dispatch "hl.dsp.exec_cmd(\"$launch\")" > /dev/null
+  launch
   load_hyprland_rules
   echo "neko-shell started"
+}
+
+# Reload the shell's code and re-render the theme, leaving everything else alone
+restart() {
+  local pids=$(neko_pids)
+  if [[ -n $pids ]]; then
+    kill $pids 2> /dev/null
+    # A new instance refuses to start while the old one is still around
+    for _ in {1..50}; do
+      [[ -z $(neko_pids) ]] && break
+      sleep 0.1
+    done
+  fi
+
+  render_theme
+  launch
+  load_hyprland_rules
+  echo "neko-shell restarted"
 }
 
 stop() {
@@ -109,9 +131,10 @@ stop() {
 case $1 in
   start) start ;;
   stop) stop ;;
+  restart) restart ;;
   theme) apply_theme ;;
   *)
-    echo "Usage: neko-session <start|stop|theme>" >&2
+    echo "Usage: neko-session <start|stop|restart|theme>" >&2
     exit 1
     ;;
 esac
