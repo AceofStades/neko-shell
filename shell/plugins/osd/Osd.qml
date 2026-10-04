@@ -142,8 +142,8 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom
       anchors.bottomMargin: Style.space(56) + (root.opened ? 0 : -Style.space(8))
-      color: NekoColor.popups.background
-      borderSpec: Border.flat(NekoColor.popups.border, 1)
+      color: NekoColor.osd.background
+      borderSpec: Border.flat(NekoColor.osd.border, 1)
       radius: height / 2
       opacity: root.opened ? 1 : 0
 
@@ -168,7 +168,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             font: iconMetrics.font
-            color: NekoColor.accent
+            color: NekoColor.osd.icon
           }
         }
         Rectangle {
@@ -177,7 +177,7 @@ Item {
           height: root.trackHeight
           radius: height / 2
           anchors.verticalCenter: parent.verticalCenter
-          color: Util.alpha(NekoColor.popups.text, 0.15)
+          color: NekoColor.osd.track
           Rectangle {
             readonly property real fraction: root.hasProgress ? root.value / root.maxValue : 0
 
@@ -185,7 +185,7 @@ Item {
             radius: height / 2
             // Never narrower than it is tall once there is any value, so the fill stays a pill
             width: fraction > 0 ? Math.max(height, parent.width * fraction) : 0
-            color: NekoColor.accent
+            color: NekoColor.osd.fill
 
             Behavior on width {
               enabled: root.opened
@@ -203,7 +203,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           text: root.message
           font: messageMetrics.font
-          color: NekoColor.popups.text
+          color: NekoColor.osd.text
           elide: Text.ElideRight
           maximumLineCount: 1
         }

@@ -76,6 +76,17 @@ QtObject {
     return Util.alpha(flatColor(pick(colorKey, colorFallback), colorFallback), pickAlpha(alphaKey, alphaFallback))
   }
 
+  // The volume/brightness pill: a tonal surface over the blur, with the accent on
+  // its icon and fill and a tint of it on the track
+  readonly property QtObject osd: QtObject {
+    property color background: root.composed("osd.background", "osd.background-alpha", root.popups.background, 0.6)
+    property color text: root.pick("osd.text", root.popups.text)
+    property color icon: root.pick("osd.icon", root.accent)
+    property color track: root.composed("osd.track", "osd.track-alpha", root.accent, 0.25)
+    property color fill: root.pick("osd.fill", root.accent)
+    property color border: root.composed("osd.border", "osd.border-alpha", root.popups.border, 0.5)
+  }
+
   readonly property QtObject bar: QtObject {
     property color background: root.composed("bar.background", "bar.background-alpha", root.background, 1.0)
     property color text: root.pick("bar.text", root.foreground)
