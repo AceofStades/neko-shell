@@ -24,14 +24,16 @@ Item {
   // keeps exactly `pad` between border and content on every side whatever
   // glyph or message it carries. Messages grow with their text up to
   // `maxMessageWidth` and elide beyond it.
-  readonly property int pad: Style.space(16)
-  readonly property int gap: Style.space(16)
+  readonly property int pad: Style.space(10)
+  readonly property int sidePad: Style.space(18)
+  readonly property int gap: Style.space(12)
   // A glyph next to a message reads airier than it measures: the icon outline
   // and the letterforms both fall away from their ink extremes, so the space
   // between them opens up well past the nominal gap. Text takes two thirds of
   // it; the progress bar's hard edge keeps the full gap.
   readonly property int messageGap: Math.round(root.gap * 2 / 3)
-  readonly property int barWidth: Style.space(142)
+  readonly property int barWidth: Style.space(160)
+  readonly property int trackHeight: Style.space(6)
   readonly property int maxMessageWidth: root.mediaOsd ? Style.space(325) : Style.space(190)
 
   // Nerd Font glyphs draw well outside their monospace cell, so the icon
@@ -88,8 +90,8 @@ Item {
   TextMetrics {
     id: messageMetrics
     font.family: Style.font.family
-    font.bold: true
-    font.pixelSize: Style.font.title
+    font.weight: Font.Medium
+    font.pixelSize: Style.font.body
     text: root.message
   }
 
@@ -102,7 +104,7 @@ Item {
   TextMetrics {
     id: iconMetrics
     font.family: Style.font.family
-    font.pixelSize: Style.font.displayLarge
+    font.pixelSize: Style.font.iconLarge
     text: root.icon
   }
 
@@ -134,22 +136,26 @@ Item {
 
     BorderSurface {
       id: card
-      width: card.borderLeft + root.pad + root.contentWidth + root.pad + card.borderRight
-      height: card.borderTop + root.pad + Style.font.displayLarge + root.pad + card.borderBottom
+      // A translucent pill (blurred by the compositor) that fades and rises in
+      width: card.borderLeft + root.sidePad + root.contentWidth + root.sidePad + card.borderRight
+      height: card.borderTop + root.pad + Style.font.iconLarge + root.pad + card.borderBottom
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom
-      anchors.bottomMargin: Style.space(67)
-      color: Util.alpha(NekoColor.background, 0.97)
-      borderSpec: Border.surfaceSpec("popups", "border", NekoColor.popups.border, Math.max(1, Style.space(2)))
-      radius: Style.cornerRadius
+      anchors.bottomMargin: Style.space(56) + (root.opened ? 0 : -Style.space(8))
+      color: NekoColor.popups.background
+      borderSpec: Border.flat(NekoColor.popups.border, 1)
+      radius: height / 2
       opacity: root.opened ? 1 : 0
+
+      Behavior on opacity { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
+      Behavior on anchors.bottomMargin { NumberAnimation { duration: Style.duration(200); easing.type: Easing.OutCubic } }
 
       Row {
         anchors.fill: parent
         anchors.topMargin: card.borderTop + root.pad
-        anchors.rightMargin: card.borderRight + root.pad
+        anchors.rightMargin: card.borderRight + root.sidePad
         anchors.bottomMargin: card.borderBottom + root.pad
-        anchors.leftMargin: card.borderLeft + root.pad
+        anchors.leftMargin: card.borderLeft + root.sidePad
         spacing: root.hasProgress ? root.gap : root.messageGap
         Item {
           width: root.iconWidth
@@ -162,18 +168,23 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             font: iconMetrics.font
-            color: NekoColor.popups.text
+            color: NekoColor.accent
           }
         }
         Rectangle {
           visible: root.hasProgress
           width: root.barWidth
-          height: Math.max(Style.space(6), Style.spacing.sm)
+          height: root.trackHeight
+          radius: height / 2
           anchors.verticalCenter: parent.verticalCenter
-          color: Util.alpha(NekoColor.popups.text, 0.45)
+          color: Util.alpha(NekoColor.popups.text, 0.15)
           Rectangle {
+            readonly property real fraction: root.hasProgress ? root.value / root.maxValue : 0
+
             height: parent.height
-            width: parent.width * (root.hasProgress ? root.value / root.maxValue : 0)
+            radius: height / 2
+            // Never narrower than it is tall once there is any value, so the fill stays a pill
+            width: fraction > 0 ? Math.max(height, parent.width * fraction) : 0
             color: NekoColor.accent
 
             Behavior on width {
