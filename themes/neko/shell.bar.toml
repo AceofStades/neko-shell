@@ -6,3 +6,5 @@ active           = "#f9515d"
 scale-with-font  = true
 size-horizontal  = 26
 size-vertical    = 28
+float-margin     = 6
+float-radius     = 12
