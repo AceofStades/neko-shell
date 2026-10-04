@@ -3,7 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Every ShellIpc handler, so the shell can answer an omarchy-shell call over
+// Every ShellIpc handler, so the shell can answer an neko-shell call over
 // its own socket instead of through a qs ipc client started per call. It
 // answers only what qs ipc would: the first live, enabled handler for a
 // target, and only the functions that handler declares. Those are allowed by

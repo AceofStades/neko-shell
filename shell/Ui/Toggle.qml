@@ -28,8 +28,8 @@ BorderSurface {
   // Override per-instance if a caller wants the opposite.
   property bool rounded: Style.cornerRadius > 0
 
-  property color foreground: OmarchyColor.foreground
-  property color accent: OmarchyColor.accent
+  property color foreground: NekoColor.foreground
+  property color accent: NekoColor.accent
   property string fontFamily: Style.font.family
   property real titleSize: Style.font.subtitle
   property real descriptionSize: Style.font.caption

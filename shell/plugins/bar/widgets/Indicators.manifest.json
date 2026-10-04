@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.indicators",
+  "id": "neko.indicators",
   "name": "Indicators",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Neko",
   "description": "Manual state indicators",
   "kinds": [
     "bar-widget"
@@ -62,7 +62,7 @@
       }
     ]
   },
-  "omarchy": {
+  "neko": {
     "clonePaths": [
       {
         "source": "../indicators",

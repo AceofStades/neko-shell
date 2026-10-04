@@ -9,7 +9,7 @@ import "EmojiSearch.js" as EmojiSearch
 Item {
   id: root
 
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  property string nekoPath: Quickshell.env("NEKO_PATH")
   property var shell: null
   property var manifest: null
 
@@ -23,13 +23,13 @@ Item {
   // Shares the [menu] surface tokens — themes that style the menu also
   // style emojis. Selected-cell colors composed in the
   // singleton so consumers drop them straight into Rectangle bindings.
-  property color background: OmarchyColor.menu.background
-  property color foreground: OmarchyColor.menu.text
-  property color border: OmarchyColor.menu.border
+  property color background: NekoColor.menu.background
+  property color foreground: NekoColor.menu.text
+  property color border: NekoColor.menu.border
   property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
-  property color scrim: OmarchyColor.menu.scrim
-  property color selectedBackground: OmarchyColor.menu.selectedBackground
-  property color selectedText: OmarchyColor.menu.selectedText
+  property color scrim: NekoColor.menu.scrim
+  property color selectedBackground: NekoColor.menu.selectedBackground
+  property color selectedText: NekoColor.menu.selectedText
   readonly property int cornerRadius: Style.cornerRadius
   property string fontFamily: Style.font.menuFamily
   property int contentMargin: Style.spacing.panelPadding
@@ -58,7 +58,7 @@ Item {
   function dismiss() {
     root.opened = false
     if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "omarchy.emojis")
+      root.shell.hide((root.manifest && root.manifest.id) || "neko.emojis")
   }
 
   function toggle() {
@@ -148,19 +148,19 @@ Item {
   function applySelected(emoji) {
     if (!emoji) return
     root.dismiss()
-    Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-menu-emoji-insert", emoji])
+    Quickshell.execDetached([root.nekoPath + "/bin/neko-menu-emoji-insert", emoji])
   }
 
   ListModel { id: displayModel }
 
   FileView {
-    path: root.omarchyPath + "/shell/plugins/emojis/emojis.json"
+    path: root.nekoPath + "/shell/plugins/emojis/emojis.json"
     onLoaded: root.loadEmojis(text())
   }
   OverlayWindow {
     id: panel
     shown: root.opened
-    WlrLayershell.namespace: "omarchy-emojis"
+    WlrLayershell.namespace: "neko-emojis"
 
     Rectangle {
       anchors.fill: parent

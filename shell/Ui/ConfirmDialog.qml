@@ -9,11 +9,11 @@ Item {
   property string cancelText: "Cancel"
   property string confirmText: "Confirm"
   property int selectedIndex: 1
-  property color background: OmarchyColor.background
-  property color foreground: OmarchyColor.foreground
-  property color scrim: Util.alpha(OmarchyColor.background, 0.7)
-  property color selectedBackground: Util.alpha(OmarchyColor.foreground, 0.08)
-  property color selectedText: OmarchyColor.accent
+  property color background: NekoColor.background
+  property color foreground: NekoColor.foreground
+  property color scrim: Util.alpha(NekoColor.background, 0.7)
+  property color selectedBackground: Util.alpha(NekoColor.foreground, 0.08)
+  property color selectedText: NekoColor.accent
   property string fontFamily: Style.font.family
   property int cornerRadius: Style.cornerRadius
 
@@ -98,10 +98,10 @@ Item {
               width: Style.space(88)
               height: Style.space(34)
               color: selected
-                ? (destructive ? Util.alpha(OmarchyColor.urgent, 0.22) : root.selectedBackground)
+                ? (destructive ? Util.alpha(NekoColor.urgent, 0.22) : root.selectedBackground)
                 : "transparent"
               borderSpec: Border.flat(destructive
-                ? (selected ? OmarchyColor.urgent : Util.alpha(OmarchyColor.urgent, 0.56))
+                ? (selected ? NekoColor.urgent : Util.alpha(NekoColor.urgent, 0.56))
                 : (selected ? root.selectedText : Util.alpha(root.foreground, 0.38)), Style.normalBorderWidth)
               radius: 0
 
@@ -109,7 +109,7 @@ Item {
                 textFormat: Text.PlainText
                 anchors.centerIn: parent
                 text: modelData
-                color: destructive ? (selected ? OmarchyColor.urgent : root.foreground) : (selected ? root.selectedText : root.foreground)
+                color: destructive ? (selected ? NekoColor.urgent : root.foreground) : (selected ? root.selectedText : root.foreground)
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
               }

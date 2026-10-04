@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.microphone",
+  "id": "neko.microphone",
   "name": "Microphone",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Neko",
   "description": "Mic input state and mute toggle",
   "kinds": [
     "bar-widget"

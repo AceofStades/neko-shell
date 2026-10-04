@@ -20,7 +20,7 @@ BarIndicator {
   }
 
   function openReminderFlow() {
-    Quickshell.execDetached(["omarchy-reminder", "-i"])
+    Quickshell.execDetached(["neko-reminder", "-i"])
   }
 
   function update(raw) {
@@ -39,7 +39,7 @@ BarIndicator {
 
   Process {
     id: jsonProc
-    command: ["omarchy-reminder", "show", "--json"]
+    command: ["neko-reminder", "show", "--json"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.update(text)
@@ -53,7 +53,7 @@ BarIndicator {
   }
 
   onPressed: function() {
-    if (root.reminderCount > 0) Quickshell.execDetached(["omarchy-reminder", "show"])
+    if (root.reminderCount > 0) Quickshell.execDetached(["neko-reminder", "show"])
     else root.openReminderFlow()
   }
 }

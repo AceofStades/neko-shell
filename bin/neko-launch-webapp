@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# neko:summary=Launch a URL as a web app in the default supported browser
+# neko:args=<url>
+
+browser=$(neko-cmd-default-browser)
+
+case $browser in
+google-chrome* | brave* | microsoft-edge* | opera* | vivaldi* | helium*) ;;
+*) browser="chromium.desktop" ;;
+esac
+
+browser_exec=$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' {~/.local,~/.nix-profile,/usr}/share/applications/$browser 2>/dev/null | head -1)
+
+if ! neko-cmd-browser-handoff "$browser_exec" --app="$1" "${@:2}"; then
+  exec setsid uwsm-app -- $browser_exec --app="$1" "${@:2}"
+fi

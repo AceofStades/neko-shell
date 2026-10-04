@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# neko:summary=Reload hyprland configuration (used by the Neko theme switching).
+
+hyprctl reload >/dev/null

@@ -8,7 +8,7 @@ Item {
   id: root
 
   property real phase: 0            // 0 new, 0.25 first quarter, 0.5 full
-  property color color: OmarchyColor.foreground
+  property color color: NekoColor.foreground
 
   onPhaseChanged: canvas.requestPaint()
   onColorChanged: canvas.requestPaint()

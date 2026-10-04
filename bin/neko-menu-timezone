@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# neko:summary=Select and set the system timezone
+# neko:group=menu
+# neko:name=timezone
+
+set -e
+
+timezone=$(timedatectl list-timezones | neko-menu-select "Set timezone" -- --width 520 --maxheight 520) || exit 1
+sudo timedatectl set-timezone "$timezone"
+neko-shell -q neko.clock refresh
+neko-notification-send "Timezone is now set to $timezone"

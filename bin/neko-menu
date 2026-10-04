@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# neko:summary=Control the Neko menu (toggle / summon / close / refresh)
+# neko:args=[toggle|summon|close|refresh|ping] [route]
+# neko:examples=neko menu | neko menu toggle system | neko menu summon style.theme | neko menu refresh
+
+# Thin wrapper around the standard plugin IPC surface. The menu is the
+# first-party `neko.menu` plugin; routes are passed as JSON payload.
+
+set -euo pipefail
+
+verb="${1-toggle}"
+route="${2-root}"
+
+menu_payload() {
+  jq -nc --arg menu "$1" '{ menu: $menu }'
+}
+
+case "$verb" in
+  toggle)
+    exec neko-shell shell toggle neko.menu "$(menu_payload "$route")"
+    ;;
+  summon)
+    exec neko-shell shell summon neko.menu "$(menu_payload "$route")"
+    ;;
+  close)
+    exec neko-shell shell hide neko.menu
+    ;;
+  refresh | ping)
+    exec neko-shell shell call neko.menu "$verb" "{}"
+    ;;
+  -h | --help | help)
+    cat <<USAGE
+Usage: neko menu [verb] [route]
+
+Verbs:
+  toggle [route]   Open the menu at <route>, or close it if already open. Default verb.
+  summon [route]   Always open the menu (no close-if-visible toggle).
+  close            Close the menu if it is visible.
+  refresh          Re-parse the menu JSONC files.
+  ping             Health check.
+
+Route is an item id (e.g. setup.power) or alias (e.g. power). Defaults to
+"root", which opens the top-level menu.
+USAGE
+    exit 0
+    ;;
+  *)
+    echo "neko-menu: unknown verb '$verb'. Try 'neko menu --help'." >&2
+    exit 2
+    ;;
+esac

@@ -20,7 +20,7 @@ Column {
   property string placeholderText: "Search cities\u2026"
   property string loadingText: "Loading zones\u2026"
   property real fontSize: Style.font.bodySmall
-  property color foreground: OmarchyColor.foreground
+  property color foreground: NekoColor.foreground
   property color dim: Qt.darker(foreground, 1.55)
   property color fainter: Qt.darker(foreground, 2.1)
   property string fontFamily: Style.font.family

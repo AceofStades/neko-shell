@@ -8,7 +8,7 @@ Item {
   property string title: ""
   property string meta: ""
   property string detail: ""
-  property color foreground: OmarchyColor.foreground
+  property color foreground: NekoColor.foreground
   property string fontFamily: Style.font.family
   property real iconSize: Style.font.display
   property real iconOpacity: 1.0
@@ -71,7 +71,7 @@ Item {
         implicitHeight: detailText.implicitHeight + Style.space(4)
         anchors.verticalCenter: parent.verticalCenter
         color: "transparent"
-        borderSpec: Border.controlSpec("normal", root.foreground, OmarchyColor.accent)
+        borderSpec: Border.controlSpec("normal", root.foreground, NekoColor.accent)
         radius: Style.cornerRadius
 
         Text {

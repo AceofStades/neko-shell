@@ -10,7 +10,7 @@ Column {
   property string caption: ""
   property color captionColor: dim
   property bool captionClickable: false
-  property color foreground: OmarchyColor.foreground
+  property color foreground: NekoColor.foreground
   property color dim: Qt.darker(foreground, 1.55)
   property string fontFamily: Style.font.family
 

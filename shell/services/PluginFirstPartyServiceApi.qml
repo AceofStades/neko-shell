@@ -20,27 +20,27 @@ QtObject {
   property var _selectPlayer: null
 
   function setIdleEnabled(value) {
-    if (serviceId === "omarchy.idle" && _setIdleEnabled) _setIdleEnabled(!!value)
+    if (serviceId === "neko.idle" && _setIdleEnabled) _setIdleEnabled(!!value)
   }
 
   function setNightlight(value) {
-    if (serviceId === "omarchy.nightlight" && _setNightlight) _setNightlight(!!value)
+    if (serviceId === "neko.nightlight" && _setNightlight) _setNightlight(!!value)
   }
 
   function setDoNotDisturb(value) {
-    if (serviceId === "omarchy.notifications" && _setDoNotDisturb) _setDoNotDisturb(!!value)
+    if (serviceId === "neko.notifications" && _setDoNotDisturb) _setDoNotDisturb(!!value)
   }
 
   function runAction(action, showFeedback, playerId) {
-    if (serviceId === "omarchy.media" && _runAction)
+    if (serviceId === "neko.media" && _runAction)
       _runAction(String(action || ""), !!showFeedback, String(playerId || ""))
   }
 
   function playerKey(player) {
-    return serviceId === "omarchy.media" && _playerKey ? _playerKey(player) : ""
+    return serviceId === "neko.media" && _playerKey ? _playerKey(player) : ""
   }
 
   function selectPlayer(playerId) {
-    if (serviceId === "omarchy.media" && _selectPlayer) _selectPlayer(String(playerId || ""))
+    if (serviceId === "neko.media" && _selectPlayer) _selectPlayer(String(playerId || ""))
   }
 }

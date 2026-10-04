@@ -5,9 +5,9 @@ import qs.Commons
 
 BarWidget {
   id: root
-  moduleName: "omarchy.media"
+  moduleName: "neko.media"
 
-  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("omarchy.media")
+  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("neko.media")
   readonly property var activePlayer: mediaService ? mediaService.activePlayer : null
   readonly property var sourcePlayers: mediaService ? mediaService.sourcePlayers : []
 
@@ -125,8 +125,8 @@ BarWidget {
           width: Style.space(64)
           height: Style.space(64)
           radius: Style.spacing.labelGap
-          color: Style.normalFillFor(root.bar.foreground, OmarchyColor.accent)
-          borderSpec: Border.controlSpec("normal", root.bar.foreground, OmarchyColor.accent)
+          color: Style.normalFillFor(root.bar.foreground, NekoColor.accent)
+          borderSpec: Border.controlSpec("normal", root.bar.foreground, NekoColor.accent)
 
           Image {
             anchors.fill: parent
@@ -249,8 +249,8 @@ BarWidget {
             width: sourceList.width
             height: sourceInner.implicitHeight + Style.space(10)
             radius: Style.spacing.labelGap
-            color: selected ? Style.selectedFillFor(root.bar.foreground, OmarchyColor.accent) : "transparent"
-            borderSpec: selected ? Border.controlSpec("normal", root.bar.foreground, OmarchyColor.accent) : Border.none()
+            color: selected ? Style.selectedFillFor(root.bar.foreground, NekoColor.accent) : "transparent"
+            borderSpec: selected ? Border.controlSpec("normal", root.bar.foreground, NekoColor.accent) : Border.none()
 
             Row {
               id: sourceInner

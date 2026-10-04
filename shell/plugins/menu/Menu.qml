@@ -9,13 +9,13 @@ import "MenuModel.js" as MenuModel
 Item {
   id: root
 
-  // Injected by omarchy-shell when this plugin is summoned.
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  // Injected by neko-shell when this plugin is summoned.
+  property string nekoPath: Quickshell.env("NEKO_PATH")
   property var shell: null
   property var manifest: null
 
   // Plugin lifecycle hooks. The host calls open(payloadJson) after
-  // `omarchy-shell shell summon omarchy.menu ...` and close() when hidden.
+  // `neko-shell shell summon neko.menu ...` and close() when hidden.
   property string pendingInitialMenu: "root"
 
   function open(payloadJson) {
@@ -47,8 +47,8 @@ Item {
   // JSONC menu definitions. The shell parses both at startup and merges
   // the user file on top of the defaults, so the keybind → IPC → visible
   // path doesn't have to shell out to bash + jq on every open.
-  property string defaultMenuPath: omarchyPath + "/default/omarchy/omarchy-menu.jsonc"
-  property string userMenuPath: Quickshell.env("HOME") + "/.config/omarchy/extensions/omarchy-menu.jsonc"
+  property string defaultMenuPath: nekoPath + "/default/neko/neko-menu.jsonc"
+  property string userMenuPath: Quickshell.env("HOME") + "/.config/neko/extensions/neko-menu.jsonc"
   property var defaultMenuItems: []
   property var userMenuItems: []
   property bool opened: false
@@ -81,17 +81,17 @@ Item {
   property bool deleteConfirmOpen: false
   property var deleteTarget: null
   onOpenedChanged: if (!opened) { deleteConfirmOpen = false; deleteTarget = null }
-  // Bound to the central [menu] section in shell.toml via OmarchyColor.qml.
+  // Bound to the central [menu] section in shell.toml via NekoColor.qml.
   // Each color already includes its alpha companion (composed in the
   // singleton), so consumers can drop them straight into a Rectangle.
-  property color background: OmarchyColor.menu.background
-  property color foreground: OmarchyColor.menu.text
-  property color border: OmarchyColor.menu.border
+  property color background: NekoColor.menu.background
+  property color foreground: NekoColor.menu.text
+  property color border: NekoColor.menu.border
   property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
-  property color scrim: OmarchyColor.menu.scrim
-  property color selectedBackground: OmarchyColor.menu.selectedBackground
-  property color selectedText: OmarchyColor.menu.selectedText
-  property color selectedBorder: OmarchyColor.menu.selectedBorder
+  property color scrim: NekoColor.menu.scrim
+  property color selectedBackground: NekoColor.menu.selectedBackground
+  property color selectedText: NekoColor.menu.selectedText
+  property color selectedBorder: NekoColor.menu.selectedBorder
   property var selectedBorderSpec: Border.surfaceSpec("menu", "selected-border", selectedBorder, 0)
   readonly property real rowReservedBorderLeft: Border.left(selectedBorderSpec)
   readonly property real rowReservedBorderRight: Border.right(selectedBorderSpec)
@@ -271,15 +271,15 @@ Item {
   // shell started shows up without restarting it.
   readonly property var providers: ({
     "fonts": {
-      script: "current=$(omarchy-font-current 2>/dev/null); omarchy-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
+      script: "current=$(neko-font-current 2>/dev/null); neko-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
       icon: "",
       volatile: true,
-      actionFor: function(value) { return "omarchy-font-set " + Util.shellQuote(value) }
+      actionFor: function(value) { return "neko-font-set " + Util.shellQuote(value) }
     },
     "power-profiles": {
-      script: "current=$(powerprofilesctl get 2>/dev/null); omarchy-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
+      script: "current=$(powerprofilesctl get 2>/dev/null); neko-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
       icon: "\udb81\udc0b",
-      actionFor: function(value) { return "omarchy-powerprofiles-set autodetect " + Util.shellQuote(value) }
+      actionFor: function(value) { return "neko-powerprofiles-set autodetect " + Util.shellQuote(value) }
     }
   })
 
@@ -887,7 +887,7 @@ Item {
   // ----------------------------------------------------------- route surface
   //
   // The menu is opened through the standard plugin lifecycle:
-  // `omarchy-shell shell summon omarchy.menu '{"menu":"system"}'`.
+  // `neko-shell shell summon neko.menu '{"menu":"system"}'`.
   // Callers may pass a real id (`system`, `setup.power`) or an alias declared
   // in JSONC (`power`, `reminder-set`). Unknown strings fall through to the
   // id-as-route behavior so misspellings still attempt to open the literal id.
@@ -899,7 +899,7 @@ Item {
     var id = root.resolveRoute(initialMenu)
     var entry = root.items[id]
     // If the resolved id is an action (i.e. the user invoked an alias for
-    // a leaf, e.g. `omarchy menu summon screenrecord-stop`), run it directly
+    // a leaf, e.g. `neko menu summon screenrecord-stop`), run it directly
     // instead of opening an action with no children.
     if (entry && entry.kind === "action" && entry.action) {
       root.cancel()
@@ -963,7 +963,7 @@ Item {
   }
 
   // The JSONC sources are watched so live edits to the default file (or the
-  // user extension at ~/.config/omarchy/extensions/omarchy-menu.jsonc) take
+  // user extension at ~/.config/neko/extensions/neko-menu.jsonc) take
   // effect without restarting the shell.
   FileView {
     id: defaultMenuFile
@@ -1068,7 +1068,7 @@ Item {
   OverlayWindow {
     id: panel
     shown: root.opened && root.rowsLoaded
-    WlrLayershell.namespace: "omarchy-menu"
+    WlrLayershell.namespace: "neko-menu"
 
     // The card opens centered exactly as always. The first search keystroke
     // or submenu move freezes the top line where it currently sits — from

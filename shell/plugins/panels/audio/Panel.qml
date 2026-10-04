@@ -10,14 +10,14 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.audio"
-  ipcTarget: "omarchy.audio"
+  moduleName: "neko.audio"
+  ipcTarget: "neko.audio"
 
   readonly property var sink: Pipewire.defaultAudioSink
   readonly property var source: Pipewire.defaultAudioSource
   readonly property var nodes: Pipewire.nodes ? Pipewire.nodes.values : []
   readonly property var mprisPlayers: Mpris.players ? Mpris.players.values : []
-  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("omarchy.media")
+  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("neko.media")
   readonly property var activeMediaPlayer: mediaService ? mediaService.activePlayer : null
 
   readonly property var candidateSinks: {
@@ -49,7 +49,7 @@ Panel {
       if (!n || !n.isStream || !isPlaybackStream(n)) continue
       // A tuning's output is a playback stream too, but it is the processing
       // itself rather than an application, so it does not belong in the list.
-      if (String(n.name || "").indexOf("omarchy_speaker_tuning") === 0) continue
+      if (String(n.name || "").indexOf("neko_speaker_tuning") === 0) continue
       list.push(n)
     }
     return list
@@ -116,7 +116,7 @@ Panel {
   // *into* the processing, so the slider would move while the speakers did not,
   // and on a chain with a limiter it would change the tone as well.
   //
-  // omarchy-audio-output-sink resolves the *current* default output through any
+  // neko-audio-output-sink resolves the *current* default output through any
   // such sink to the physical one, which is the same definition the volume keys
   // and the output switcher use. Resolving the default (rather than "whatever a
   // tuning fronts") is what keeps this correct when headphones or HDMI are
@@ -179,10 +179,10 @@ Panel {
   readonly property string toggleHint: anyAudible ? "Mute" : "Unmute"
 
   readonly property color hoverFill: bar
-    ? Style.hoverFillFor(bar.foreground, OmarchyColor.accent)
+    ? Style.hoverFillFor(bar.foreground, NekoColor.accent)
     : "transparent"
   readonly property color selectedFill: bar
-    ? Style.selectedFillFor(bar.foreground, OmarchyColor.accent)
+    ? Style.selectedFillFor(bar.foreground, NekoColor.accent)
     : "transparent"
 
   function sectionCount(section) {
@@ -446,7 +446,7 @@ Panel {
 
   function showVolumeOsd(volume) {
     if (!bar || !bar.shell) return
-    bar.shell.summon("omarchy.osd", JSON.stringify({
+    bar.shell.summon("neko.osd", JSON.stringify({
       icon: outputIcon(volume),
       value: Math.round(volume * 100)
     }))
@@ -479,7 +479,7 @@ Panel {
     Pipewire.preferredDefaultAudioSink = node
     if (node.id !== undefined && node.name) {
       Quickshell.execDetached([
-        "omarchy-audio-output-set-default",
+        "neko-audio-output-set-default",
         String(node.id),
         String(node.name)
       ])
@@ -491,7 +491,7 @@ Panel {
     Pipewire.preferredDefaultAudioSource = node
     if (node.id !== undefined && node.name) {
       Quickshell.execDetached([
-        "omarchy-audio-input-set-default",
+        "neko-audio-input-set-default",
         String(node.id),
         String(node.name)
       ])
@@ -602,7 +602,7 @@ Panel {
 
   Process {
     id: sinkAvailabilityProc
-    command: ["omarchy-audio-sink-availability"]
+    command: ["neko-audio-sink-availability"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.updateSinkAvailability(text)
@@ -611,7 +611,7 @@ Panel {
 
   Process {
     id: volumeSinkProc
-    command: ["omarchy-audio-output-sink"]
+    command: ["neko-audio-output-sink"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.volumeSinkName = String(text).trim()

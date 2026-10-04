@@ -21,7 +21,7 @@ PanelWindow {
   required property string rightLabel
   property string unit: "Mbps"
   property string title: ""
-  property string layerNamespace: "omarchy-speed-test"
+  property string layerNamespace: "neko-speed-test"
   property string runAgainTooltip: "Measure again"
   property real leftValue: 0
   property real rightValue: 0
@@ -288,7 +288,7 @@ PanelWindow {
       // round caps would leave a stray dot at the foot of the scale.
       ShapePath {
         strokeWidth: dial.arcWidth * 3
-        strokeColor: dial.arcVisible ? Qt.rgba(OmarchyColor.accent.r, OmarchyColor.accent.g, OmarchyColor.accent.b, 0.18) : "transparent"
+        strokeColor: dial.arcVisible ? Qt.rgba(NekoColor.accent.r, NekoColor.accent.g, NekoColor.accent.b, 0.18) : "transparent"
         fillColor: "transparent"
         capStyle: ShapePath.RoundCap
 
@@ -305,7 +305,7 @@ PanelWindow {
       // Value: fills behind the needle.
       ShapePath {
         strokeWidth: dial.arcWidth
-        strokeColor: dial.arcVisible ? OmarchyColor.accent : "transparent"
+        strokeColor: dial.arcVisible ? NekoColor.accent : "transparent"
         fillColor: "transparent"
         capStyle: ShapePath.RoundCap
 
@@ -356,8 +356,8 @@ PanelWindow {
         radius: width / 2
 
         gradient: Gradient {
-          GradientStop { position: 0.0; color: OmarchyColor.accent }
-          GradientStop { position: 0.55; color: OmarchyColor.accent }
+          GradientStop { position: 0.0; color: NekoColor.accent }
+          GradientStop { position: 0.55; color: NekoColor.accent }
           GradientStop { position: 1.0; color: "transparent" }
         }
       }

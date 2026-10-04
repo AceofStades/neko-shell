@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.menu",
-  "name": "Omarchy menu",
+  "id": "neko.menu",
+  "name": "Neko menu",
   "version": "1.0.0",
-  "author": "Omarchy",
-  "description": "Quickshell-powered Omarchy command menu",
+  "author": "Neko",
+  "description": "Quickshell-powered Neko command menu",
   "kinds": [
     "menu",
     "bar-widget"
@@ -15,8 +15,8 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Omarchy menu",
-    "description": "Launches the Omarchy menu",
+    "displayName": "Neko menu",
+    "description": "Launches the Neko menu",
     "category": "Compositor",
     "allowMultiple": false
   }

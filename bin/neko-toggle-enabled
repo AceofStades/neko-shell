@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# neko:summary=Check if a toggle is enabled (flag file exists)
+# neko:args=<flag-name>
+
+[[ -f "$HOME/.local/state/neko/toggles/$1" ]]

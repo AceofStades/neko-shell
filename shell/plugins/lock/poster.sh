@@ -4,7 +4,7 @@
 set -euo pipefail
 
 source_path=$1
-cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/omarchy/lock-poster"
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/neko/lock-poster"
 signature=$(stat -Lc '%s:%y:%z' "$source_path")
 key=$(printf '%s\n%s' "$source_path" "$signature" | sha256sum | cut -d ' ' -f 1)
 poster="$cache_dir/poster-$key.jpg"

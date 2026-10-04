@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.tailscale",
+  "id": "neko.tailscale",
   "name": "Tailscale",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Neko",
   "license": "MIT",
-  "description": "Tailscale status, connection switching, machine browsing, and quick copy actions in the Omarchy bar.",
+  "description": "Tailscale status, connection switching, machine browsing, and quick copy actions in the Neko bar.",
   "kinds": [
     "bar-widget"
   ],

@@ -13,7 +13,7 @@ Item {
   property var shell: null
   readonly property string home: Quickshell.env("HOME")
   readonly property string stateHome: home + "/.local/state"
-  readonly property string currentBackgroundLink: stateHome + "/omarchy/current/background"
+  readonly property string currentBackgroundLink: stateHome + "/neko/current/background"
 
   property string currentBackground: ""
   property string displayedBackground: ""
@@ -106,10 +106,10 @@ Item {
     // pending; the latest theme payload should still apply.
     if (pendingThemeVersion < 0) return
     pendingThemeFallbackTimer.stop()
-    OmarchyColor.loadColors(pendingColorsRaw)
-    // OmarchyColor.loadShell also refreshes Style so the type scale flips with the
+    NekoColor.loadColors(pendingColorsRaw)
+    // NekoColor.loadShell also refreshes Style so the type scale flips with the
     // background reveal instead of waiting for a separate reload path.
-    OmarchyColor.loadShell(pendingShellRaw)
+    NekoColor.loadShell(pendingShellRaw)
     Style.scheduleRefresh()
     pendingThemeVersion = -1
     pendingColorsRaw = ""
@@ -173,13 +173,13 @@ Item {
 
     // A cloned background may not summon the picker in-process, so it takes
     // the IPC route instead.
-    if (!root.shell || !root.shell.summon("omarchy.image-picker", payload))
-      Util.execArgv(["omarchy-shell", "shell", "summon", "omarchy.image-picker", payload])
+    if (!root.shell || !root.shell.summon("neko.image-picker", payload))
+      Util.execArgv(["neko-shell", "shell", "summon", "neko.image-picker", payload])
   }
 
   Process {
     id: bgSwitchProc
-    command: ["bash", "-c", "background=$(omarchy-theme-bg-switcher); [[ -n $background ]] && omarchy-theme-bg-set \"$background\""]
+    command: ["bash", "-c", "background=$(neko-theme-bg-switcher); [[ -n $background ]] && neko-theme-bg-set \"$background\""]
     onExited: root.refreshBackground()
   }
 
@@ -289,7 +289,7 @@ Item {
       color: "transparent"
       // Keep render updates enabled. The background layer has been observed to
       // lose its committed buffer while parked with updatesEnabled=false,
-      // leaving a black desktop until omarchy-shell is restarted. A still
+      // leaving a black desktop until neko-shell is restarted. A still
       // wallpaper costs nothing to keep enabled. OWE manages video layers.
       updatesEnabled: true
 
@@ -326,7 +326,7 @@ Item {
         })
       }
 
-      WlrLayershell.namespace: "omarchy-background"
+      WlrLayershell.namespace: "neko-background"
       WlrLayershell.layer: WlrLayer.Background
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
       exclusionMode: ExclusionMode.Ignore

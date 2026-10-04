@@ -6,7 +6,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "omarchy.active-window"
+  moduleName: "neko.active-window"
 
 
   readonly property var toplevel: ToplevelManager.activeToplevel
@@ -34,7 +34,7 @@ BarWidget {
       anchors.left: parent.left
       width: parent.width
       text: root.title
-      color: root.bar ? root.bar.barForeground : OmarchyColor.foreground
+      color: root.bar ? root.bar.barForeground : NekoColor.foreground
       font.family: root.bar ? root.bar.fontFamily : Style.font.family
       font.pixelSize: Style.font.body
       elide: Text.ElideRight

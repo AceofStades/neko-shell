@@ -3,8 +3,8 @@ import QtQuick.Controls
 import qs.Commons
 
 // Themed single-select dropdown. Trigger row paints with the kit's focus
-// chrome; the popup anchors below and uses OmarchyColor.popups.background +
-// OmarchyColor.popups.border so it reads as a panel surface rather than the
+// chrome; the popup anchors below and uses NekoColor.popups.background +
+// NekoColor.popups.border so it reads as a panel surface rather than the
 // platform-native ComboBox look.
 //
 // `options` accepts either a plain string[] or an array of
@@ -22,11 +22,11 @@ Item {
   property string value: ""
   property var options: []
 
-  property color foreground: OmarchyColor.popups.text
-  property color background: OmarchyColor.popups.background
-  property color popupBorder: OmarchyColor.popups.border
-  property color accent: OmarchyColor.accent
-  readonly property var popupBorderSpec: Border.localOrSurfaceSpec("popups", "border", popupBorder, OmarchyColor.popups.border, Style.normalBorderWidth)
+  property color foreground: NekoColor.popups.text
+  property color background: NekoColor.popups.background
+  property color popupBorder: NekoColor.popups.border
+  property color accent: NekoColor.accent
+  readonly property var popupBorderSpec: Border.localOrSurfaceSpec("popups", "border", popupBorder, NekoColor.popups.border, Style.normalBorderWidth)
   property string fontFamily: Style.font.family
   property int rowHeight: Style.spacing.controlHeight
   property int popupRowHeight: Style.spacing.popupRowHeight

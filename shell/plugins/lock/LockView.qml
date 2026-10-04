@@ -42,8 +42,8 @@ Item {
   readonly property bool showPasswordCursor: inputEnabled && !authenticatingPassword && failureMessage.length === 0
   readonly property bool errorState: failureMessage.length > 0
   readonly property var inputBorderSpec: errorState
-    ? Border.surfaceSpec("lock", "border-error", OmarchyColor.lock.borderError, root.outlineThickness, "border-alpha")
-    : Border.surfaceSpec("lock", "border-active", OmarchyColor.lock.borderActive, root.outlineThickness, "border-alpha")
+    ? Border.surfaceSpec("lock", "border-error", NekoColor.lock.borderError, root.outlineThickness, "border-alpha")
+    : Border.surfaceSpec("lock", "border-active", NekoColor.lock.borderActive, root.outlineThickness, "border-alpha")
 
   readonly property bool video: Util.isVideoPath(root.backgroundPath)
   readonly property bool feedActive: root.video && root.loadBackground && !root.displaysBlank && !root.powerSaverActive
@@ -97,7 +97,7 @@ Item {
 
   Rectangle {
     anchors.fill: parent
-    color: OmarchyColor.background
+    color: NekoColor.background
 
     BackgroundMedia {
       id: wallpaper
@@ -156,7 +156,7 @@ Item {
       width: root.fieldWidth
       height: root.fieldHeight
       anchors.centerIn: parent
-      color: OmarchyColor.lock.background
+      color: NekoColor.lock.background
       borderSpec: root.inputBorderSpec
       radius: Style.cornerRadius
       clip: true
@@ -179,16 +179,16 @@ Item {
         echoMode: TextInput.Password
         passwordCharacter: "\u25CF"
         passwordMaskDelay: 0
-        color: OmarchyColor.lock.text
-        selectionColor: OmarchyColor.lock.selection
-        selectedTextColor: OmarchyColor.lock.text
+        color: NekoColor.lock.text
+        selectionColor: NekoColor.lock.selection
+        selectedTextColor: NekoColor.lock.text
         font.family: Style.font.family
         font.pixelSize: text.length > 0 ? Math.max(1, Math.floor(root.passwordDotFontSize * root.passwordDotScale)) : root.fieldFontSize
         font.letterSpacing: text.length > 0 ? root.passwordDotLetterSpacing * root.passwordDotScale : 0
         cursorVisible: activeFocus && root.showPasswordCursor && text.length > 0
         cursorDelegate: Rectangle {
           width: 2
-          color: OmarchyColor.lock.text
+          color: NekoColor.lock.text
           visible: passwordInput.cursorVisible
         }
 
@@ -224,7 +224,7 @@ Item {
         anchors.fill: passwordInput
         text: root.authenticatingPassword ? "Checking…" : (root.failureMessage.length > 0 ? root.failureMessage : root.placeholderText)
         visible: passwordInput.text.length === 0
-        color: root.authenticatingPassword ? OmarchyColor.lock.text : (root.failureMessage.length > 0 ? OmarchyColor.lock.textError : OmarchyColor.lock.placeholder)
+        color: root.authenticatingPassword ? NekoColor.lock.text : (root.failureMessage.length > 0 ? NekoColor.lock.textError : NekoColor.lock.placeholder)
         font.family: Style.font.family
         font.pixelSize: root.fieldFontSize
         font.italic: !root.authenticatingPassword && root.failureMessage.length > 0
@@ -247,7 +247,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         visible: root.fingerprintConfigured
         text: root.fingerprintUnavailable ? "󰺱" : "󰈷"
-        color: root.fingerprintUnavailable ? OmarchyColor.lock.textError : OmarchyColor.lock.placeholder
+        color: root.fingerprintUnavailable ? NekoColor.lock.textError : NekoColor.lock.placeholder
         font.family: Style.font.family
         font.pixelSize: Math.round(root.fieldFontSize * 1.1)
         horizontalAlignment: Text.AlignHCenter
@@ -266,7 +266,7 @@ Item {
       anchors.horizontalCenter: inputField.horizontalCenter
       visible: root.fingerprintConfigured && root.fingerprintUnavailable
       text: "Fingerprint reader unavailable"
-      color: OmarchyColor.lock.textError
+      color: NekoColor.lock.textError
       font.family: Style.font.family
       font.pixelSize: Style.font.heading
       font.italic: true

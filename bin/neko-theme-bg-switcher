@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# neko:summary=Open the Neko background switcher
+# neko:group=theme
+# neko:name=bg-switcher
+# neko:aliases=neko background
+
+theme_name=$(cat "$HOME/.local/state/neko/current/theme.name" 2>/dev/null)
+current_background=$(readlink -f "$HOME/.local/state/neko/current/background" 2>/dev/null)
+
+neko-menu-images \
+  --selected "$current_background" \
+  "$HOME/.local/state/neko/current/theme/backgrounds" \
+  "$HOME/.config/neko/backgrounds/$theme_name"

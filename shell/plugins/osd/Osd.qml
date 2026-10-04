@@ -127,7 +127,7 @@ Item {
     id: panel
     shown: root.opened
     shownKeyboardFocus: WlrKeyboardFocus.None
-    WlrLayershell.namespace: "omarchy-osd"
+    WlrLayershell.namespace: "neko-osd"
     // Visual-only surface: keep the layer-shell input region empty so the OSD
     // never blocks clicks to the desktop below it.
     mask: Region {}
@@ -139,8 +139,8 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom
       anchors.bottomMargin: Style.space(67)
-      color: Util.alpha(OmarchyColor.background, 0.97)
-      borderSpec: Border.surfaceSpec("popups", "border", OmarchyColor.popups.border, Math.max(1, Style.space(2)))
+      color: Util.alpha(NekoColor.background, 0.97)
+      borderSpec: Border.surfaceSpec("popups", "border", NekoColor.popups.border, Math.max(1, Style.space(2)))
       radius: Style.cornerRadius
       opacity: root.opened ? 1 : 0
 
@@ -162,7 +162,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: root.icon
             font: iconMetrics.font
-            color: OmarchyColor.popups.text
+            color: NekoColor.popups.text
           }
         }
         Rectangle {
@@ -170,11 +170,11 @@ Item {
           width: root.barWidth
           height: Math.max(Style.space(6), Style.spacing.sm)
           anchors.verticalCenter: parent.verticalCenter
-          color: Util.alpha(OmarchyColor.popups.text, 0.45)
+          color: Util.alpha(NekoColor.popups.text, 0.45)
           Rectangle {
             height: parent.height
             width: parent.width * (root.hasProgress ? root.value / root.maxValue : 0)
-            color: OmarchyColor.accent
+            color: NekoColor.accent
 
             Behavior on width {
               enabled: root.opened
@@ -192,7 +192,7 @@ Item {
           anchors.verticalCenter: parent.verticalCenter
           text: root.message
           font: messageMetrics.font
-          color: OmarchyColor.popups.text
+          color: NekoColor.popups.text
           elide: Text.ElideRight
           maximumLineCount: 1
         }

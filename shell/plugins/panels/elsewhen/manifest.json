@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.elsewhen",
+  "id": "neko.elsewhen",
   "name": "Elsewhen",
   "version": "1.0.0",
   "author": "Jason Fried",
   "license": "MIT",
-  "description": "A world clock for the Omarchy shell: the time in several cities at once, with a spinnable globe.",
+  "description": "A world clock for the Neko shell: the time in several cities at once, with a spinnable globe.",
   "kinds": [
     "bar-widget"
   ],

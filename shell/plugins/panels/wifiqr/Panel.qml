@@ -11,14 +11,14 @@ import "Model.js" as Model
 // heavy scrim. Esc or the scrim dismiss it.
 //
 // Standalone panel plugin: each summon regenerates the code via
-// omarchy-network-qr, which emits the interface, security, and SSID it
+// neko-network-qr, which emits the interface, security, and SSID it
 // shared ahead of the module matrix — so a bare summon self-detects the
 // connection. The payload may pin the interface and pre-title the card:
 // {"iface": "wlan0", "ssid": "MyWifi"}.
 Item {
   id: root
 
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  property string nekoPath: Quickshell.env("NEKO_PATH")
   property var shell: null
   property var manifest: null
 
@@ -89,7 +89,7 @@ Item {
 
   function dismiss() {
     if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "omarchy.wifiqr")
+      root.shell.hide((root.manifest && root.manifest.id) || "neko.wifiqr")
     else close()
   }
 
@@ -125,8 +125,8 @@ Item {
       pwProc.running = false
     }
     qrProc.command = requestedIface
-      ? ["omarchy-network-qr", "--meta", requestedIface]
-      : ["omarchy-network-qr", "--meta"]
+      ? ["neko-network-qr", "--meta", requestedIface]
+      : ["neko-network-qr", "--meta"]
     qrProc.running = true
   }
 
@@ -150,7 +150,7 @@ Item {
     // Only a deliberate new lookup lowers the canceled-fetch guard, right as
     // it launches -- see the pwProc comment.
     pwExpectedStop = false
-    pwProc.command = ["omarchy-network-password", iface]
+    pwProc.command = ["neko-network-password", iface]
     pwProc.running = true
   }
 
@@ -212,7 +212,7 @@ Item {
 
   OverlayWindow {
     shown: root.opened
-    WlrLayershell.namespace: "omarchy-network-qr"
+    WlrLayershell.namespace: "neko-network-qr"
 
     // Deep scrim: the floating code needs the backdrop to carry the contrast
     // on any wallpaper.

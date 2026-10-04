@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "idle": {
+    "screensaver": 150,
+    "lock": 300
+  },
+  "bar": {
+    "position": "top",
+    "transparent": false,
+    "centerAnchor": "neko.clock",
+    "layout": {
+      "left": [
+        {
+          "id": "neko.menu"
+        },
+        {
+          "id": "neko.workspaces"
+        }
+      ],
+      "center": [
+        {
+          "id": "neko.indicators"
+        },
+        {
+          "id": "neko.elsewhen"
+        },
+        {
+          "id": "neko.clock",
+          "format": "dddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "verticalFormat": "HH\n—\nmm"
+        },
+        {
+          "id": "neko.keyboard-layout"
+        },
+        {
+          "id": "neko.weather"
+        }
+      ],
+      "right": [
+        {
+          "id": "neko.tray"
+        },
+        {
+          "id": "neko.agents"
+        },
+        {
+          "id": "neko.bluetooth"
+        },
+        {
+          "id": "neko.network"
+        },
+        {
+          "id": "neko.audio"
+        },
+        {
+          "id": "neko.monitor"
+        },
+        {
+          "id": "neko.power"
+        }
+      ]
+    }
+  },
+  "plugins": []
+}

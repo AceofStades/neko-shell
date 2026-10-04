@@ -7,15 +7,15 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "omarchy.agents"
-  ipcTarget: "omarchy.agents"
+  moduleName: "neko.agents"
+  ipcTarget: "neko.agents"
   manageIpc: false
 
-  readonly property color foreground: bar ? bar.foreground : OmarchyColor.foreground
-  readonly property color urgent: bar ? bar.urgent : OmarchyColor.urgent
+  readonly property color foreground: bar ? bar.foreground : NekoColor.foreground
+  readonly property color urgent: bar ? bar.urgent : NekoColor.urgent
   readonly property color dim: Qt.darker(foreground, 1.55)
-  readonly property color surface: OmarchyColor.popups.background
-  readonly property color track: Style.selectedFillFor(foreground, OmarchyColor.accent)
+  readonly property color surface: NekoColor.popups.background
+  readonly property color track: Style.selectedFillFor(foreground, NekoColor.accent)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
   // Every subscription on one page, limits first: the question this panel
@@ -227,7 +227,7 @@ Panel {
   //
   // Adding a subscription happens right here: pick a provider, name it if
   // it's a second account, then sign in through the browser while the panel
-  // follows omarchy-agent-account-add --events. The browser taking focus may
+  // follows neko-agent-account-add --events. The browser taking focus may
   // close the panel; the login carries on, and its result arrives as a
   // notification too.
 
@@ -280,7 +280,7 @@ Panel {
     addNeedsPaste = addProvider === "claude"
     addResult = ""
     addStage = "running"
-    addProcess.command = ["omarchy-agent-account-add", "--events", addProvider].concat(label !== "" ? [label] : [])
+    addProcess.command = ["neko-agent-account-add", "--events", addProvider].concat(label !== "" ? [label] : [])
     addProcess.running = true
   }
 
@@ -305,7 +305,7 @@ Panel {
   // browser (Grok), and an invitation to paste one back (Claude).
   function handleAddLine(line) {
     var text = String(line).replace(/\u001b\[[0-9;]*m/g, "")
-    var tagged = text.match(/^@@omarchy (status|done|error) (.*)$/)
+    var tagged = text.match(/^@@neko (status|done|error) (.*)$/)
     if (tagged) {
       if (tagged[1] === "status") {
         addStatus = tagged[2]
@@ -333,29 +333,29 @@ Panel {
 
   function reopenSignIn() {
     if (addUrl === "") return
-    Util.execArgv(addPrivate ? ["omarchy-launch-browser", "--private", addUrl] : ["omarchy-launch-browser", addUrl])
+    Util.execArgv(addPrivate ? ["neko-launch-browser", "--private", addUrl] : ["neko-launch-browser", addUrl])
   }
 
-  // A few ways into making Omarchy your own, handed to the default agent.
+  // A few ways into making Neko your own, handed to the default agent.
   readonly property var starterPrompts: [
-    { glyph: "󰏘", label: "Theme", prompt: "Make me a new Omarchy theme. Ask me what look or inspiration I have in mind, then build it following the Omarchy skill's theming guide and switch to it." },
-    { glyph: "󰐱", label: "Plugin", prompt: "Make me a new Omarchy shell plugin. Ask me what I'd like it to do, then build it following the Omarchy skill's plugin guide and enable it." },
-    { glyph: "󰣆", label: "App", prompt: "Make me a new app for my Omarchy desktop. Ask me what it should do, then build it following the omarchy-app skill and install it so it shows up in the app launcher." }
+    { glyph: "󰏘", label: "Theme", prompt: "Make me a new Neko theme. Ask me what look or inspiration I have in mind, then build it following the Neko skill's theming guide and switch to it." },
+    { glyph: "󰐱", label: "Plugin", prompt: "Make me a new Neko shell plugin. Ask me what I'd like it to do, then build it following the Neko skill's plugin guide and enable it." },
+    { glyph: "󰣆", label: "App", prompt: "Make me a new app for my Neko desktop. Ask me what it should do, then build it following the neko-app skill and install it so it shows up in the app launcher." }
   ]
 
   function startPrompt(prompt) {
     root.close()
-    Util.execArgv(["omarchy-agent-prompt", prompt])
+    Util.execArgv(["neko-agent-prompt", prompt])
   }
 
   function renameAccount(p, account, label) {
     if (!p || !account) return
-    Util.execArgv(["omarchy-agent-account-rename", p.providerId, String(account.id), label])
+    Util.execArgv(["neko-agent-account-rename", p.providerId, String(account.id), label])
   }
 
   function useAccount(p, account) {
     if (!p || !account || account.active) return
-    Util.execArgv(["omarchy-agent-account-use", p.providerId, String(account.id)])
+    Util.execArgv(["neko-agent-account-use", p.providerId, String(account.id)])
   }
 
   function autoSwitchFor(p) {
@@ -368,8 +368,8 @@ Panel {
 
   function setSwitchMode(p, mode) {
     if (!p || providerAccounts(p).length < 2 || mode === (autoSwitchFor(p) ? "auto" : "manual")) return
-    Util.execArgv(["bash", "-c", 'omarchy-agent-account-mode "$1" "$2" >/dev/null && omarchy-agent-usage-update --limits-only "$1"',
-                   "omarchy-agent-account-mode", p.providerId, mode])
+    Util.execArgv(["bash", "-c", 'neko-agent-account-mode "$1" "$2" >/dev/null && neko-agent-usage-update --limits-only "$1"',
+                   "neko-agent-account-mode", p.providerId, mode])
   }
 
   // `m` flips autoswitch for the picked account's provider, or the first
@@ -441,7 +441,7 @@ Panel {
     addNeedsPaste = addProvider === "claude"
     addResult = ""
     addStage = "running"
-    addProcess.command = ["omarchy-agent-account-add", "--events", "--reauth",
+    addProcess.command = ["neko-agent-account-add", "--events", "--reauth",
       account && account.primary !== true ? String(account.id) : ":primary", p.providerId]
     addProcess.running = true
   }
@@ -461,7 +461,7 @@ Panel {
   }
 
   function launchAgent() {
-    if (root.bar) root.bar.run("omarchy-agent --pick")
+    if (root.bar) root.bar.run("neko-agent --pick")
     root.close()
   }
 
@@ -719,7 +719,7 @@ Panel {
   function iconCandidatesForProvider(p, surfaceColor) {
     if (!p) return []
     var candidates = []
-    if (colorLuminance(surfaceColor || OmarchyColor.background) >= 0.5)
+    if (colorLuminance(surfaceColor || NekoColor.background) >= 0.5)
       candidates.push(Qt.resolvedUrl("assets/" + p.providerId + "-light.svg"))
     candidates.push(Qt.resolvedUrl("assets/" + p.providerId + ".svg"))
     return candidates
@@ -784,7 +784,7 @@ Panel {
   Process {
     id: checkProcess
     running: false
-    command: ["omarchy-agent-account-add", "--check"]
+    command: ["neko-agent-account-add", "--check"]
     stdout: SplitParser {
       onRead: function(line) {
         var parts = String(line).trim().split(" ")
@@ -1109,7 +1109,7 @@ Panel {
               anchors.horizontalCenter: parent.horizontalCenter
               textFormat: Text.PlainText
               text: choice.modelData.providerName
-              color: choice.hasCursor ? OmarchyColor.accent : root.foreground
+              color: choice.hasCursor ? NekoColor.accent : root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
               font.bold: true
@@ -1187,7 +1187,7 @@ Panel {
         Text {
           textFormat: Text.PlainText
           text: root.addCode
-          color: OmarchyColor.accent
+          color: NekoColor.accent
           font.family: root.fontFamily
           font.pixelSize: Style.font.display
           font.bold: true
@@ -1528,7 +1528,7 @@ Panel {
     property bool hasCursor: false
     implicitHeight: tileBody.implicitHeight + Style.space(20)
     radius: Style.cornerRadius
-    color: hasCursor ? root.alpha(OmarchyColor.accent, 0.14) : root.alpha(root.foreground, 0.05)
+    color: hasCursor ? root.alpha(NekoColor.accent, 0.14) : root.alpha(root.foreground, 0.05)
     onHasCursorChanged: if (hasCursor) root.revealItem(tile)
 
     Row {
@@ -1540,7 +1540,7 @@ Panel {
         anchors.verticalCenter: parent.verticalCenter
         textFormat: Text.PlainText
         text: tile.glyph
-        color: OmarchyColor.accent
+        color: NekoColor.accent
         font.family: root.fontFamily
         font.pixelSize: Style.font.heading
       }
@@ -1549,7 +1549,7 @@ Panel {
         anchors.verticalCenter: parent.verticalCenter
         textFormat: Text.PlainText
         text: tile.title
-        color: tile.hasCursor ? OmarchyColor.accent : root.foreground
+        color: tile.hasCursor ? NekoColor.accent : root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
         font.bold: true
@@ -1583,16 +1583,16 @@ Panel {
     implicitHeight: implicitWidth
     radius: Style.cornerRadius
     // The cursor needs more than a shade deeper to read on a tinted square.
-    color: root.alpha(OmarchyColor.accent, hasCursor ? 0.3 : 0.12)
+    color: root.alpha(NekoColor.accent, hasCursor ? 0.3 : 0.12)
     border.width: hasCursor ? Math.max(1, Style.hoverBorderWidth) : 0
-    border.color: OmarchyColor.accent
+    border.color: NekoColor.accent
     onHasCursorChanged: if (hasCursor) root.revealItem(heroButton)
 
     Text {
       anchors.centerIn: parent
       textFormat: Text.PlainText
       text: heroButton.glyph
-      color: OmarchyColor.accent
+      color: NekoColor.accent
       font.family: root.fontFamily
       font.pixelSize: Style.font.heading
     }
@@ -1624,7 +1624,7 @@ Panel {
     readonly property bool hot: linkMouse.containsMouse || picked
     onPickedChanged: if (picked) root.revealItem(link)
     textFormat: Text.PlainText
-    color: current ? OmarchyColor.accent : (hot ? root.foreground : idleColor)
+    color: current ? NekoColor.accent : (hot ? root.foreground : idleColor)
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
     font.bold: current
@@ -1705,7 +1705,7 @@ Panel {
         anchors.verticalCenter: parent.verticalCenter
         width: Math.min(implicitWidth, parent.width * 0.6)
         text: head.label
-        color: head.picked ? OmarchyColor.accent : root.foreground
+        color: head.picked ? NekoColor.accent : root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
         font.bold: head.isActive
@@ -1810,7 +1810,7 @@ Panel {
         visible: head.isActive
         anchors.right: parent.right
         text: "ACTIVE"
-        color: OmarchyColor.accent
+        color: NekoColor.accent
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption
         font.bold: true

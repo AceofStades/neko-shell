@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# neko:summary=Returns true when clamshell mode is active
+# neko:hidden=true
+
+# Clamshell = lid closed while driving one or more external monitors.
+neko-hw-laptop-closed && neko-hw-external-monitors

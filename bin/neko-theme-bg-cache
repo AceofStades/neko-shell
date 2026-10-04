@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# neko:summary=Cache background switcher thumbnails for the current theme
+
+theme_name=$(cat "$HOME/.local/state/neko/current/theme.name" 2>/dev/null)
+
+neko-menu-images \
+  --cache-only \
+  "$HOME/.local/state/neko/current/theme/backgrounds" \
+  "$HOME/.config/neko/backgrounds/$theme_name"

@@ -7,7 +7,7 @@ import qs.Commons
 Rectangle {
   id: root
 
-  property color foreground: OmarchyColor.foreground
+  property color foreground: NekoColor.foreground
   property real strength: 0.12
 
   width: parent ? parent.width : implicitWidth

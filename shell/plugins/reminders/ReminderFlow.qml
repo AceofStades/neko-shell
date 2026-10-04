@@ -8,7 +8,7 @@ import "ReminderFlowModel.js" as ReminderFlowModel
 Item {
   id: root
 
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  property string nekoPath: Quickshell.env("NEKO_PATH")
   property var shell: null
   property var manifest: null
 
@@ -18,11 +18,11 @@ Item {
   property string filterText: ""
   property string fontFamily: Style.font.menuFamily
 
-  property color background: OmarchyColor.menu.background
-  property color foreground: OmarchyColor.menu.text
-  property color border: OmarchyColor.menu.border
+  property color background: NekoColor.menu.background
+  property color foreground: NekoColor.menu.text
+  property color border: NekoColor.menu.border
   property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
-  property color scrim: OmarchyColor.menu.scrim
+  property color scrim: NekoColor.menu.scrim
   readonly property int cornerRadius: Style.cornerRadius
   property int contentMargin: Style.spacing.panelPadding
   property int headerHeight: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
@@ -50,7 +50,7 @@ Item {
   function dismiss() {
     root.opened = false
     if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "omarchy.reminders")
+      root.shell.hide((root.manifest && root.manifest.id) || "neko.reminders")
   }
 
   function toggle() {
@@ -74,7 +74,7 @@ Item {
       }
 
       if (!nextMinutes) {
-        Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-notification-send", "Invalid reminder", "Enter the number of minutes"])
+        Quickshell.execDetached([root.nekoPath + "/bin/neko-notification-send", "Invalid reminder", "Enter the number of minutes"])
         return
       }
 
@@ -86,7 +86,7 @@ Item {
     }
 
     if (root.step === "message") {
-      var args = [root.omarchyPath + "/bin/omarchy-reminder"].concat(ReminderFlowModel.reminderArgs(root.minutes, selection))
+      var args = [root.nekoPath + "/bin/neko-reminder"].concat(ReminderFlowModel.reminderArgs(root.minutes, selection))
       root.dismiss()
       Quickshell.execDetached(args)
     }
@@ -95,7 +95,7 @@ Item {
   OverlayWindow {
     id: panel
     shown: root.opened
-    WlrLayershell.namespace: "omarchy-reminders"
+    WlrLayershell.namespace: "neko-reminders"
 
     Rectangle {
       anchors.fill: parent

@@ -7,7 +7,7 @@ import qs.Commons
 Text {
   id: root
 
-  property color foreground: OmarchyColor.foreground
+  property color foreground: NekoColor.foreground
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.caption
 

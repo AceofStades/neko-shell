@@ -33,7 +33,7 @@ function layoutHasWidget(layout, id) {
 // LocalSend's item shows no state, offers only Open and Quit, and its primary
 // click is a no-op, so Share > Receive is the whole surface. Hiding it by hand
 // doesn't stick either: LocalSend picks a fresh tray id every launch.
-function ownedByOmarchy(item, layout) {
+function ownedByNeko(item, layout) {
   return itemNamed(item, "localsend")
 }
 
@@ -42,6 +42,6 @@ if (typeof module !== "undefined") {
     itemNamed: itemNamed,
     entryId: entryId,
     layoutHasWidget: layoutHasWidget,
-    ownedByOmarchy: ownedByOmarchy
+    ownedByNeko: ownedByNeko
   }
 }

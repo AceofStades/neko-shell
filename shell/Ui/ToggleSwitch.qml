@@ -40,8 +40,8 @@ Item {
   property bool cursorRing: interactive
   property int cursorPad: Style.space(6)
   property bool rounded: Style.cornerRadius > 0
-  property color foreground: OmarchyColor.foreground
-  property color accent: OmarchyColor.accent
+  property color foreground: NekoColor.foreground
+  property color accent: NekoColor.accent
 
   signal toggled()
   signal hovered(bool isHovered)

@@ -11,14 +11,14 @@ import "ImagePickerModel.js" as ImagePickerModel
 Item {
   id: root
 
-  // Injected by omarchy-shell; defaults to the session OMARCHY_PATH.
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  // Injected by neko-shell; defaults to the session NEKO_PATH.
+  property string nekoPath: Quickshell.env("NEKO_PATH")
   property string stateHome: Quickshell.env("HOME") + "/.local/state"
-  property string imageDirs: Quickshell.env("OMARCHY_IMAGE_SELECTOR_DIRS") || Quickshell.env("OMARCHY_IMAGE_SELECTOR_DIR") || Quickshell.env("OMARCHY_STOCK_BACKGROUNDS_DIR") || (stateHome + "/omarchy/current/theme/backgrounds")
+  property string imageDirs: Quickshell.env("NEKO_IMAGE_SELECTOR_DIRS") || Quickshell.env("NEKO_IMAGE_SELECTOR_DIR") || Quickshell.env("NEKO_STOCK_BACKGROUNDS_DIR") || (stateHome + "/neko/current/theme/backgrounds")
   property string imageRows: ""
   property string loadedImageRows: ""
-  property string selectionFile: Quickshell.env("OMARCHY_IMAGE_SELECTOR_SELECTION_FILE") || Quickshell.env("OMARCHY_BACKGROUND_SELECTION_FILE")
-  property string selectedImage: Quickshell.env("OMARCHY_IMAGE_SELECTOR_SELECTED")
+  property string selectionFile: Quickshell.env("NEKO_IMAGE_SELECTOR_SELECTION_FILE") || Quickshell.env("NEKO_BACKGROUND_SELECTION_FILE")
+  property string selectedImage: Quickshell.env("NEKO_IMAGE_SELECTOR_SELECTED")
   property int selectedIndex: 0
   property bool imagesLoaded: false
   property bool opened: false
@@ -33,18 +33,18 @@ Item {
   property string filterText: ""
   property var doneFilesToRelease: []
   // Themes open from rows the shell already holds, so the picker shows without
-  // waiting on omarchy-theme-switcher; each open refreshes them behind it.
+  // waiting on neko-theme-switcher; each open refreshes them behind it.
   property string themeRows: ""
   property bool themeMode: false
   property bool themeOpenPending: false
-  // Bound to the central [image-picker] section in shell.toml via OmarchyColor.qml.
+  // Bound to the central [image-picker] section in shell.toml via NekoColor.qml.
   // `dimColor` tints unselected slices and text outlines on top of the scrim;
   // it intentionally tracks the foundational background, not a surface role.
-  property color dimColor: OmarchyColor.background
-  property color foreground: OmarchyColor.imagePicker.text
-  property color scrim: OmarchyColor.imagePicker.scrim
-  property color selectedBorder: OmarchyColor.imagePicker.selectedBorder
-  property color unselectedBorder: OmarchyColor.imagePicker.unselectedBorder
+  property color dimColor: NekoColor.background
+  property color foreground: NekoColor.imagePicker.text
+  property color scrim: NekoColor.imagePicker.scrim
+  property color selectedBorder: NekoColor.imagePicker.selectedBorder
+  property color unselectedBorder: NekoColor.imagePicker.unselectedBorder
   property int expandedWidth: 768
   property int expandedHeight: 475
   property int sliceWidth: 108
@@ -59,7 +59,7 @@ Item {
   onOpenedChanged: if (!opened) layoutSettled = false
 
   function scriptPath(name) {
-    return omarchyPath + "/shell/plugins/image-picker/" + name
+    return nekoPath + "/shell/plugins/image-picker/" + name
   }
 
   function focusPicker() {
@@ -157,7 +157,7 @@ Item {
     if (themeMode) {
       themeMode = false
       root.opened = false
-      if (path) Util.execArgv(["omarchy-theme-set", nameForPath(path)])
+      if (path) Util.execArgv(["neko-theme-set", nameForPath(path)])
       return
     }
 
@@ -336,14 +336,14 @@ Item {
 
   FileView {
     id: themeNameFile
-    path: root.stateHome + "/omarchy/current/theme.name"
+    path: root.stateHome + "/neko/current/theme.name"
     watchChanges: true
     onFileChanged: reload()
   }
 
   Process {
     id: themeRowsProc
-    command: [root.omarchyPath + "/bin/omarchy-theme-switcher", "--print-rows"]
+    command: [root.nekoPath + "/bin/neko-theme-switcher", "--print-rows"]
     stdout: StdioCollector {
       onStreamFinished: root.updateThemeRows(String(text || "").trim())
     }
@@ -396,7 +396,7 @@ Item {
     }
   }
 
-  // Lifecycle hooks invoked by omarchy-shell summon/hide. shell.summon(id,
+  // Lifecycle hooks invoked by neko-shell summon/hide. shell.summon(id,
   // payloadJson) hands the JSON to open() here; shell.hide(id) calls close().
   // The shell host owns the stable `image-selector` IPC target and forwards
   // those lower-level positional calls here.
@@ -463,7 +463,7 @@ Item {
     id: panel
     shown: root.opened
     shownKeyboardFocus: root.imagesLoaded ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
-    WlrLayershell.namespace: "omarchy-image-selector"
+    WlrLayershell.namespace: "neko-image-selector"
 
     Rectangle {
       anchors.fill: parent

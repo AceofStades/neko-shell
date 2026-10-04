@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# neko:summary=Launch a TUI or focus an existing terminal window for it
+# neko:args=[--app-id=<app-id>] <command> [args...]
+
+if [[ ${1:-} == --app-id=* ]]; then
+  APP_ID="${1#--app-id=}"
+else
+  APP_ID="org.neko.$(basename "$1")"
+fi
+
+LAUNCH_COMMAND="neko-launch-tui $@"
+
+exec neko-launch-or-focus "$APP_ID" "$LAUNCH_COMMAND"

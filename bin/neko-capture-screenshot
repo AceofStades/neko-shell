@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# neko:summary=Take a screenshot
+# neko:group=capture
+# neko:args=[smart|region|windows|fullscreen|scroll] [copy|save]
+# neko:examples=neko screenshot | neko capture screenshot region
+# neko:aliases=neko screenshot
+
+if [[ -n ${NEKO_SCREENSHOT_DIR:-} && -z ${OMASNAP_SCREENSHOT_DIR:-} ]]; then
+  export OMASNAP_SCREENSHOT_DIR="$NEKO_SCREENSHOT_DIR"
+fi
+
+omasnap_args=()
+for arg in "$@"; do
+  case "$arg" in
+    copy) omasnap_args+=(--copy) ;;
+    save) omasnap_args+=(--save) ;;
+    slurp) ;;
+    *) omasnap_args+=("$arg") ;;
+  esac
+done
+
+exec omasnap "${omasnap_args[@]}"

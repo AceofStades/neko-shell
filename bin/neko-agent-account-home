@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# neko:summary=Print the config home of the active Claude, Codex, or Grok account
+# neko:args=<claude|codex|grok>
+# neko:hidden=true
+
+# Prints nothing while the primary account (~/.claude, ~/.codex) is active, so
+# a launch only sets CLAUDE_CONFIG_DIR / CODEX_HOME when there's somewhere
+# else to point it. Without a registry, no Python starts at all: this runs on
+# every `claude` and `codex` typed at a prompt.
+registry="${XDG_STATE_HOME:-$HOME/.local/state}/neko/agents/accounts/${1:-}.json"
+
+if [[ ${1:-} != "claude" && ${1:-} != "codex" && ${1:-} != "grok" ]]; then
+  echo "Usage: neko-agent-account-home <claude|codex|grok>" >&2
+  exit 1
+fi
+
+# A running session pins its home, including an empty value for Main. Claude's
+# implicit default also selects ~/.claude.json, so Main must stay implicit.
+account_pin="NEKO_AGENT_${1^^}_HOME"
+if [[ -v $account_pin ]]; then
+  printf '%s' "${!account_pin}"
+elif [[ -f $registry ]]; then
+  exec neko-agent-account-state home "$1"
+fi

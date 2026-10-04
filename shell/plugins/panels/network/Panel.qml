@@ -10,8 +10,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.network"
-  ipcTarget: "omarchy.network"
+  moduleName: "neko.network"
+  ipcTarget: "neko.network"
   // manageIpc: false so this panel can own the single IpcHandler the target
   // permits — needed for the toggleNetwork method below.
   manageIpc: false
@@ -32,7 +32,7 @@ Panel {
   property var info: ({})  // { iface, type, ip, prefix, gateway, speed, duplex, ssid, signal, freq, bitrate, rx_bytes, tx_bytes, router_ping_ms, internet_ping_ms }
 
   // Throughput tracking. Rates are computed as deltas between successive
-  // `omarchy-network-status --verbose` samples (~1.5s apart via detailsPoll).
+  // `neko-network-status --verbose` samples (~1.5s apart via detailsPoll).
   // We hold "prev" alongside a timestamp so the first sample after open or
   // after an interface switch doesn't manufacture a spike.
   property real prevRxBytes: 0
@@ -75,7 +75,7 @@ Panel {
   property bool wifiStationAvailable: false
   property string dnsProvider: ""
   property string pendingDnsProvider: ""
-  // Wi-Fi band state from `omarchy-network-band`. `bandCurrent` is the band
+  // Wi-Fi band state from `neko-network-band`. `bandCurrent` is the band
   // the radio is actually on; `bandSelected` is the pinned choice ("auto" when
   // nothing is pinned), and the two differ whenever Auto is in effect.
   property string bandCurrent: ""
@@ -208,7 +208,7 @@ Panel {
   }
 
   ShellIpc {
-    target: "omarchy.network"
+    target: "neko.network"
 
     function open() { root.open() }
     function close() { root.close() }
@@ -291,8 +291,8 @@ Panel {
   // `selectedIndex`). Mouse hover and keyboard nav both mutate this state
   // at the root; items never read containsMouse for visuals. See
   // CursorSurface for the shared chrome shared by rows and pills.
-  readonly property color hoverFill: bar ? Style.hoverFillFor(bar.foreground, OmarchyColor.accent) : "transparent"
-  readonly property color selectedFill: bar ? Style.selectedFillFor(bar.foreground, OmarchyColor.accent) : "transparent"
+  readonly property color hoverFill: bar ? Style.hoverFillFor(bar.foreground, NekoColor.accent) : "transparent"
+  readonly property color selectedFill: bar ? Style.selectedFillFor(bar.foreground, NekoColor.accent) : "transparent"
 
   // scannerEnabled lives on the shared WifiDevice, which has no reference
   // counting, and a bar widget is instantiated once per monitor. Tracking the
@@ -537,7 +537,7 @@ Panel {
     if (!hasCaptivePortal) return
     // Explicit user action only. argv (not a shell string), and a fixed HTTP
     // URL: let the browser handle the redirect without trusting portal input.
-    Quickshell.execDetached(["omarchy-launch-browser", Model.captivePortalUrl])
+    Quickshell.execDetached(["neko-launch-browser", Model.captivePortalUrl])
     close()
   }
 
@@ -551,7 +551,7 @@ Panel {
     onTriggered: root.checkConnectivity()
   }
 
-  // The share card is its own panel plugin (omarchy.wifiqr) so a replacement
+  // The share card is its own panel plugin (neko.wifiqr) so a replacement
   // design can take it over; summon() routes to whichever implementation is
   // enabled. The panel's own button pins the interface it is showing. The
   // IPC route forces self-detection instead: details polling stops while the
@@ -564,7 +564,7 @@ Panel {
       payload.iface = info.iface
       if (info.ssid) payload.ssid = info.ssid
     }
-    bar.shell.summon("omarchy.wifiqr", JSON.stringify(payload))
+    bar.shell.summon("neko.wifiqr", JSON.stringify(payload))
   }
 
   function refresh(scanWifi) {
@@ -576,7 +576,7 @@ Panel {
       dnsProc.running = true
     }
     if (!bandProc.running) {
-      bandProc.command = ["omarchy-network-band"]
+      bandProc.command = ["neko-network-band"]
       bandProc.running = true
     }
     // A closed panel has no nearby-network list to fill, and bare refresh()
@@ -741,11 +741,11 @@ Panel {
     if (!band || actionProc.running) return
 
     root.pendingBand = band
-    actionProc.command = ["omarchy-network-band", band]
+    actionProc.command = ["neko-network-band", band]
     actionProc.running = true
   }
 
-  // The speed test is its own panel plugin (omarchy.speedtest) so a
+  // The speed test is its own panel plugin (neko.speedtest) so a
   // replacement design can take it over; summon() routes to whichever
   // implementation is enabled. The payload names the connection when this
   // panel knows it; the plugin looks it up itself otherwise.
@@ -755,11 +755,11 @@ Panel {
     var connection = ""
     if (info.type === "wifi") connection = info.ssid || "Wi-Fi"
     else if (info.type === "ethernet") connection = "Ethernet"
-    bar.shell.summon("omarchy.speedtest", connection ? JSON.stringify({ connection: connection }) : "{}")
+    bar.shell.summon("neko.speedtest", connection ? JSON.stringify({ connection: connection }) : "{}")
   }
 
   function dnsCommand(provider) {
-    var command = "omarchy-dns"
+    var command = "neko-dns"
     if (provider) command += " " + Util.shellQuote(provider)
     return command
   }
@@ -768,7 +768,7 @@ Panel {
     if (!root.bar || !provider || actionProc.running) return
 
     if (provider === "Custom") {
-      var launcher = "omarchy-launch-floating-terminal-with-presentation"
+      var launcher = "neko-launch-floating-terminal-with-presentation"
       root.bar.run(launcher + " " + Util.shellQuote(root.dnsCommand(provider)))
       root.close()
       return
@@ -909,7 +909,7 @@ Panel {
   // Pulls everything we want about the active route's interface in one shot.
   Process {
     id: detailsProc
-    command: ["omarchy-network-status", "--verbose"]
+    command: ["neko-network-status", "--verbose"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.updateDetails(text)
@@ -980,7 +980,7 @@ Panel {
     running: root.opened
     onTriggered: {
       if (bandProc.running) return
-      bandProc.command = ["omarchy-network-band"]
+      bandProc.command = ["neko-network-band"]
       bandProc.running = true
     }
   }
@@ -2078,7 +2078,7 @@ Panel {
         anchors.verticalCenter: parent.verticalCenter
         height: Style.spacing.controlHeight
         color: Style.normalFillFor(root.bar.foreground)
-        borderSpec: Border.controlSpec("normal", root.bar.foreground, OmarchyColor.accent)
+        borderSpec: Border.controlSpec("normal", root.bar.foreground, NekoColor.accent)
         radius: Style.cornerRadius
 
         Text {

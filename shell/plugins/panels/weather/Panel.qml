@@ -7,8 +7,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.weather"
-  ipcTarget: "omarchy.weather"
+  moduleName: "neko.weather"
+  ipcTarget: "neko.weather"
   manageIpc: false
 
   property var anchorItem: null
@@ -75,7 +75,7 @@ Panel {
   property string wttrLocation: ""
 
   // Configured location, read from the weather.json state file (owned by
-  // omarchy-weather-location). The query is the wttr.in path segment
+  // neko-weather-location). The query is the wttr.in path segment
   // (coordinates when stored, else the encoded name); empty means IP
   // auto-detect. The watch makes hand edits take effect live.
   property var configuredLocationState: ({ name: "", latitude: null, longitude: null })
@@ -95,7 +95,7 @@ Panel {
   }
 
   property FileView locationFile: FileView {
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
+    path: Quickshell.env("HOME") + "/.local/state/neko/settings/weather.json"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
@@ -252,11 +252,11 @@ Panel {
 
   function persistLocation(name, latitude, longitude) {
     if (name && latitude !== null && longitude !== null)
-      locationSaveProc.command = ["omarchy-weather-location", "--set", name, latitude + "," + longitude]
+      locationSaveProc.command = ["neko-weather-location", "--set", name, latitude + "," + longitude]
     else if (name)
-      locationSaveProc.command = ["omarchy-weather-location", "--set", name]
+      locationSaveProc.command = ["neko-weather-location", "--set", name]
     else
-      locationSaveProc.command = ["omarchy-weather-location", "--clear"]
+      locationSaveProc.command = ["neko-weather-location", "--clear"]
     locationSaveProc.running = true
   }
 
@@ -325,7 +325,7 @@ Panel {
     return Model.iconForOpenMeteoCode(code)
   }
 
-  // Mirrors omarchy-weather-icon's wttr.in code → nerd-font glyph mapping.
+  // Mirrors neko-weather-icon's wttr.in code → nerd-font glyph mapping.
   function iconForCode(code, night) {
     return Model.iconForCode(code, night)
   }
@@ -646,7 +646,7 @@ Panel {
               height: Style.space(18)
               anchors.verticalCenter: parent.verticalCenter
               radius: Math.min(4, Style.cornerRadius)
-              color: !root.savingLocation && clearLocationArea.containsMouse ? Style.hoverFillFor(root.bar.foreground, OmarchyColor.accent) : "transparent"
+              color: !root.savingLocation && clearLocationArea.containsMouse ? Style.hoverFillFor(root.bar.foreground, NekoColor.accent) : "transparent"
 
               Text {
                 textFormat: Text.PlainText
@@ -752,7 +752,7 @@ Panel {
             width: parent.width
             height: suggestionRow.implicitHeight + Style.space(12)
             radius: Style.cornerRadius
-            color: index === root.suggestionIndex ? Style.hoverFillFor(root.bar.foreground, OmarchyColor.accent) : "transparent"
+            color: index === root.suggestionIndex ? Style.hoverFillFor(root.bar.foreground, NekoColor.accent) : "transparent"
 
             Row {
               id: suggestionRow
@@ -764,7 +764,7 @@ Panel {
               Text {
                 textFormat: Text.PlainText
                 text: modelData.name
-                color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar.foreground, OmarchyColor.accent) : root.bar.foreground
+                color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar.foreground, NekoColor.accent) : root.bar.foreground
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.body
               }

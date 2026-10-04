@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# neko:summary=Wake displays and restore brightness after idle
+# neko:group=system
+# neko:name=wake
+# neko:examples=neko system wake
+
+neko-brightness-display on
+neko-brightness-keyboard restore
+neko-hyprland-monitor-clamshell >/dev/null 2>&1 || true

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.notifications",
+  "id": "neko.notifications",
   "name": "Notifications",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Neko",
   "description": "Notification daemon, popups, DND, and history",
   "kinds": [
     "service"

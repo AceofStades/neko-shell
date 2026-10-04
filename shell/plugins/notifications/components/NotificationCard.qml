@@ -18,7 +18,7 @@ BorderSurface {
   property string body: ""
   property string image: ""
   // Nerd Font glyph rendered in the icon slot when no real icon is set.
-  // Used by omarchy-notification-send so user-action toasts (`Silenced
+  // Used by neko-notification-send so user-action toasts (`Silenced
   // notifications` etc.) show their bell/lock/etc. glyph without leaking
   // into the summary text.
   property string glyph: ""
@@ -46,10 +46,10 @@ BorderSurface {
   readonly property string sanitizedBody: sanitizeBody(body)
   readonly property string styledBody: NotificationLogic.styledBody(body, app, appIcon)
 
-  readonly property color dimColor: Qt.darker(OmarchyColor.notifications.text, 1.4)
-  readonly property color bodyColor: Qt.darker(OmarchyColor.notifications.text, 1.15)
-  readonly property color accentColor: urgency === 2 ? OmarchyColor.urgent : (urgency === 0 ? dimColor : OmarchyColor.notifications.countdown)
-  readonly property var cardBorderSpec: Border.surfaceSpec("notifications", "border", OmarchyColor.notifications.border, Math.max(1, Style.space(2)))
+  readonly property color dimColor: Qt.darker(NekoColor.notifications.text, 1.4)
+  readonly property color bodyColor: Qt.darker(NekoColor.notifications.text, 1.15)
+  readonly property color accentColor: urgency === 2 ? NekoColor.urgent : (urgency === 0 ? dimColor : NekoColor.notifications.countdown)
+  readonly property var cardBorderSpec: Border.surfaceSpec("notifications", "border", NekoColor.notifications.border, Math.max(1, Style.space(2)))
 
   function sanitizeBody(s) {
     return NotificationLogic.sanitizeBody(s, app, appIcon)
@@ -68,7 +68,7 @@ BorderSurface {
   // doesn't push content under the bottom edge.
   implicitHeight: mainColumn.implicitHeight + borderTop + borderBottom
   radius: cornerRadius
-  color: OmarchyColor.notifications.background
+  color: NekoColor.notifications.background
   borderSpec: cardBorderSpec
   clip: true
 
@@ -131,13 +131,13 @@ BorderSurface {
         }
 
         // Glyph fallback (Nerd Font character) when no image icon is
-        // available. Used by omarchy-notification-send's `-g` flag.
+        // available. Used by neko-notification-send's `-g` flag.
         Text {
           textFormat: Text.PlainText
           anchors.centerIn: parent
           visible: root.hasGlyph && smallIconImage.status !== Image.Ready
           text: root.glyph
-          color: OmarchyColor.notifications.text
+          color: NekoColor.notifications.text
           font.family: root.fontFamily
           font.pixelSize: Style.font.displayLarge
         }
@@ -148,7 +148,7 @@ BorderSurface {
         Layout.alignment: Qt.AlignVCenter
         visible: root.compactGlyph
         text: root.glyph
-        color: OmarchyColor.notifications.text
+        color: NekoColor.notifications.text
         font.family: root.fontFamily
         font.pixelSize: Style.font.icon
       }
@@ -170,7 +170,7 @@ BorderSurface {
           visible: root.summary.length > 0
           text: root.summary
           font.family: "Liberation Sans"
-          color: OmarchyColor.notifications.text
+          color: NekoColor.notifications.text
           font.pixelSize: Style.font.title
           font.bold: true
           wrapMode: Text.WordWrap
@@ -212,7 +212,7 @@ BorderSurface {
     Text {
       anchors.centerIn: parent
       text: "✕"
-      color: closeArea.containsMouse ? OmarchyColor.notifications.text : root.dimColor
+      color: closeArea.containsMouse ? NekoColor.notifications.text : root.dimColor
       font.pixelSize: Math.round(Style.font.caption * 1.44)
     }
 

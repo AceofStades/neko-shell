@@ -6,8 +6,8 @@ Item {
   id: root
 
   property real iconSize: Style.font.icon
-  property color color: OmarchyColor.foreground
-  property color badgeColor: OmarchyColor.urgent
+  property color color: NekoColor.foreground
+  property color badgeColor: NekoColor.urgent
   property bool crossed: false
   property bool warning: false
 
@@ -51,12 +51,12 @@ Item {
     color: root.badgeColor
     anchors.right: parent.right
     anchors.bottom: parent.bottom
-    borderSpec: Border.flat(OmarchyColor.popups.background, 1)
+    borderSpec: Border.flat(NekoColor.popups.background, 1)
 
     Text {
       anchors.centerIn: parent
       text: "!"
-      color: OmarchyColor.background
+      color: NekoColor.background
       font.family: Style.font.family
       font.pixelSize: Math.max(6, parent.height * 0.72)
       font.bold: true

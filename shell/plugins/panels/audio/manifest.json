@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.audio",
+  "id": "neko.audio",
   "name": "Audio",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Neko",
   "description": "Volume slider, output picker, per-app mixer",
   "kinds": [
     "bar-widget"

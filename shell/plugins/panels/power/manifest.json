@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.power",
+  "id": "neko.power",
   "name": "Power",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Neko",
   "description": "Battery, power profile, and system stats",
   "kinds": [
     "bar-widget"

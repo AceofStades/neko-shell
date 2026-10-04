@@ -114,27 +114,27 @@ QtObject {
   }
 
   function resolveStateColor(token, foreground, accent, urgent, fallback) {
-    var fb = fallback || foreground || OmarchyColor.foreground
+    var fb = fallback || foreground || NekoColor.foreground
     var s = String(token || "").replace(/^\s+|\s+$/g, "")
     var role = s.toLowerCase()
-    if (role === "foreground" || role === "text") return foreground || OmarchyColor.foreground
-    if (role === "accent") return accent || OmarchyColor.accent
-    if (role === "urgent") return urgent || OmarchyColor.urgent
-    if (role === "background") return OmarchyColor.background
+    if (role === "foreground" || role === "text") return foreground || NekoColor.foreground
+    if (role === "accent") return accent || NekoColor.accent
+    if (role === "urgent") return urgent || NekoColor.urgent
+    if (role === "background") return NekoColor.background
     if (role === "transparent") return Qt.rgba(0, 0, 0, 0)
     return colorFromHex(s, fb)
   }
 
   function normalStateColor(foreground, accent, urgent) {
-    return resolveStateColor(normalColorToken, foreground, accent, urgent, foreground || OmarchyColor.foreground)
+    return resolveStateColor(normalColorToken, foreground, accent, urgent, foreground || NekoColor.foreground)
   }
 
   function hoverStateColor(foreground, accent, urgent) {
-    return resolveStateColor(hoverColorToken, foreground, accent, urgent, foreground || OmarchyColor.foreground)
+    return resolveStateColor(hoverColorToken, foreground, accent, urgent, foreground || NekoColor.foreground)
   }
 
   function selectedStateColor(foreground, accent, urgent) {
-    return resolveStateColor(selectedColorToken, foreground, accent, urgent, foreground || OmarchyColor.foreground)
+    return resolveStateColor(selectedColorToken, foreground, accent, urgent, foreground || NekoColor.foreground)
   }
 
   function pressedStateColor(foreground, accent, urgent) {
@@ -149,7 +149,7 @@ QtObject {
   }
 
   function selectionStateColor(foreground, accent, urgent) {
-    return resolveStateColor(selectionColorToken, foreground, accent, urgent, foreground || OmarchyColor.foreground)
+    return resolveStateColor(selectionColorToken, foreground, accent, urgent, foreground || NekoColor.foreground)
   }
 
   function normalFillFor(foreground, accent, urgent) { return Util.alpha(normalStateColor(foreground, accent, urgent), normalFillAlpha) }
@@ -187,17 +187,17 @@ QtObject {
   }
 
   // Convenience colors resolved against the foundational palette.
-  readonly property color normalFill: normalFillFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color hoverFill: hoverFillFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color selectedFill: selectedFillFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color pressedFill: pressedFillFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color focusFillColor: focusFillFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color normalBorderColor: normalBorderFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color hoverBorderColor: hoverBorderFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color selectedBorderColor: selectedBorderFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color focusBorderColor: focusBorderFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
-  readonly property color selectedAccentFill: Util.alpha(OmarchyColor.accent, selectedFillAlpha)
-  readonly property color selectionFill: selectionFillFor(OmarchyColor.foreground, OmarchyColor.accent, OmarchyColor.urgent)
+  readonly property color normalFill: normalFillFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color hoverFill: hoverFillFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color selectedFill: selectedFillFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color pressedFill: pressedFillFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color focusFillColor: focusFillFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color normalBorderColor: normalBorderFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color hoverBorderColor: hoverBorderFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color selectedBorderColor: selectedBorderFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color focusBorderColor: focusBorderFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
+  readonly property color selectedAccentFill: Util.alpha(NekoColor.accent, selectedFillAlpha)
+  readonly property color selectionFill: selectionFillFor(NekoColor.foreground, NekoColor.accent, NekoColor.urgent)
 
   // ---------------------------------------------------------- spacing
   //
@@ -264,14 +264,14 @@ QtObject {
   // ---------------------------------------------------------- typography
   //
   // `fontFamily` defaults to "monospace" so the bar and every qs.Ui
-  // component follows the fontconfig alias `omarchy-font-set` writes.
+  // component follows the fontconfig alias `neko-font-set` writes.
   // Themes can override per-token via [font] in shell.toml, but the
   // family stays system-wide.
   property string fontFamily: "monospace"
 
   // The concrete family `monospace` resolves to right now, e.g.
   // "JetBrainsMono Nerd Font". Bind `font.family` to `fontFamily` (so the
-  // alias path keeps working when the user runs `omarchy font set`), but
+  // alias path keeps working when the user runs `neko font set`), but
   // read `resolvedFontFamily` when you want to *display* what's drawing.
   property string resolvedFontFamily: "monospace"
 
@@ -311,11 +311,11 @@ QtObject {
   }
 
   // The menu, polkit, emojis, and clipboard surfaces honor an
-  // OMARCHY_MENU_FONT override for users who want a different family on the
+  // NEKO_MENU_FONT override for users who want a different family on the
   // summoned popups than on the bar. Resolved once at startup; an empty env
   // value falls back to the shared fontconfig alias.
   readonly property string menuFontFamily: {
-    var override = Quickshell.env("OMARCHY_MENU_FONT")
+    var override = Quickshell.env("NEKO_MENU_FONT")
     return (override && override.length > 0) ? override : fontFamily
   }
 
@@ -348,7 +348,7 @@ QtObject {
     readonly property int statusSlot:     root.barToken("status-slot",     21)
   }
 
-  // Off with Hyprland's own animations, as `omarchy toggle animations` turns
+  // Off with Hyprland's own animations, as `neko toggle animations` turns
   // them off for machines that render on the CPU. Every shell animation runs
   // for Style.duration(ms), which is then 0, so nothing is drawn in between.
   property bool reduceMotion: false
@@ -390,7 +390,7 @@ QtObject {
   }
 
   // Pull typography, bar dimensions, state tokens, and spacing out of the
-  // shell.toml dict that Color already parsed. Called by OmarchyColor.loadShell so
+  // shell.toml dict that Color already parsed. Called by NekoColor.loadShell so
   // a single parse pass feeds both singletons.
   function applyShellValues(values) {
     var fontOut = {}
@@ -492,7 +492,7 @@ QtObject {
     }
   }
 
-  // Resolve the fontconfig alias to a concrete family name. `omarchy font
+  // Resolve the fontconfig alias to a concrete family name. `neko font
   // set <name>` rewrites ~/.config/fontconfig/fonts.conf and restarts the
   // shell, but rerun on file change anyway so manual edits propagate too.
   function resolveFontFamily() {
@@ -531,11 +531,11 @@ QtObject {
     onTriggered: root.refresh()
   }
 
-  // `omarchy toggle window-gaps` creates/removes this flag file. Hyprland
+  // `neko toggle window-gaps` creates/removes this flag file. Hyprland
   // reloads its config when sourced files change, then hyprctl reflects
   // the new effective value.
   property FileView windowNoGapsToggle: FileView {
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/window-no-gaps.lua"
+    path: Quickshell.env("HOME") + "/.local/state/neko/toggles/hypr/window-no-gaps.lua"
     watchChanges: true
     printErrors: false
     onFileChanged: refreshTimer.restart()

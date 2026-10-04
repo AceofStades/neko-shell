@@ -6,7 +6,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "omarchy.workspaces"
+  moduleName: "neko.workspaces"
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values

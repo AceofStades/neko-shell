@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.polkit",
+  "id": "neko.polkit",
   "name": "Polkit Agent",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Neko",
   "description": "Theme-aware authentication dialog for privileged actions.",
-  "omarchy": {
+  "neko": {
     "capabilities": [
       "authentication"
     ]

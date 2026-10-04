@@ -18,8 +18,8 @@ import qs.Commons
 TextField {
   id: root
 
-  property color foreground: OmarchyColor.foreground
-  property color accent: OmarchyColor.accent
+  property color foreground: NekoColor.foreground
+  property color accent: NekoColor.accent
   property color selectionTint: Style.selectionFillFor(foreground, accent)
   property bool password: false
   property real horizontalPadding: Style.spacing.controlPaddingX

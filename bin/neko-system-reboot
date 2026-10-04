@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# neko:summary=Reboot after closing application windows
+# neko:examples=neko reboot | neko system reboot
+# neko:aliases=neko reboot
+
+# Schedule the reboot in the user manager so closing the terminal's systemd
+# scope cannot terminate it before it runs.
+systemd-run --user --collect --quiet --on-active="2s" --timer-property=AccuracySec=100ms systemctl reboot --no-wall || exit 1
+
+neko-osd -i reboot -m "Rebooting" -d 5000
+
+neko-state clear re*-required
+
+# Now close all windows
+neko-hyprland-window-close-all
+sleep 1 # Allow apps like Chrome to shutdown correctly

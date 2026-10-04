@@ -11,14 +11,14 @@ Item {
   id: root
 
   property string fontFamily: Style.font.menuFamily
-  // Bound to the central [polkit] section in shell.toml via OmarchyColor.qml.
-  property color accent: OmarchyColor.polkit.accent
-  property color background: OmarchyColor.polkit.background
-  property color foreground: OmarchyColor.polkit.text
-  property color border: OmarchyColor.polkit.border
-  property color borderError: OmarchyColor.polkit.borderError
+  // Bound to the central [polkit] section in shell.toml via NekoColor.qml.
+  property color accent: NekoColor.polkit.accent
+  property color background: NekoColor.polkit.background
+  property color foreground: NekoColor.polkit.text
+  property color border: NekoColor.polkit.border
+  property color borderError: NekoColor.polkit.borderError
   property var borderSpec: Border.surfaceSpec("polkit", errorFlash ? "border-error" : "border", errorFlash ? borderError : border, Math.max(1, Style.space(2)), "border-alpha")
-  property color scrim: OmarchyColor.polkit.scrim
+  property color scrim: NekoColor.polkit.scrim
   readonly property int cornerRadius: Style.cornerRadius
   property int contentMargin: Style.spacing.panelPadding
   property int fieldHeight: Math.max(Style.space(42), Style.spacing.controlHeight)
@@ -168,14 +168,14 @@ Item {
 
   Process {
     id: laptopClosedProc
-    command: ["bash", "-c", "omarchy-hw-laptop-closed && echo closed || echo open"]
+    command: ["bash", "-c", "neko-hw-laptop-closed && echo closed || echo open"]
     stdout: StdioCollector { id: laptopClosedOut; waitForEnd: true }
     onExited: root.laptopClosed = String(laptopClosedOut.text || "").trim() === "closed"
   }
 
   PolkitAgent {
     id: polkitAgent
-    path: "/org/omarchy/PolkitAgent"
+    path: "/org/neko/PolkitAgent"
 
     onAuthenticationRequestStarted: root.beginFlow()
     onIsActiveChanged: {
@@ -183,8 +183,8 @@ Item {
       else if (!root.closing) root.resetSnapshot()
     }
     onIsRegisteredChanged: {
-      if (isRegistered) console.log("omarchy polkit agent registered")
-      else console.warn("omarchy polkit agent is not registered; another agent may be running")
+      if (isRegistered) console.log("neko polkit agent registered")
+      else console.warn("neko polkit agent is not registered; another agent may be running")
     }
   }
 
@@ -223,7 +223,7 @@ Item {
     visible: root.dialogVisible
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    WlrLayershell.namespace: "omarchy-polkit"
+    WlrLayershell.namespace: "neko-polkit"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
@@ -278,7 +278,7 @@ Item {
         text: "\udb80\ude37"
         fontFamily: root.fontFamily
         fontSize: Math.round(root.fieldHeight * 0.7)
-        color: root.errorFlash ? OmarchyColor.polkit.textError : root.accent
+        color: root.errorFlash ? NekoColor.polkit.textError : root.accent
       }
 
       Row {
@@ -293,7 +293,7 @@ Item {
 
         Text {
           text: "\uf023"
-          color: root.errorFlash ? OmarchyColor.polkit.textError : root.accent
+          color: root.errorFlash ? NekoColor.polkit.textError : root.accent
           font.family: root.fontFamily
           font.pixelSize: Style.font.iconLarge
           width: Style.space(26)
@@ -318,7 +318,7 @@ Item {
             font.pixelSize: Style.font.iconLarge
             echoMode: root.responseVisible ? TextInput.Normal : TextInput.Password
             passwordCharacter: "\u2022"
-            color: root.errorFlash ? OmarchyColor.polkit.textError : root.foreground
+            color: root.errorFlash ? NekoColor.polkit.textError : root.foreground
             cursorVisible: activeFocus && !root.submitted && !root.errorFlash
             readOnly: root.submitted || root.errorFlash
             enabled: root.dialogVisible
@@ -337,7 +337,7 @@ Item {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: root.errorFlash ? "Wrong" : (root.submitted ? "Checking..." : "Enter password")
-            color: root.errorFlash ? OmarchyColor.polkit.textError : root.foreground
+            color: root.errorFlash ? NekoColor.polkit.textError : root.foreground
             opacity: root.errorFlash ? 1 : 0.36
             font.family: root.fontFamily
             font.pixelSize: Style.font.iconLarge
@@ -350,7 +350,7 @@ Item {
             height: Style.space(24)
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            color: root.errorFlash ? OmarchyColor.polkit.textError : root.foreground
+            color: root.errorFlash ? NekoColor.polkit.textError : root.foreground
             visible: passwordInput.visible && passwordInput.activeFocus && passwordInput.text.length === 0 && !root.submitted && !root.errorFlash
           }
 

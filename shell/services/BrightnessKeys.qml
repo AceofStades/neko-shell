@@ -7,7 +7,7 @@ import "BrightnessModel.js" as BrightnessModel
 
 // The display brightness keys, arriving as global shortcuts. On the internal
 // panel they step the backlight here: one brightnessctl write and the OSD in
-// process, instead of omarchy-brightness-display resolving the monitor and
+// process, instead of neko-brightness-display resolving the monitor and
 // device, reading, writing and reading back, then an IPC client for the OSD.
 // They step, clamp and read back the way that script does, so either path
 // lands on the same level and OSD. External and Apple displays go through the
@@ -17,7 +17,7 @@ Item {
 
   // The shell host, for summoning the OSD.
   property var host: null
-  // The backlight omarchy-hw-display picks. Devices do not come and go at
+  // The backlight neko-hw-display picks. Devices do not come and go at
   // runtime, but each press refreshes it for the next.
   property string device: ""
   readonly property string devicePath: device ? "/sys/class/backlight/" + device : ""
@@ -52,12 +52,12 @@ Item {
     return Number(String(file.text() || "").trim())
   }
 
-  // The payload omarchy-osd builds, from the level read back after the write.
+  // The payload neko-osd builds, from the level read back after the write.
   function showOsd() {
     var max = readNumber(maxFile)
     if (!host || !(max > 0)) return
     var percent = Math.round(100 * readNumber(brightnessFile) / max)
-    host.summon("omarchy.osd", JSON.stringify({
+    host.summon("neko.osd", JSON.stringify({
       icon: "brightness",
       message: "",
       value: String(percent),
@@ -91,7 +91,7 @@ Item {
 
   Process {
     id: deviceProc
-    command: ["omarchy-hw-display"]
+    command: ["neko-hw-display"]
     running: true
     stdout: StdioCollector {
       waitForEnd: true

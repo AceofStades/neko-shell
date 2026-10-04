@@ -9,7 +9,7 @@ import qs.Commons
 //     text: "Forget network"
 //   }
 //
-// Defaults pull from [tooltip] in shell.toml via OmarchyColor.tooltip.*. Override
+// Defaults pull from [tooltip] in shell.toml via NekoColor.tooltip.*. Override
 // the panel* properties per-instance only when you need a tooltip that
 // intentionally diverges from the theme.
 //
@@ -18,13 +18,13 @@ import qs.Commons
 ToolTip {
   id: root
 
-  property color panelForeground: OmarchyColor.tooltip.text
-  property color panelBackground: OmarchyColor.tooltip.background
-  property color panelBorder: OmarchyColor.tooltip.border
+  property color panelForeground: NekoColor.tooltip.text
+  property color panelBackground: NekoColor.tooltip.background
+  property color panelBorder: NekoColor.tooltip.border
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.bodySmall
 
-  readonly property var panelBorderSpec: Border.localOrSurfaceSpec("tooltip", "border", panelBorder, OmarchyColor.tooltip.border, Style.normalBorderWidth)
+  readonly property var panelBorderSpec: Border.localOrSurfaceSpec("tooltip", "border", panelBorder, NekoColor.tooltip.border, Style.normalBorderWidth)
 
   delay: 400
   padding: 0

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# neko:summary=Apply the current theme keyboard color to ASUS ROG keyboards
+# neko:hidden=true
+
+ASUSCTL_THEME=$HOME/.local/state/neko/current/theme/keyboard.rgb
+
+if neko-cmd-present asusctl && [[ -f $ASUSCTL_THEME ]]; then
+  color=$(sed 's/^#//' "$ASUSCTL_THEME")
+  [[ $color =~ ^[0-9A-Fa-f]{6}$ ]] || exit 0
+  asusctl aura effect static -c "$color"
+fi

@@ -11,7 +11,7 @@ Item {
   id: root
 
   property real spin: 0
-  property color color: OmarchyColor.foreground
+  property color color: NekoColor.foreground
   // Below this size land turns to noise; draw the graticule alone.
   readonly property bool showLand: width >= 22
 
@@ -24,10 +24,10 @@ Item {
   property bool showMarker: false
   property real markerLat: 0
   property real markerLon: 0
-  property color markerColor: OmarchyColor.accent
+  property color markerColor: NekoColor.accent
 
   readonly property real radius: Math.min(width, height) / 2 - 1
-  readonly property string pluginDir: Quickshell.env("OMARCHY_PATH") + "/shell/plugins/panels/elsewhen"
+  readonly property string pluginDir: Quickshell.env("NEKO_PATH") + "/shell/plugins/panels/elsewhen"
 
   onSpinChanged: canvas.requestPaint()
   onColorChanged: canvas.requestPaint()
@@ -68,7 +68,7 @@ Item {
       // The ocean, opaque like the large globe.
       ctx.beginPath()
       ctx.arc(0, 0, r, 0, Math.PI * 2)
-      ctx.fillStyle = Model.mix(OmarchyColor.popups.background, c, root.bold ? 0.16 : 0.13)
+      ctx.fillStyle = Model.mix(NekoColor.popups.background, c, root.bold ? 0.16 : 0.13)
       ctx.fill()
 
       ctx.save()
@@ -117,7 +117,7 @@ Item {
           ctx.fill()
           // Edged so it does not dissolve into a continent of similar lightness.
           ctx.lineWidth = Math.max(1, r * 0.04)
-          ctx.strokeStyle = Util.alpha(OmarchyColor.background, 0.5)
+          ctx.strokeStyle = Util.alpha(NekoColor.background, 0.5)
           ctx.stroke()
 
           ctx.beginPath()

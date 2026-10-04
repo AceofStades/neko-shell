@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# neko:summary=Refresh the current theme from its templates.
+
+THEME_NAME_PATH="$HOME/.local/state/neko/current/theme.name"
+
+if [[ -f $THEME_NAME_PATH ]]; then
+  NEKO_THEME_SKIP_BACKGROUND=1 neko-theme-set "$(cat $THEME_NAME_PATH)"
+fi

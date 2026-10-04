@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Io
 
 // The display side of agent usage. All extraction lives behind
-// omarchy-agent-usage-update, which writes one JSON record per agent into
+// neko-agent-usage-update, which writes one JSON record per agent into
 // the usage directory; this file only discovers those records, watches them
 // for changes, and optionally merges snapshots synced from other machines.
 Item {
@@ -13,7 +13,7 @@ Item {
   property var settings: ({})
 
   readonly property string home: Quickshell.env("HOME") || ""
-  readonly property string usageDir: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/usage"
+  readonly property string usageDir: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/neko/agents/usage"
 
   // ------------------------------------------------------------- discovery
 
@@ -172,7 +172,7 @@ Item {
   }
 
   function updateCommand(kind, agentIds) {
-    var command = ["omarchy-agent-usage-update"]
+    var command = ["neko-agent-usage-update"]
     if (kind === "force") command.push("--force")
     if (kind === "limits") command.push("--limits-only")
     var providers = settings && settings.providers ? settings.providers : {}
@@ -242,7 +242,7 @@ Item {
   // The panel's agents in the order someone dragged them into, kept beside the
   // usage records. An agent the order doesn't name yet keeps its place after
   // the ones it does.
-  readonly property string orderPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/agents/order.json"
+  readonly property string orderPath: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/neko/agents/order.json"
   property var providerOrder: []
 
   function orderedProviders(list) {
@@ -374,7 +374,7 @@ Item {
   readonly property string syncEffectiveDir: expandPath(syncDir)
   readonly property string syncEffectiveFileName: safeSnapshotFileName(syncFileName, syncDeviceId)
   readonly property string syncEffectiveDeviceId: safeDeviceId(syncDeviceId || syncEffectiveFileName.replace(/\.json$/i, ""))
-  readonly property string syncSnapshotPath: syncConfigured() ? syncEffectiveDir + "/" + syncEffectiveFileName : home + "/.cache/omarchy/agents-disabled.json"
+  readonly property string syncSnapshotPath: syncConfigured() ? syncEffectiveDir + "/" + syncEffectiveFileName : home + "/.cache/neko/agents-disabled.json"
   property var aggregateData: ({})
   property int syncRevision: 0
   property bool syncRunning: false
@@ -742,7 +742,7 @@ Item {
     }
   }
 
-  // Snapshots keep the field names older Omarchy versions wrote, so a fleet
+  // Snapshots keep the field names older Neko versions wrote, so a fleet
   // of machines on mixed versions still merges cleanly in both directions.
   function providerSnapshot(record) {
     return {

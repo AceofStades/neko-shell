@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# neko:summary=Apply the current theme keyboard color to supported keyboards
+# neko:hidden=true
+
+neko-theme-set-keyboard-asus-rog
+neko-theme-set-keyboard-f16

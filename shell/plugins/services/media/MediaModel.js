@@ -119,7 +119,7 @@ function osdMessage(player, fallback) {
   return label || fallback
 }
 
-// What a volume key does to the output, by omarchy-audio-output-volume's rules:
+// What a volume key does to the output, by neko-audio-output-volume's rules:
 // raise and lower step 5 and clamp to 0..100 (so a boosted sink drops to 100
 // on raise), unmuting as they go; mute-toggle flips mute and keeps the volume.
 function volumeKeyStep(action, percent, muted) {

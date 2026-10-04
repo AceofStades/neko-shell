@@ -9,7 +9,7 @@ import "ClipboardHistory.js" as ClipboardHistory
 Item {
   id: root
 
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  property string nekoPath: Quickshell.env("NEKO_PATH")
   property bool opened: false
   property string filterText: ""
   property int selectedIndex: 0
@@ -17,18 +17,18 @@ Item {
   property bool clearConfirmOpen: false
   property var history: []
 
-  property string historyPath: Quickshell.env("HOME") + "/.local/state/omarchy/clipboard-history.json"
-  property string captureScript: root.omarchyPath + "/shell/plugins/clipboard/capture.sh"
+  property string historyPath: Quickshell.env("HOME") + "/.local/state/neko/clipboard-history.json"
+  property string captureScript: root.nekoPath + "/shell/plugins/clipboard/capture.sh"
   // Shares the [menu] surface tokens — themes that style the menu also
   // style the clipboard. Selected-row colors composed in the
   // singleton so consumers drop them straight into Rectangle bindings.
-  property color background: OmarchyColor.menu.background
-  property color foreground: OmarchyColor.menu.text
-  property color border: OmarchyColor.menu.border
+  property color background: NekoColor.menu.background
+  property color foreground: NekoColor.menu.text
+  property color border: NekoColor.menu.border
   property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
-  property color scrim: OmarchyColor.menu.scrim
-  property color selectedBackground: OmarchyColor.menu.selectedBackground
-  property color selectedText: OmarchyColor.menu.selectedText
+  property color scrim: NekoColor.menu.scrim
+  property color selectedBackground: NekoColor.menu.selectedBackground
+  property color selectedText: NekoColor.menu.selectedText
   readonly property int cornerRadius: Style.cornerRadius
   property string fontFamily: Style.font.menuFamily
   property int contentMargin: Style.spacing.panelPadding
@@ -216,9 +216,9 @@ Item {
     if (!row) return
     root.opened = false
     if (row.entryType === "image") {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-file", row.mime, row.path])
+      Quickshell.execDetached([root.nekoPath + "/bin/neko-clipboard-paste-file", row.mime, row.path])
     } else if (row.fullText) {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-text", "--shift-insert", "--history-index", String(row.historyIndex)])
+      Quickshell.execDetached([root.nekoPath + "/bin/neko-clipboard-paste-text", "--shift-insert", "--history-index", String(row.historyIndex)])
     }
   }
 
@@ -226,16 +226,16 @@ Item {
     if (!row) return
     root.opened = false
     if (row.entryType === "image") {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-file", "--copy-only", row.mime, row.path])
+      Quickshell.execDetached([root.nekoPath + "/bin/neko-clipboard-paste-file", "--copy-only", row.mime, row.path])
     } else if (row.fullText) {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-text", "--copy-only", "--history-index", String(row.historyIndex)])
+      Quickshell.execDetached([root.nekoPath + "/bin/neko-clipboard-paste-text", "--copy-only", "--history-index", String(row.historyIndex)])
     }
   }
 
   function openSelected(row) {
     if (!row) return
     root.opened = false
-    Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-open", "--history-index", String(row.historyIndex)])
+    Quickshell.execDetached([root.nekoPath + "/bin/neko-clipboard-open", "--history-index", String(row.historyIndex)])
   }
 
   Component.onCompleted: initProc.running = true
@@ -314,7 +314,7 @@ Item {
   OverlayWindow {
     id: panel
     shown: root.opened
-    WlrLayershell.namespace: "omarchy-clipboard"
+    WlrLayershell.namespace: "neko-clipboard"
 
     Rectangle {
       anchors.fill: parent

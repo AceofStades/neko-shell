@@ -22,7 +22,7 @@ QtObject {
   }
 
   function value(section, key) {
-    var v = OmarchyColor.shellValues[section + "." + key]
+    var v = NekoColor.shellValues[section + "." + key]
     return (v === undefined || v === null) ? "" : v
   }
 
@@ -39,7 +39,7 @@ QtObject {
     var seen = {}
     while (s.match(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/) && !seen[s]) {
       seen[s] = true
-      var next = OmarchyColor.shellValues[s]
+      var next = NekoColor.shellValues[s]
       if (next === undefined || next === null || String(next).length === 0) break
       s = String(next).replace(/^\s+|\s+$/g, "")
     }
@@ -68,10 +68,10 @@ QtObject {
 
     var s = String(color || "").replace(/^\s+|\s+$/g, "")
     var role = s.toLowerCase()
-    if (role === "foreground" || role === "text") return cssColor(OmarchyColor.foreground, a)
-    if (role === "accent") return cssColor(OmarchyColor.accent, a)
-    if (role === "urgent") return cssColor(OmarchyColor.urgent, a)
-    if (role === "background") return cssColor(OmarchyColor.background, a)
+    if (role === "foreground" || role === "text") return cssColor(NekoColor.foreground, a)
+    if (role === "accent") return cssColor(NekoColor.accent, a)
+    if (role === "urgent") return cssColor(NekoColor.urgent, a)
+    if (role === "background") return cssColor(NekoColor.background, a)
     if (role === "transparent") return "transparent"
     return Geometry.canonicalColor(s, a)
   }

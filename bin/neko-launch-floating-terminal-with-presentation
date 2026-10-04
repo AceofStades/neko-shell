@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# neko:summary=Launch a floating terminal with the Neko presentation wrapper
+# neko:args=<command>
+
+# Export the current theme's gum styling so gum widgets match the active theme
+# even after a theme switch (the inherited environment is captured at login).
+source neko-restart-gum
+
+cmd="$*"
+# 130 is the user bailing with Ctrl-C; anything else gets the Done/Failed prompt.
+presentation_script="neko-show-logo; $cmd; code=\$?; if (( code != 130 )); then neko-show-done \$code; fi"
+
+exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.neko.terminal --title=Neko -e bash -c "$presentation_script"

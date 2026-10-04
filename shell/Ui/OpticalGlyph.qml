@@ -7,7 +7,7 @@ Item {
   property string text: ""
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.body
-  property color color: OmarchyColor.foreground
+  property color color: NekoColor.foreground
   property bool debugBounds: false
 
   readonly property int renderedFontSize: Math.max(1, Math.round(fontSize))

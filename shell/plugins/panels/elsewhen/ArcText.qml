@@ -13,7 +13,7 @@ Item {
   property real rise: 6
   property string fontFamily: Style.font.family
   property int pixelSize: Style.font.caption
-  property color color: OmarchyColor.foreground
+  property color color: NekoColor.foreground
 
   FontMetrics {
     id: metrics
