@@ -9,7 +9,7 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Run it as the session's shell
 - [x] Look: translucent blurred surfaces, floating bar with capsules
 - [x] Material You colors from the wallpaper (`neko-theme-material`, needs matugen)
-- [ ] Keybindings with descriptions and a searchable cheat sheet
+- [x] Keybindings with descriptions and a searchable cheat sheet (`SUPER+/`; add `{ description = "..." }` to a bind to name it)
 - [x] Media keys through global shortcuts instead of a process per keypress (`default/hypr/neko.lua`)
 - [ ] One palette for every app (theme templates)
 - [ ] Laptop lid and external monitor handling
