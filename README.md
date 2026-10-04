@@ -7,8 +7,8 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Shell, panels and commands, renamed to neko (`NEKO_PATH`, `neko-*` commands, `~/.config/neko`)
 - [x] Works on Qt 6.12
 - [x] Run it as the session's shell
-- [ ] Look: Eldritch palette, translucent blurred surfaces, floating capsule bar
-- [ ] Material You colors from the wallpaper
+- [x] Look: translucent blurred surfaces, floating bar with capsules
+- [x] Material You colors from the wallpaper (`neko-theme-material`, needs matugen)
 - [ ] Keybindings with descriptions and a searchable cheat sheet
 - [ ] Media keys through global shortcuts instead of a process per keypress
 - [ ] One palette for every app (theme templates)
