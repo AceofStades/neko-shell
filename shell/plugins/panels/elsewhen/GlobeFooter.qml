@@ -12,7 +12,7 @@ Item {
   property string offsetLabel: ""
   property string badge: ""             // "home", "tracked" or ""
   property real moonPhase: 0.5
-  property color foreground: Color.foreground
+  property color foreground: OmarchyColor.foreground
   property color dim: Qt.darker(foreground, 1.55)
   property color fainter: Qt.darker(foreground, 2.1)
   property color daylightMarker
@@ -90,7 +90,7 @@ Item {
         textFormat: Text.PlainText
         text: root.badge
         visible: root.has && text !== ""
-        color: Color.accent
+        color: OmarchyColor.accent
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption
       }

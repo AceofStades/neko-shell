@@ -19,8 +19,8 @@ BorderSurface {
   property bool outline: false
   property bool bordered: false
 
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: OmarchyColor.foreground
+  property color accent: OmarchyColor.accent
   property color fill: Style.hoverFillFor(foreground, accent)
   property color currentFill: Style.selectedFillFor(foreground, accent)
 

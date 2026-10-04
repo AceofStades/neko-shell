@@ -1720,8 +1720,8 @@ ShellRoot {
       var shellRaw = ""
       try { colorsRaw = Qt.atob(String(colorsB64 || "")) } catch (e) { colorsRaw = "" }
       try { shellRaw = Qt.atob(String(shellB64 || "")) } catch (e2) { shellRaw = "" }
-      Color.loadColors(colorsRaw)
-      Color.loadShell(shellRaw)
+      OmarchyColor.loadColors(colorsRaw)
+      OmarchyColor.loadShell(shellRaw)
       Style.scheduleRefresh()
       return "ok"
     }

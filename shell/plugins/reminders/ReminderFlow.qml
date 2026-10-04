@@ -18,11 +18,11 @@ Item {
   property string filterText: ""
   property string fontFamily: Style.font.menuFamily
 
-  property color background: Color.menu.background
-  property color foreground: Color.menu.text
-  property color border: Color.menu.border
+  property color background: OmarchyColor.menu.background
+  property color foreground: OmarchyColor.menu.text
+  property color border: OmarchyColor.menu.border
   property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
-  property color scrim: Color.menu.scrim
+  property color scrim: OmarchyColor.menu.scrim
   readonly property int cornerRadius: Style.cornerRadius
   property int contentMargin: Style.spacing.panelPadding
   property int headerHeight: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)

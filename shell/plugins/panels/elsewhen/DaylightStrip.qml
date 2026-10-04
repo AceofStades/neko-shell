@@ -22,7 +22,7 @@ Item {
   property bool hovered: false
   property bool hour24: false
   property real moonPhase: 0
-  property color foreground: Color.foreground
+  property color foreground: OmarchyColor.foreground
   property color fainter: Qt.darker(foreground, 2.1)
   property color daylightMarker: "#E5C736"
   property string fontFamily: Style.font.family
