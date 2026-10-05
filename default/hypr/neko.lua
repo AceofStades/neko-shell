@@ -31,6 +31,16 @@ hl.layer_rule({
   animation = "none",
 })
 
+-- Terminals neko opens for short tasks (a custom DNS prompt, a TUI from the
+-- menu) float in the middle of the screen instead of tiling
+hl.window_rule({
+  name = "neko-floating-terminal",
+  match = { class = "^org\\.neko\\.(terminal|btop|bash)$" },
+  float = true,
+  center = true,
+  size = "875 600",
+})
+
 -- Media keys and the menu, only while neko is the running shell: neko-session
 -- start sets the flag (in XDG_RUNTIME_DIR, gone after a reboot) and stop
 -- clears it, so loading this file permanently never steals the keys from
