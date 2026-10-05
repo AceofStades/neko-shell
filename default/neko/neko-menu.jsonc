@@ -28,6 +28,8 @@
 
   "style": {"icon":"","label":"Style"},
 
+  "settings": {"icon":"󰒓","label":"Settings","aliases":["settings","preferences"]},
+
   "system": {"icon":"","label":"System","aliases":["power-menu"]},
   "system.lock": {"icon":"","label":"Lock","action":"neko-system-lock"},
   "system.suspend": {"icon":"󰒲","label":"Suspend","when":"! neko-toggle-enabled suspend-off","action":"systemctl suspend"},
@@ -91,4 +93,16 @@
   "style.bar.position.bottom": {"icon":"󰁅","label":"Bottom","action":"neko-bar position bottom"},
   "style.bar.position.left": {"icon":"󰁍","label":"Left","action":"neko-bar position left"},
   "style.bar.position.right": {"icon":"󰁔","label":"Right","action":"neko-bar position right"},
+
+  "settings.colors": {"icon":"󰏘","label":"Colors"},
+  "settings.colors.material": {"label":"From the wallpaper","checked":"neko-settings is colors material","action":"neko-settings set colors material"},
+  "settings.colors.neko": {"label":"Neko (fixed)","checked":"neko-settings is colors neko","action":"neko-settings set colors neko"},
+  "settings.bar": {"icon":"󱂩","label":"Bar"},
+  "settings.bar.float": {"label":"Floating","checked":"neko-settings is bar.float on","action":"neko-settings toggle bar.float"},
+  "settings.bar.capsules": {"label":"Capsules","checked":"neko-settings is bar.capsules on","action":"neko-settings toggle bar.capsules"},
+  "settings.apps": {"icon":"󰀻","label":"Themed apps"},
+  "settings.apps.gtk": {"label":"GTK apps (Thunar...)","checked":"neko-settings is app.gtk on","action":"neko-settings toggle app.gtk"},
+  "settings.apps.btop": {"label":"btop","checked":"neko-settings is app.btop on","action":"neko-settings toggle app.btop"},
+  "settings.apps.tmux": {"label":"tmux","checked":"neko-settings is app.tmux on","action":"neko-settings toggle app.tmux"},
+  "settings.apps.kitty": {"label":"kitty","checked":"neko-settings is app.kitty on","action":"neko-settings toggle app.kitty"},
 }
