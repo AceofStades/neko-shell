@@ -40,10 +40,14 @@ provider_from_arg() {
   esac
 }
 
-# The path etc/sudoers.d/neko-dns names. The privileged half always runs from
-# there rather than from whichever copy was invoked, so the rule matches even
-# where $NEKO_PATH points at a checkout.
+# The root-owned copy the privileged half runs from, never the invoked one: a
+# checkout's bin/ is user-writable, so root must not execute it. A packaged
+# install puts it in /usr/bin; a checkout installs it once with
+#   sudo install -Dm755 bin/neko-dns /usr/local/bin/neko-dns
 PACKAGED_PATH=/usr/bin/neko-dns
+if [[ ! -x $PACKAGED_PATH && -x /usr/local/bin/neko-dns ]]; then
+  PACKAGED_PATH=/usr/local/bin/neko-dns
+fi
 
 # True when sudo would run this exact command without stopping for a password.
 # `sudo -l` on its own reports whether a command is permitted, which the blanket
@@ -59,6 +63,11 @@ sudo_grants_passwordless() {
 require_root() {
   if (( EUID == 0 )); then
     return
+  elif [[ ! -x $PACKAGED_PATH ]]; then
+    local message="Changing DNS needs a root-owned neko-dns: sudo install -Dm755 ${NEKO_PATH:-.}/bin/neko-dns /usr/local/bin/neko-dns"
+    echo "$message" >&2
+    neko-notification-send "DNS not changed" "$message" 2> /dev/null || true
+    exit 1
   elif [[ -t 0 ]] || sudo_grants_passwordless "$@"; then
     # A terminal can carry sudo's own password prompt. Without one, sudo is
     # right only where the grant reaches; polkit can at least put a prompt on
