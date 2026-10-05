@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # neko:summary=Bring the apps listed in NEKO_THEME_APPS in line with the current theme
-# neko:args=[app...]
+# neko:args=[app...] | --remove <app>
 
 # Each app is pointed once at a file the theme renders under
 # ~/.local/state/neko/current/theme (an include line, a symlink, a
@@ -9,6 +9,12 @@
 # Nothing happens to an app unless it is listed.
 
 theme=$HOME/.local/state/neko/current/theme
+
+remove=false
+if [[ $1 == "--remove" ]]; then
+  remove=true
+  shift
+fi
 
 if (( $# > 0 )); then
   apps=("$@")
@@ -23,6 +29,26 @@ ensure_line() {
   if ! grep -qxF "$line" "$file" 2> /dev/null; then
     printf '\n# %s\n%s\n' "$comment" "$line" >> "$file"
   fi
+}
+
+# Take out what ensure_line added: the line, its comment and the blank line before them
+remove_line() {
+  local file=$1 line=$2
+  [[ -f $file ]] || return 0
+  awk -v target="$line" '
+    { lines[NR] = $0 }
+    END {
+      for (i = 1; i <= NR; i++) {
+        if (lines[i] != target) continue
+        drop[i] = 1
+        if (i > 1 && lines[i - 1] ~ /^# neko-shell/) {
+          drop[i - 1] = 1
+          if (i > 2 && lines[i - 2] == "") drop[i - 2] = 1
+        }
+      }
+      for (i = 1; i <= NR; i++) if (!drop[i]) print lines[i]
+    }
+  ' "$file" > "$file.neko-tmp" && mv "$file.neko-tmp" "$file"
 }
 
 theme_kitty() {
@@ -87,6 +113,13 @@ theme_gtk() {
   gsettings set org.gnome.desktop.interface accent-color "$(gnome_accent "$accent")" 2> /dev/null
 
   if [[ -d /usr/share/themes/adw-gtk3 ]]; then
+    # Remember the theme being replaced, so taking GTK off neko can restore it
+    local previous
+    previous=$(gsettings get org.gnome.desktop.interface gtk-theme | tr -d "'")
+    if [[ $previous != adw-gtk3* && ! -f $HOME/.local/state/neko/gtk-theme.before-neko ]]; then
+      echo "$previous" > "$HOME/.local/state/neko/gtk-theme.before-neko"
+    fi
+
     if [[ $mode == "light" ]]; then
       gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3
     else
@@ -106,9 +139,46 @@ theme_gtk() {
   ensure_line "$gtk4_css" "$import" "neko-shell colors"
 }
 
+unhook_kitty() {
+  remove_line "$HOME/.config/kitty/kitty.conf" "include $theme/kitty.conf"
+  pkill -USR1 -x kitty
+}
+
+unhook_btop() {
+  rm -f "$HOME/.config/btop/themes/neko.theme"
+  sed -i 's/^color_theme = "neko"$/color_theme = "Default"/' "$HOME/.config/btop/btop.conf" 2> /dev/null
+  pkill -USR2 -x btop
+}
+
+unhook_tmux() {
+  remove_line "$HOME/.config/tmux/tmux.conf" "source-file -q $theme/tmux.conf"
+}
+
+unhook_gtk() {
+  local import="@import url(\"file://$theme/gtk.css\");"
+  local gtk4_css=$HOME/.config/gtk-4.0/gtk.css
+  local previous=$HOME/.local/state/neko/gtk-theme.before-neko
+
+  remove_line "$HOME/.config/gtk-3.0/gtk.css" "$import"
+  remove_line "$gtk4_css" "$import"
+  if [[ -L $gtk4_css.before-neko && ! -s $gtk4_css ]]; then
+    mv -f "$gtk4_css.before-neko" "$gtk4_css"
+  fi
+  if [[ -f $previous ]]; then
+    gsettings set org.gnome.desktop.interface gtk-theme "$(cat "$previous")"
+    rm -f "$previous"
+  fi
+}
+
 for app in "${apps[@]}"; do
   case $app in
-    kitty | btop | tmux | gtk) "theme_$app" ;;
+    kitty | btop | tmux | gtk)
+      if [[ $remove == true ]]; then
+        "unhook_$app"
+      else
+        "theme_$app"
+      fi
+      ;;
     *) echo "neko-theme-apps: don't know how to theme $app" >&2 ;;
   esac
 done
