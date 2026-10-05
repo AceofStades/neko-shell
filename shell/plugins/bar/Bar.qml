@@ -1883,10 +1883,11 @@ Item {
 
       visible: NekoColor.bar.capsule.a > 0 && slot.width > 0 && !root.transparent
       anchors.fill: parent
-      anchors.topMargin: root.vertical ? 1 : inset
-      anchors.bottomMargin: root.vertical ? 1 : inset
-      anchors.leftMargin: root.vertical ? inset : 1
-      anchors.rightMargin: root.vertical ? inset : 1
+      anchors.topMargin: root.vertical ? 2 : inset
+      anchors.bottomMargin: root.vertical ? 2 : inset
+      // A small gap between neighbouring capsules
+      anchors.leftMargin: root.vertical ? inset : 2
+      anchors.rightMargin: root.vertical ? inset : 2
       radius: Math.min(width, height) / 2
       color: NekoColor.bar.capsule
     }
