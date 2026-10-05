@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # neko:summary=Pick, randomize or rotate the wallpaper
-# neko:args=<pick|random|set <image>|auto <minutes|off>|status>
+# neko:args=<pick|random|set <image>|auto <minutes|off>|warm|status>
 # neko:examples=neko-wallpaper pick|neko-wallpaper random|neko-wallpaper auto 30|neko-wallpaper auto off
 
 # Wallpapers come from NEKO_WALLPAPER_DIR (default ~/Pictures/wallpapers).
@@ -99,6 +99,12 @@ auto() {
   esac
 }
 
+# Build the picker's list and thumbnails ahead of time, quietly, so it never
+# opens on a cold cache (which shows full-size originals while it catches up)
+warm() {
+  nice -n 19 ionice -c 3 neko-menu-images --cache-only "$dir" > /dev/null 2>&1
+}
+
 status() {
   echo "wallpaper: $(current)"
   if [[ -f $rotation_file ]] && systemctl --user is-active --quiet "$unit.timer"; then
@@ -113,9 +119,10 @@ case $1 in
   random) random_wallpaper ;;
   set) set_wallpaper "$2" ;;
   auto) auto "$2" ;;
+  warm) warm ;;
   status) status ;;
   *)
-    echo "Usage: neko-wallpaper <pick|random|set <image>|auto <minutes|off>|status>" >&2
+    echo "Usage: neko-wallpaper <pick|random|set <image>|auto <minutes|off>|warm|status>" >&2
     exit 1
     ;;
 esac

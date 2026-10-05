@@ -106,6 +106,7 @@ start() {
   load_hyprland_rules
   # Rotation is a transient timer, so it needs arming again after a reboot
   neko-wallpaper auto resume
+  setsid -f neko-wallpaper warm
   echo "neko-shell started"
 }
 
