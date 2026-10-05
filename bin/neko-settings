@@ -115,10 +115,13 @@ set_value() {
       fi
       ;;
     bar.capsules)
+      # Capsules sit on a clear bar; without them the bar needs its own background
       if [[ $value == "off" ]]; then
         toml_set bar capsule-alpha 0
+        toml_set bar background-alpha 0.55
       else
         toml_unset bar capsule-alpha
+        toml_unset bar background-alpha
       fi
       ;;
     app.*)
