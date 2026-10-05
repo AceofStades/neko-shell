@@ -19,11 +19,11 @@ Panel {
   property string activeProfile: ""
   property int profileIndex: 0
   property bool cursorActive: false
-  readonly property bool showPercentage: setting("showPercentage", false) === true
-  // With the percentage shown the button paints a text block wider than an
-  // icon, so the open-panel mark takes the painted width instead of the
-  // icon-sized fraction of the slot the fallback assumes.
-  readonly property real openPanelIndicatorWidth: showPercentage && !button.vertical ? button.glyphPaintedWidth : 0
+  // The percentage sits inside the drawn battery; right click hides or shows it
+  readonly property bool showPercentage: setting("showPercentage", true) === true
+  readonly property bool drawnBattery: batteryPresent && !button.vertical
+  // The open-panel mark spans the battery body rather than the whole slot
+  readonly property real openPanelIndicatorWidth: drawnBattery ? 24 : 0
   readonly property bool batteryPresent: {
     var device = UPower.displayDevice
     return !!(device && device.isPresent)
@@ -277,15 +277,27 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.showPercentage && !vertical
-      ? Math.round(root.batteryFraction * 100) + "% " + root.batteryIcon()
-      : root.batteryIcon()
-    slotSize: Style.bar.iconSlot * (root.showPercentage && !vertical ? 2 : 1)
+    text: root.batteryIcon()
+    iconComponent: root.drawnBattery ? batteryComponent : null
+    opticalSize: root.drawnBattery ? 40 : Style.bar.iconCanvas
+    slotSize: root.drawnBattery ? 44 : Style.bar.iconSlot
     tooltipText: ""
     onPressed: function(b) {
       if (!root.batteryPresent) return
       if (b === Qt.RightButton) root.togglePercentage()
       else root.toggle()
+    }
+  }
+
+  Component {
+    id: batteryComponent
+    BatteryIcon {
+      fraction: root.batteryFraction
+      charging: !root.discharging && !root.batteryFlowIdle
+      low: root.discharging && root.batteryFraction <= 0.15
+      showNumber: root.showPercentage
+      foreground: button.foreground
+      fontFamily: button.fontFamily
     }
   }
 
