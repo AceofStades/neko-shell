@@ -901,7 +901,12 @@ Panel {
     runNetworkAction("forget", net ? networkForSsid(net.ssid) : null, function(network) { network.forget() })
   }
 
-  implicitWidth: button.implicitWidth
+  // The connected Wi-Fi's name beside the icon on a horizontal bar
+  // (from NetworkManager directly; `info` is only polled while the panel is open)
+  readonly property string ssidLabel: !button.vertical && root.kind === "wifi" && root.connectedWifiNetwork
+    ? (root.connectedWifiNetwork.name || "")
+    : ""
+  implicitWidth: button.implicitWidth + (ssidLabel !== "" ? ssidText.width + Style.space(8) : 0)
   implicitHeight: button.implicitHeight
 
   Component.onCompleted: refresh()
@@ -1075,7 +1080,10 @@ Panel {
 
   BarIconButton {
     id: button
-    anchors.fill: parent
+    anchors.left: parent.left
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    width: implicitWidth
     bar: root.bar
     text: root.icon
     active: root.restricted
@@ -1089,6 +1097,27 @@ Panel {
       // took the no-scan branch and set scannerEnabled synchronously, undoing
       // that deferral and stalling the open on NetworkManager's AP flood.
       else root.open()
+    }
+  }
+
+  Text {
+    id: ssidText
+    visible: root.ssidLabel !== ""
+    anchors.left: button.right
+    anchors.leftMargin: -Style.space(2)
+    anchors.verticalCenter: button.verticalCenter
+    width: Math.min(implicitWidth, Style.space(120))
+    text: root.ssidLabel
+    elide: Text.ElideRight
+    color: button.foreground
+    font.family: button.fontFamily
+    font.pixelSize: Style.font.body
+    font.weight: Font.Medium
+
+    MouseArea {
+      anchors.fill: parent
+      cursorShape: Qt.PointingHandCursor
+      onClicked: root.opened ? root.close() : root.open()
     }
   }
 
