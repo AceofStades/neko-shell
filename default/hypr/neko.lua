@@ -43,7 +43,7 @@ if flag then
     "XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute",
     "XF86MonBrightnessUp", "XF86MonBrightnessDown", "SUPER + XF86MonBrightnessUp", "SUPER + XF86MonBrightnessDown",
     "XF86AudioPlay", "XF86AudioPause",
-    "SUPER + ALT + SPACE", "SUPER + SLASH",
+    "SUPER + ALT + SPACE", "SUPER + SLASH", "SUPER + W",
   }
   for _, key in ipairs(keys) do
     hl.unbind(key)
@@ -64,4 +64,5 @@ if flag then
   hl.bind("XF86AudioPause", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
   hl.bind("SUPER + ALT + SPACE", hl.dsp.global("neko:menu.root"), { description = "Neko menu" })
   hl.bind("SUPER + SLASH", hl.dsp.exec_cmd(run .. "neko-menu-keybindings"), { description = "Keybindings cheat sheet" })
+  hl.bind("SUPER + W", hl.dsp.exec_cmd(run .. "neko-wallpaper pick"), { description = "Pick a wallpaper" })
 end
