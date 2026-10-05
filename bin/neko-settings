@@ -1,0 +1,162 @@
+#!/bin/bash
+
+# neko:summary=Read and change neko's settings (what the Settings menu uses)
+# neko:args=<get|is|set|toggle> <key> [value]
+# neko:examples=neko-settings set colors material|neko-settings toggle bar.capsules|neko-settings is app.btop on
+
+# Keys:
+#   colors        material (from the wallpaper) | neko (the fixed palette)
+#   bar.float     on | off  (bar floats off the screen edge with rounded corners)
+#   bar.capsules  on | off  (pill behind each bar widget)
+#   app.<name>    on | off  (kitty, btop, tmux or gtk follows the theme)
+#
+# Bar settings are overrides in ~/.config/neko/shell.toml, which the shell
+# watches live; "on" removes the override so the theme's own look applies.
+
+env_file=$HOME/.config/neko/env
+overrides=$HOME/.config/neko/shell.toml
+state=$HOME/.local/state/neko/current
+
+if [[ -f $env_file ]]; then
+  set -a
+  source "$env_file"
+  set +a
+fi
+
+# A key = value line in a [section] of the overrides file
+toml_get() {
+  local section=$1 key=$2
+  [[ -f $overrides ]] || return 0
+  awk -v section="[$section]" -v key="$key" '
+    /^\[/ { in_section = ($0 == section); next }
+    in_section && $1 == key { sub(/^[^=]*=[[:space:]]*/, ""); print; exit }
+  ' "$overrides"
+}
+
+toml_set() {
+  local section=$1 key=$2 value=$3
+  mkdir -p "$(dirname "$overrides")"
+  touch "$overrides"
+  awk -v section="[$section]" -v key="$key" -v value="$value" '
+    /^\[/ {
+      if (in_section && !done) { print key " = " value; done = 1 }
+      in_section = ($0 == section)
+      if (in_section) seen = 1
+    }
+    in_section && $1 == key { if (!done) print key " = " value; done = 1; next }
+    { print }
+    END {
+      if (!seen) print "\n" section
+      if (!done) print key " = " value
+    }
+  ' "$overrides" > "$overrides.tmp" && mv "$overrides.tmp" "$overrides"
+}
+
+toml_unset() {
+  local section=$1 key=$2
+  [[ -f $overrides ]] || return 0
+  awk -v section="[$section]" -v key="$key" '
+    /^\[/ { in_section = ($0 == section) }
+    !(in_section && $1 == key) { print }
+  ' "$overrides" > "$overrides.tmp" && mv "$overrides.tmp" "$overrides"
+}
+
+themed_apps() {
+  echo "${NEKO_THEME_APPS:-}"
+}
+
+set_themed_apps() {
+  local apps=$1
+  if grep -q '^NEKO_THEME_APPS=' "$env_file" 2> /dev/null; then
+    sed -i "s/^NEKO_THEME_APPS=.*/NEKO_THEME_APPS=\"$apps\"/" "$env_file"
+  else
+    printf '\n# Apps that follow neko'"'"'s theme\nNEKO_THEME_APPS="%s"\n' "$apps" >> "$env_file"
+  fi
+}
+
+get() {
+  case $1 in
+    colors)
+      cat "$state/theme.name" 2> /dev/null
+      ;;
+    bar.float)
+      [[ $(toml_get bar float-margin) == "0" ]] && echo off || echo on
+      ;;
+    bar.capsules)
+      [[ $(toml_get bar capsule-alpha) == "0" ]] && echo off || echo on
+      ;;
+    app.*)
+      [[ " $(themed_apps) " == *" ${1#app.} "* ]] && echo on || echo off
+      ;;
+    *)
+      echo "Unknown setting: $1" >&2
+      exit 1
+      ;;
+  esac
+}
+
+set_value() {
+  local key=$1 value=$2
+  case $key in
+    colors)
+      case $value in
+        material) neko-theme-material > /dev/null ;;
+        *)
+          echo "$value" > "$state/theme.name"
+          neko-session theme > /dev/null
+          ;;
+      esac
+      ;;
+    bar.float)
+      if [[ $value == "off" ]]; then
+        toml_set bar float-margin 0
+      else
+        toml_unset bar float-margin
+      fi
+      ;;
+    bar.capsules)
+      if [[ $value == "off" ]]; then
+        toml_set bar capsule-alpha 0
+      else
+        toml_unset bar capsule-alpha
+      fi
+      ;;
+    app.*)
+      local app=${key#app.} apps
+      apps=" $(themed_apps) "
+      apps=${apps// $app / }
+      if [[ $value == "on" ]]; then
+        apps="$apps $app"
+        set_themed_apps "$(echo $apps)"
+        neko-theme-apps "$app"
+      else
+        set_themed_apps "$(echo $apps)"
+        neko-theme-apps --remove "$app"
+      fi
+      ;;
+    *)
+      echo "Unknown setting: $key" >&2
+      exit 1
+      ;;
+  esac
+}
+
+case $1 in
+  get) get "$2" ;;
+  is)
+    value=$(get "$2") || exit 1
+    [[ $value == "$3" ]]
+    ;;
+  set) set_value "$2" "$3" ;;
+  toggle)
+    if [[ $(get "$2") == "on" ]]; then
+      set_value "$2" off
+    else
+      set_value "$2" on
+    fi
+    ;;
+  *)
+    echo "Usage: neko-settings <get|is|set|toggle> <key> [value]" >&2
+    exit 1
+    ;;
+esac
