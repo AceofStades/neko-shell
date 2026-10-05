@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.wallpaper",
+  "name": "Wallpaper",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Pick, randomize or rotate the wallpaper",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Wallpaper.qml"
+  },
+  "barWidget": {
+    "displayName": "Wallpaper",
+    "description": "Pick, randomize or rotate the wallpaper",
+    "category": "Appearance",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
