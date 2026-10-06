@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# neko:summary=Current weather and the next days as JSON, from Open-Meteo
+# neko:args=[--refresh]
+
+# Coordinates come from the weather location you saved, or else from wttr.in's
+# detection, cached for a day so a report is a single Open-Meteo request. The
+# output is Open-Meteo's forecast with `city` and the current `condition`
+# (from the WMO weather code) added.
+
+settings=$HOME/.local/state/neko/settings/weather.json
+coords_cache=$HOME/.cache/neko/weather-coords
+
+lat=""
+lon=""
+if [[ -f $settings ]]; then
+  lat=$(jq -r '.latitude // empty' "$settings" 2> /dev/null)
+  lon=$(jq -r '.longitude // empty' "$settings" 2> /dev/null)
+fi
+
+if [[ -z $lat || -z $lon ]]; then
+  if [[ $1 != "--refresh" && -n $(find "$coords_cache" -mmin -1440 2> /dev/null) ]]; then
+    read -r lat lon < "$coords_cache"
+  else
+    read -r lat lon < <(curl -fsS --max-time 6 "https://wttr.in/?format=j1" 2> /dev/null |
+      jq -r '.nearest_area[0] | "\(.latitude) \(.longitude)"' 2> /dev/null)
+    if [[ -n $lat && -n $lon && $lat != "null" ]]; then
+      mkdir -p "$(dirname "$coords_cache")"
+      echo "$lat $lon" > "$coords_cache"
+    fi
+  fi
+fi
+
+if [[ -z $lat || -z $lon || $lat == "null" ]]; then
+  echo "Weather location unknown" >&2
+  exit 1
+fi
+
+city=$(neko-weather-location 2> /dev/null)
+
+curl -fsS --max-time 6 "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&daily=weather_code,temperature_2m_max,temperature_2m_min&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day&forecast_days=4&timezone=auto" |
+  jq -c --arg city "$city" '
+    def condition:
+      if . == 0 then "Clear"
+      elif . == 1 then "Mainly clear"
+      elif . == 2 then "Partly cloudy"
+      elif . == 3 then "Overcast"
+      elif . == 45 or . == 48 then "Fog"
+      elif . >= 51 and . <= 57 then "Drizzle"
+      elif . >= 61 and . <= 67 then "Rain"
+      elif . >= 71 and . <= 77 then "Snow"
+      elif . >= 80 and . <= 82 then "Rain showers"
+      elif . == 85 or . == 86 then "Snow showers"
+      elif . >= 95 then "Thunderstorm"
+      else "" end;
+    . + { city: $city, condition: (.current.weather_code | condition) }'
