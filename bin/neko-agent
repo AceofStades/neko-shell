@@ -41,7 +41,7 @@ agent=$(neko-default-agent)
 # picked. --pick offers the choice instead of the error, which is what the
 # keybinding wants: a keypress that opens nothing explains nothing.
 if [[ -z $agent ]]; then
-  [[ $pick == "true" ]] && exec neko-menu summon setup.default.agent
+  [[ $pick == "true" ]] && exec neko-menu summon settings.agent
   echo "Choose default agent with: neko default agent <name>" >&2
   exit 1
 fi

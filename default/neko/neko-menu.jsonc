@@ -105,4 +105,13 @@
   "settings.apps.btop": {"label":"btop","checked":"neko-settings is app.btop on","action":"neko-settings toggle app.btop"},
   "settings.apps.tmux": {"label":"tmux","checked":"neko-settings is app.tmux on","action":"neko-settings toggle app.tmux"},
   "settings.apps.kitty": {"label":"kitty","checked":"neko-settings is app.kitty on","action":"neko-settings toggle app.kitty"},
+  "settings.agent": {"icon":"󰚩","label":"Default agent","aliases":["agent","default-agent"]},
+  "settings.agent.claude": {"label":"Claude Code","when":"command -v claude > /dev/null","checked":"[[ $(neko-default-agent) == claude ]]","action":"neko-default-agent claude"},
+  "settings.agent.codex": {"label":"Codex","when":"command -v codex > /dev/null","checked":"[[ $(neko-default-agent) == codex ]]","action":"neko-default-agent codex"},
+  "settings.agent.opencode": {"label":"OpenCode","when":"command -v opencode > /dev/null","checked":"[[ $(neko-default-agent) == opencode ]]","action":"neko-default-agent opencode"},
+  "settings.agent.pi": {"label":"Pi","when":"command -v pi > /dev/null","checked":"[[ $(neko-default-agent) == pi ]]","action":"neko-default-agent pi"},
+  "settings.agent.crush": {"label":"Crush","when":"command -v crush > /dev/null","checked":"[[ $(neko-default-agent) == crush ]]","action":"neko-default-agent crush"},
+  "settings.agent.grok": {"label":"Grok","when":"command -v grok > /dev/null","checked":"[[ $(neko-default-agent) == grok ]]","action":"neko-default-agent grok"},
+  "settings.agent.copilot": {"label":"GitHub Copilot","when":"command -v copilot > /dev/null","checked":"[[ $(neko-default-agent) == copilot ]]","action":"neko-default-agent copilot"},
+  "settings.agent.cursor-agent": {"label":"Cursor CLI","when":"command -v cursor-agent > /dev/null","checked":"[[ $(neko-default-agent) == cursor-agent ]]","action":"neko-default-agent cursor-agent"},
 }
