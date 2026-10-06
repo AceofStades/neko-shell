@@ -464,11 +464,14 @@ Panel {
         }
 
         // ---------- Power profile picker ----------
+        // Only with something to switch them (power-profiles-daemon or asusd)
         PanelSeparator {
+          visible: root.profiles.length > 0
           foreground: root.bar.foreground
         }
 
         Column {
+          visible: root.profiles.length > 0
           width: parent.width
           spacing: Style.space(10)
 

@@ -3,6 +3,10 @@
 # neko:summary=Set and remember the power profile for AC or battery use
 # neko:args=[autodetect|ac|battery] [power-saver|balanced|performance]
 
+# Through power-profiles-daemon, remembering a profile for each power source
+# and restoring it when the source changes; or through asusd, which keeps
+# and switches its own.
+
 action="${1:-autodetect}"
 requested_profile="${2:-}"
 
@@ -28,6 +32,29 @@ case "$action" in
 esac
 
 mapfile -t profiles < <(neko-powerprofiles-list)
+
+# asusd keeps a profile for AC and one for battery and switches between them
+# itself, so it only needs telling which one changed (the current one takes
+# effect at once); nothing to restore when the power source changes
+if ! command -v powerprofilesctl > /dev/null && command -v asusctl > /dev/null; then
+  [[ -n $requested_profile ]] || exit 0
+  case $requested_profile in
+    power-saver) name=Quiet ;;
+    balanced) name=Balanced ;;
+    performance) name=Performance ;;
+    *) name="" ;;
+  esac
+  if [[ -z $name ]] || [[ " ${profiles[*]} " != *" $requested_profile "* ]]; then
+    echo "Power profile is not available: $requested_profile" >&2
+    exit 1
+  fi
+  if [[ $action == "battery" ]]; then
+    asusctl profile set --battery "$name" > /dev/null
+  else
+    asusctl profile set --ac "$name" > /dev/null
+  fi
+  exit
+fi
 
 profile_available() {
   [[ " ${profiles[*]} " == *" $1 "* ]]

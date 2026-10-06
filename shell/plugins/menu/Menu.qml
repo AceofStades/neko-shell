@@ -283,7 +283,7 @@ Item {
       actionFor: function(value) { return "neko-font-set " + Util.shellQuote(value) }
     },
     "power-profiles": {
-      script: "current=$(powerprofilesctl get 2>/dev/null); neko-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
+      script: "current=$(neko-powerprofiles-list --active-state 2>/dev/null | awk -F'\\t' '$2 == 1 { print $1 }'); neko-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
       icon: "\udb81\udc0b",
       actionFor: function(value) { return "neko-powerprofiles-set autodetect " + Util.shellQuote(value) }
     }

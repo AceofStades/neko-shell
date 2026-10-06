@@ -1,6 +1,9 @@
 #!/bin/bash
 
 # neko:summary=Returns a list of all the available power profiles on the system.
+
+# From power-profiles-daemon, or else asusd on ASUS laptops, whose Quiet,
+# Balanced and Performance are listed as power-saver, balanced and performance.
 # neko:args=[--active-state]
 
 if [[ ${1:-} != "" && ${1:-} != "--active-state" ]]; then
@@ -8,10 +11,28 @@ if [[ ${1:-} != "" && ${1:-} != "--active-state" ]]; then
   exit 1
 fi
 
-powerprofilesctl list 2>/dev/null |
-  awk -v with_state="${1:+1}" '/^\s*[* ]\s*[a-zA-Z0-9-]+:$/ {
-    active = ($1 == "*") ? 1 : 0
-    gsub(/^[*[:space:]]+|:$/, "")
-    print $0 (with_state ? "\t" active : "")
-  }' |
-  tac
+if command -v powerprofilesctl > /dev/null; then
+  powerprofilesctl list 2>/dev/null |
+    awk -v with_state="${1:+1}" '/^\s*[* ]\s*[a-zA-Z0-9-]+:$/ {
+      active = ($1 == "*") ? 1 : 0
+      gsub(/^[*[:space:]]+|:$/, "")
+      print $0 (with_state ? "\t" active : "")
+    }' |
+    tac
+elif command -v asusctl > /dev/null; then
+  # asusd's platform profiles (ASUS laptops), under the names above
+  active=$(asusctl profile get 2>/dev/null | sed -n 's/^Active profile: //p')
+  asusctl profile list 2>/dev/null | while read -r name; do
+    case $name in
+      Quiet) profile=power-saver ;;
+      Balanced) profile=balanced ;;
+      Performance) profile=performance ;;
+      *) continue ;;
+    esac
+    if [[ -n ${1:-} ]]; then
+      printf '%s\t%d\n' "$profile" "$([[ $name == "$active" ]] && echo 1 || echo 0)"
+    else
+      echo "$profile"
+    fi
+  done
+fi
