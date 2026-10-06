@@ -5,6 +5,7 @@ import Quickshell.Io
 import qs.Ui
 import qs.Commons
 import "Model.js" as Model
+import "../../../services/BrightnessModel.js" as BrightnessModel
 
 Panel {
   id: root
@@ -14,8 +15,15 @@ Panel {
 
   // manageIpc: false so this panel can own the single IpcHandler the target
   // permits — needed for the brightness + state methods below.
-  property int brightnessPercent: 0
-  property int pendingBrightnessPercent: 0
+  // Brightness as a level out of brightnessMax: on the laptop panel a tick on
+  // the brightness curve (out of 64), on other displays a percentage
+  property int brightnessLevel: 0
+  property int brightnessMax: 100
+  property int pendingBrightnessLevel: 0
+  readonly property bool brightnessCurve: brightnessMax === BrightnessModel.ticks
+  readonly property int brightnessMin: brightnessCurve ? 0 : 1
+  // What the wheel and h/l move: a full step of the curve, or 5%
+  readonly property int brightnessStep: brightnessCurve ? BrightnessModel.ticksPerStep : 5
   property bool brightnessSetQueued: false
   property bool brightnessAvailable: false
   property string internalMonitor: ""
@@ -143,7 +151,7 @@ Panel {
   function adjustBrightness(delta) {
     if (focusSection !== "brightness") return
     if (!brightnessAvailable) return
-    setBrightness(root.brightnessPercent + delta)
+    setBrightness(root.brightnessLevel + delta)
   }
 
   function activateCursor() {
@@ -201,15 +209,16 @@ Panel {
       flick.contentY = bottom + margin - flick.height
   }
 
-  function brightnessIpc(percent) {
-    var value = Number(percent)
-    root.setBrightness(value)
-    return "got " + root.pendingBrightnessPercent
+  // The level is on the panel's own scale; state reports which (brightnessMax)
+  function brightnessIpc(level) {
+    root.setBrightness(Number(level))
+    return "got " + root.pendingBrightnessLevel
   }
 
   function stateIpc() {
     return JSON.stringify({
-      brightness: root.brightnessPercent,
+      brightness: root.brightnessLevel,
+      brightnessMax: root.brightnessMax,
       brightnessAvailable: root.brightnessAvailable,
       focusedMonitor: root.focusedMonitor,
       scale: root.monitorScale,
@@ -220,7 +229,7 @@ Panel {
   ShellIpc {
     target: "neko.monitor"
 
-    function brightness(percent: string): string { return root.brightnessIpc(percent) }
+    function brightness(level: string): string { return root.brightnessIpc(level) }
     function state(): string { return root.stateIpc() }
     function open() { root.open() }
     function close() { root.close() }
@@ -234,9 +243,9 @@ Panel {
   }
 
   function setBrightness(value) {
-    var percent = Model.clampBrightness(value)
-    root.brightnessPercent = percent
-    root.pendingBrightnessPercent = percent
+    var level = Model.clampBrightness(value, root.brightnessMin, root.brightnessMax)
+    root.brightnessLevel = level
+    root.pendingBrightnessLevel = level
 
     if (setBrightnessProc.running) {
       root.brightnessSetQueued = true
@@ -244,21 +253,31 @@ Panel {
     }
 
     root.brightnessSetQueued = false
-    setBrightnessProc.command = ["neko-brightness-display", "--no-osd", "--monitor", root.focusedMonitor, percent + "%"]
+    setBrightnessProc.command = root.brightnessCurve
+      ? ["neko-brightness-step", "set", String(level), "--no-osd"]
+      : ["neko-brightness-display", "--no-osd", "--monitor", root.focusedMonitor, level + "%"]
     setBrightnessProc.running = true
   }
 
   function previewBrightness(value) {
-    root.brightnessPercent = Model.clampBrightness(value)
+    root.brightnessLevel = Model.clampBrightness(value, root.brightnessMin, root.brightnessMax)
     brightnessDebounce.restart()
   }
 
-  function showBrightnessOsd(percent) {
+  function showBrightnessOsd(level) {
     if (!bar || !bar.shell) return
     bar.shell.summon("neko.osd", JSON.stringify({
       icon: "brightness",
-      value: percent
+      value: level,
+      max: root.brightnessMax,
+      progressText: root.brightnessLabel(level)
     }))
+  }
+
+  // "8.2" on the curve, "40%" elsewhere
+  function brightnessLabel(level) {
+    var whole = Math.round(level)
+    return root.brightnessCurve ? BrightnessModel.tickLabel(whole) : whole + "%"
   }
 
   function normalizeScale(scale) {
@@ -286,8 +305,8 @@ Panel {
   // Playful mood-name for a given brightness percent. Bands intentionally
   // span ~10–20 points so casual tweaks change the label, while small
   // nudges within one band don't.
-  function brightnessName(percent) {
-    return Model.brightnessName(percent)
+  function brightnessName(level) {
+    return Model.brightnessName(level * 100 / root.brightnessMax)
   }
 
   function updateDisplays(displaysJson) {
@@ -396,9 +415,13 @@ Panel {
       waitForEnd: true
       onStreamFinished: {
         var lines = String(text || "").split("\n")
-        var brightness = String(lines[0] || "").trim()
-        root.brightnessAvailable = brightness !== "unavailable" && brightness !== ""
-        root.brightnessPercent = root.brightnessAvailable ? Math.max(0, Math.min(100, parseInt(brightness, 10))) : 0
+        // level/max, or "unavailable"
+        var brightness = String(lines[0] || "").trim().split("/")
+        root.brightnessAvailable = brightness.length === 2
+        if (root.brightnessAvailable) {
+          root.brightnessMax = Number(brightness[1]) || 100
+          root.brightnessLevel = Model.clampBrightness(brightness[0], 0, root.brightnessMax)
+        }
         root.internalMonitor = String(lines[1] || "").trim()
         root.externalMonitor = String(lines[2] || "").trim()
         root.internalEnabled = String(lines[3] || "").trim() !== ""
@@ -414,14 +437,14 @@ Panel {
     id: brightnessDebounce
     interval: 180
     repeat: false
-    onTriggered: root.setBrightness(root.brightnessPercent)
+    onTriggered: root.setBrightness(root.brightnessLevel)
   }
 
   Process {
     id: setBrightnessProc
     stdout: StdioCollector { waitForEnd: true }
     // Do NOT call refresh() after a brightness set completes. The local
-    // brightnessPercent we just wrote is authoritative; re-reading via
+    // brightnessLevel we just wrote is authoritative; re-reading via
     // `neko-brightness-display` races the hardware/driver and can
     // return an empty string, which the parser then coerces to 0 —
     // visible as a "bounce to zero" after h/l keypresses. External
@@ -430,7 +453,7 @@ Panel {
     onRunningChanged: {
       if (running) return
       if (root.brightnessSetQueued) {
-        root.setBrightness(root.pendingBrightnessPercent)
+        root.setBrightness(root.pendingBrightnessLevel)
       }
     }
   }
@@ -482,8 +505,8 @@ Panel {
       var wheel = Util.wheelSteps(root.wheelAccumulator, delta)
       root.wheelAccumulator = wheel.remainder
       if (wheel.steps === 0) return
-      root.setBrightness(root.brightnessPercent + wheel.steps * 5)
-      root.showBrightnessOsd(root.brightnessPercent)
+      root.setBrightness(root.brightnessLevel + wheel.steps * root.brightnessStep)
+      root.showBrightnessOsd(root.brightnessLevel)
     }
   }
 
@@ -504,7 +527,7 @@ Panel {
         if (!root.cursorActive) { root.cursorActive = true; return }
         if (dy !== 0) root.moveCursor(dy)
         else if (dx !== 0) {
-          if (root.focusSection === "brightness") root.adjustBrightness(dx * 5)
+          if (root.focusSection === "brightness") root.adjustBrightness(dx * root.brightnessStep)
           else if (root.focusSection === "textsize") root.adjustTextSize(dx)
           else if (root.focusSection === "scale") root.moveCursorH(dx)
         }
@@ -569,7 +592,7 @@ Panel {
                 textFormat: Text.PlainText
                 text: {
                   if (root.brightnessAvailable) {
-                    return root.brightnessName(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent).toUpperCase()
+                    return root.brightnessName(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessLevel).toUpperCase()
                   }
                   return "FIXED BRIGHTNESS"
                 }
@@ -597,7 +620,7 @@ Panel {
 
             Item {
               width: parent.width
-              implicitHeight: Math.max(brightnessHeader.implicitHeight, brightnessPercent.implicitHeight)
+              implicitHeight: Math.max(brightnessHeader.implicitHeight, brightnessValue.implicitHeight)
 
               PanelSectionHeader {
                 id: brightnessHeader
@@ -609,9 +632,9 @@ Panel {
               }
 
               Text {
-                id: brightnessPercent
+                id: brightnessValue
                 textFormat: Text.PlainText
-                text: Math.round(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent) + "%"
+                text: root.brightnessLabel(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessLevel)
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
@@ -637,10 +660,13 @@ Panel {
                 anchors.fill: parent
                 anchors.leftMargin: Style.space(6)
                 anchors.rightMargin: Style.space(6)
-                minimum: 1
-                maximum: 100
+                minimum: root.brightnessMin
+                maximum: root.brightnessMax
                 step: 1
-                value: root.brightnessPercent
+                // A mark per full step of the curve
+                tickCount: root.brightnessCurve ? BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1 : 0
+                tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
+                value: root.brightnessLevel
                 integer: true
                 onMoved: function(v) { root.previewBrightness(v) }
                 onReleased: function(v) {

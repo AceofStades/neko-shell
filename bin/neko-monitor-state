@@ -6,7 +6,23 @@
 monitors_json=$(hyprctl monitors all -j)
 focused_monitor=$(printf '%s\n' "$monitors_json" | jq -r '[.[] | select(.focused == true)][0].name // ""')
 
-{ neko-brightness-display --monitor "$focused_monitor" 2>/dev/null; echo; } | head -n 1
+# Brightness as level/max: the laptop panel's tick on the brightness curve
+# (out of 64), any other display's percentage
+if [[ $focused_monitor =~ ^(eDP|LVDS|DSI)- ]]; then
+  tick=$(neko-brightness-step get 2>/dev/null)
+  if [[ -n $tick ]]; then
+    echo "$tick/64"
+  else
+    echo unavailable
+  fi
+else
+  brightness=$({ neko-brightness-display --monitor "$focused_monitor" 2>/dev/null; echo; } | head -n 1)
+  if [[ $brightness =~ ^[0-9]+$ ]]; then
+    echo "$brightness/100"
+  else
+    echo unavailable
+  fi
+fi
 
 printf '%s\n' "$monitors_json" | jq -r '
   def internal: test("^(eDP|LVDS|DSI)-");

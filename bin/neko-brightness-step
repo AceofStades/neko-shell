@@ -1,30 +1,47 @@
 #!/bin/bash
 
 # neko:summary=Step screen brightness along a perceptual curve and show it on the OSD
-# neko:args=<up|down|fine-up|fine-down> [--no-osd]
-# neko:examples=neko-brightness-step up|neko-brightness-step fine-down
+# neko:args=<up|down|fine-up|fine-down|set <0-64>|get> [--no-osd]
+# neko:examples=neko-brightness-step up|neko-brightness-step fine-down|neko-brightness-step set 32|neko-brightness-step get
 
 # 16 steps for the brightness keys, each split into 4 fine steps (64 in all),
 # spaced on a gamma 2.5 power curve so every step looks like the same change:
 # small at the dark end, larger near full brightness. Each fine step is at
 # least one backlight unit above the one before, so none of them is a no-op.
 # The shell builds the same curve in shell/services/BrightnessModel.js.
+#
+# `set` moves straight to a tick and `get` prints the current one, so sliders
+# can work on the same 0-64 scale.
 
-direction=$1
+usage() {
+  echo "Usage: neko-brightness-step <up|down|fine-up|fine-down|set <0-64>|get> [--no-osd]" >&2
+  exit 1
+}
+
+action=$1
+shift
+tick=""
+if [[ $action == "set" ]]; then
+  tick=$1
+  shift
+  [[ $tick =~ ^[0-9]+$ ]] || usage
+fi
+
 osd=1
-if [[ $2 == "--no-osd" ]]; then
+if [[ $1 == "--no-osd" ]]; then
   osd=0
 fi
 
-case $direction in
+# How far to move from the current tick; set names its tick instead
+delta=0
+case $action in
   up) delta=4 ;;
   down) delta=-4 ;;
   fine-up) delta=1 ;;
   fine-down) delta=-1 ;;
-  *)
-    echo "Usage: neko-brightness-step <up|down|fine-up|fine-down> [--no-osd]" >&2
-    exit 1
-    ;;
+  set) ;;
+  get) osd=0 ;;
+  *) usage ;;
 esac
 
 # device,class,current,percent,max
@@ -34,7 +51,7 @@ if [[ -z $current || -z $max ]]; then
   exit 1
 fi
 
-read -r step raw < <(awk -v current="$current" -v max="$max" -v delta="$delta" '
+read -r step raw < <(awk -v current="$current" -v max="$max" -v delta="$delta" -v tick="$tick" '
   BEGIN {
     steps = 64; gamma = 2.5; floor_value = 1
     previous = 0
@@ -52,12 +69,17 @@ read -r step raw < <(awk -v current="$current" -v max="$max" -v delta="$delta" '
       if ((curve[i] - current) ^ 2 < (curve[nearest] - current) ^ 2) nearest = i
     }
 
-    target = nearest + delta
+    target = tick != "" ? tick : nearest + delta
     if (target < 0) target = 0
     if (target > steps) target = steps
     print target, curve[target]
   }
 ')
+
+if [[ $action == "get" ]]; then
+  echo "$step"
+  exit 0
+fi
 
 brightnessctl -q set "$raw"
 

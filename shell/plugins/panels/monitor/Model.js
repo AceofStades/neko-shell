@@ -1,7 +1,10 @@
-function clampBrightness(value) {
+// A brightness level, whole and inside min..max (a percentage by default)
+function clampBrightness(value, min, max) {
+  var low = min === undefined ? 1 : min
+  var high = max === undefined ? 100 : max
   var n = Number(value)
-  if (!isFinite(n)) return 1
-  return Math.max(1, Math.min(100, Math.round(n)))
+  if (!isFinite(n)) return low
+  return Math.max(low, Math.min(high, Math.round(n)))
 }
 
 function normalizeScale(scale) {
