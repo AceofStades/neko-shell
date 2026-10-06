@@ -114,14 +114,15 @@ BarWidget {
     Rectangle {
       id: pill
       readonly property real targetWidth: root.islandMode === "notification" ? Style.space(420)
-        : root.islandMode === "osd" ? Math.max(root.restWidth, Style.space(300)) : root.restWidth
-      readonly property real targetHeight: root.islandMode === "notification" ? notificationView.implicitHeight : root.restHeight
+        : root.islandMode === "osd" ? Style.space(150) : root.restWidth
+      readonly property real targetHeight: root.islandMode === "notification" ? notificationView.implicitHeight
+        : root.islandMode === "osd" ? Style.space(66) : root.restHeight
 
       x: Math.round((island.width - width) / 2)
       y: root.restInset
       width: targetWidth
       height: targetHeight
-      radius: Math.min(height / 2, Style.space(22))
+      radius: height / 2
       color: root.islandColor
       opacity: root.islandMode !== "" ? 1 : 0
       clip: true
@@ -134,45 +135,69 @@ BarWidget {
         onHoveredChanged: Island.hovered = hovered
       }
 
-      // Volume, brightness and the rest: a glyph, a meter and the value
-      Row {
+      // Volume, brightness and the rest: a large glyph with its meter below,
+      // brightness as its sixteen steps
+      Column {
         anchors.centerIn: parent
-        spacing: Style.space(12)
+        spacing: Style.space(8)
         opacity: root.islandMode === "osd" ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Style.duration(180) } }
 
+        readonly property real fraction: Island.osd && Island.osd.maxValue > 0 ? Math.max(0, Math.min(1, Island.osd.value / Island.osd.maxValue)) : 0
+        readonly property bool stepped: !!Island.osd && Island.osd.maxValue === 64
+
         Text {
-          anchors.verticalCenter: parent.verticalCenter
+          anchors.horizontalCenter: parent.horizontalCenter
           text: Island.osd ? Island.osd.icon : ""
           color: root.islandText
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Style.bar.iconFont
+          font.pixelSize: Math.round(Style.font.display * 1.15)
         }
+
+        // A continuous meter
         Rectangle {
-          visible: !!Island.osd && Island.osd.hasProgress
-          anchors.verticalCenter: parent.verticalCenter
-          width: Style.space(170)
+          anchors.horizontalCenter: parent.horizontalCenter
+          visible: !!Island.osd && Island.osd.hasProgress && !parent.stepped
+          width: Style.space(104)
           height: Style.space(5)
           radius: height / 2
           color: Qt.rgba(1, 1, 1, 0.18)
 
           Rectangle {
-            readonly property real fraction: Island.osd && Island.osd.maxValue > 0 ? Math.max(0, Math.min(1, Island.osd.value / Island.osd.maxValue)) : 0
             height: parent.height
             radius: height / 2
-            width: fraction > 0 ? Math.max(height, parent.width * fraction) : 0
+            width: parent.parent.fraction > 0 ? Math.max(height, parent.width * parent.parent.fraction) : 0
             color: root.islandText
             Behavior on width { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
           }
         }
-        Text {
-          anchors.verticalCenter: parent.verticalCenter
-          visible: text !== ""
-          text: Island.osd ? Island.osd.message : ""
-          color: root.islandText
-          font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Style.bar.fontSize
+
+        // Brightness: one segment per whole step, the fine steps filling it
+        Row {
+          id: steps
+          anchors.horizontalCenter: parent.horizontalCenter
+          visible: !!Island.osd && Island.osd.hasProgress && parent.stepped
+          spacing: Style.space(2)
+          readonly property real filled: parent.fraction * 16
+
+          Repeater {
+            model: 16
+            Rectangle {
+              required property int index
+              width: Style.space(5)
+              height: Style.space(5)
+              radius: height / 2
+              color: Qt.rgba(1, 1, 1, 0.18)
+
+              Rectangle {
+                height: parent.height
+                radius: height / 2
+                width: parent.width * Math.max(0, Math.min(1, steps.filled - parent.index))
+                color: root.islandText
+              }
+            }
+          }
         }
       }
 
@@ -202,8 +227,8 @@ BarWidget {
         RowLayout {
           anchors.fill: parent
           anchors.margins: Style.space(12)
-          anchors.leftMargin: Style.space(16)
-          anchors.rightMargin: Style.space(18)
+          anchors.leftMargin: Style.space(24)
+          anchors.rightMargin: Style.space(26)
           spacing: Style.space(12)
 
           Item {
@@ -282,19 +307,6 @@ BarWidget {
               maximumLineCount: 2
             }
           }
-        }
-
-        // How long it has left, as a hairline along the bottom
-        Rectangle {
-          visible: Island.lifetime > 0
-          anchors.bottom: parent.bottom
-          anchors.left: parent.left
-          anchors.bottomMargin: Style.space(5)
-          anchors.leftMargin: Style.space(22)
-          height: 2
-          radius: 1
-          width: (parent.width - Style.space(44)) * Island.remaining
-          color: Qt.rgba(1, 1, 1, 0.25)
         }
       }
     }
