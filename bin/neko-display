@@ -144,7 +144,7 @@ json() {
   [[ -f $trial ]] && until=$(jq '.until' "$trial")
   hyprctl monitors all -j | jq -c --argjson saved "$(saved)" --argjson vrr "${vrr:-0}" --argjson until "${until:-0}" "$mirror_names"'
     | [.[] | {
-      name, description, focused,
+      name, description, make, model, focused,
       enabled: (.disabled | not),
       width, height, refreshRate, x, y, scale, transform,
       modes: .availableModes,
