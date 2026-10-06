@@ -14,10 +14,13 @@ end
 -- Blur what shows through the translucent bar, menus and overlays.
 -- ignore_alpha keeps nearly clear pixels (shadows, rounded corners) sharp.
 hl.layer_rule({
-  match = { namespace = "^neko-(bar|menu|notifications|osd|reminders|clipboard|emojis|image-selector|keyboard-panel|network-qr|polkit|settings)$" },
+  match = { namespace = "^neko-(menu|notifications|osd|reminders|clipboard|emojis|image-selector|keyboard-panel|network-qr|polkit|settings)$" },
   blur = true,
   ignore_alpha = 0.2,
 })
+-- The bar blurs behind anything but clear, so its glass widgets can sit on
+-- plain blur with next to no tint
+hl.layer_rule({ match = { namespace = "^neko-bar$" }, blur = true, ignore_alpha = 0.01 })
 
 -- The bar's panels (audio, network, clock...) are popups of the bar surface
 hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } })

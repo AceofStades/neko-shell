@@ -54,15 +54,12 @@ Item {
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
-  // Glass: the bar itself is clear, and each widget sits on frosted glass,
-  // a neutral tint the compositor blurs behind (dark under light text, light
-  // under dark text), so the widgets take their color from what's under them
-  // rather than from the theme. The tint stays above the 0.2 alpha below
-  // which neko.lua's layer rule leaves pixels unblurred.
+  // Glass: the bar itself is clear, and each widget sits on plain blur, so
+  // the widgets take their color from what's under them rather than from
+  // the theme. The capsule is all but clear: just enough to clear the 0.01
+  // alpha below which neko.lua's layer rule leaves the bar's pixels unblurred.
   property bool glass: false
-  readonly property bool lightText: themeForeground.hslLightness > 0.5
-  readonly property color glassCapsule: lightText ? Qt.rgba(0.06, 0.06, 0.08, 0.32) : Qt.rgba(1, 1, 1, 0.42)
-  readonly property color glassEdge: lightText ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(1, 1, 1, 0.5)
+  readonly property color glassCapsule: Qt.rgba(0.5, 0.5, 0.5, 0.03)
   property bool centerSectionHovered: false
   // One bar surface exists per monitor and each reports into this count, so a
   // pointer crossing from one monitor's bar to another's stays counted however
@@ -1920,21 +1917,6 @@ Item {
       anchors.rightMargin: root.vertical ? inset : 2 + slot.gap / 2
       radius: Math.min(width, height) / 2
       color: root.glass ? root.glassCapsule : NekoColor.bar.capsule
-      border.width: root.glass ? 1 : 0
-      border.color: root.glassEdge
-
-      // Frost: light catching the top of the glass, fading out downward
-      Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        visible: root.glass
-        radius: height / 2
-        gradient: Gradient {
-          orientation: root.vertical ? Gradient.Horizontal : Gradient.Vertical
-          GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, root.lightText ? 0.12 : 0.25) }
-          GradientStop { position: 0.6; color: Qt.rgba(1, 1, 1, 0) }
-        }
-      }
     }
 
     BorderSurface {
