@@ -5,6 +5,7 @@ import Quickshell.Io
 import Quickshell.Bluetooth
 import Quickshell.Networking
 import Quickshell.Services.Pipewire
+import Quickshell.Widgets
 import qs.Commons
 import qs.Ui
 import "../panels/monitor/Model.js" as MonitorModel
@@ -13,7 +14,8 @@ import "../../services/BrightnessModel.js" as BrightnessModel
 
 // The cat button and its control center: quick toggles, volume and
 // brightness, weather and wallpaper in one popup. Left click opens it,
-// right click opens the neko menu.
+// right click opens the neko menu. The wallpaper tile opens a page of its own
+// with the wallpaper settings; Escape or the back button returns.
 Panel {
   id: root
   moduleName: "neko.control-center"
@@ -37,6 +39,12 @@ Panel {
   property bool dnd: false
   property bool stayAwake: false
   property string rotation: ""
+  property string wallpaper: ""
+  property string colors: ""
+  // "" for the main page, "wallpaper" for the wallpaper settings
+  property string page: ""
+  // The wallpaper's file name, readable: "a_red_alien.png" reads "a red alien"
+  readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
   property int reminders: 0
   property bool recorderInstalled: false
   property bool recording: false
@@ -58,12 +66,16 @@ Panel {
   readonly property var sink: Pipewire.defaultAudioSink
   readonly property var adapter: Bluetooth.defaultAdapter
 
-  onOpenedChanged: if (opened) refresh()
+  onOpenedChanged: if (opened) refresh(); else page = ""
 
   function refresh() {
     stateProc.running = false
     stateProc.running = true
     if (!weatherProc.running) weatherProc.running = true
+  }
+
+  function rotationLabel(minutes) {
+    return minutes === "60" ? "hour" : minutes + " min"
   }
 
   // Run a command, then read the state again
@@ -88,6 +100,8 @@ Panel {
       "echo dnd=$(neko-shell notifications isDnd 2>/dev/null)",
       "echo awake=$(neko-toggle-idle status | jq -r .enabled)",
       "echo rotation=$(cat ~/.config/neko/wallpaper-rotation 2>/dev/null)",
+      "echo wallpaper=$(readlink -f ~/.local/state/neko/current/background)",
+      "echo colors=$(neko-settings get colors)",
       "echo reminders=$(neko-reminder show --json 2>/dev/null | jq -r .count)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
       "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
@@ -108,6 +122,8 @@ Panel {
           else if (key === "dnd") root.dnd = value === "on"
           else if (key === "awake") root.stayAwake = value === "true"
           else if (key === "rotation") root.rotation = value
+          else if (key === "wallpaper") root.wallpaper = value
+          else if (key === "colors") root.colors = value
           else if (key === "reminders") root.reminders = Number(value) || 0
           else if (key === "recorder") root.recorderInstalled = value === "yes"
           else if (key === "recording") root.recording = value === "yes"
@@ -168,12 +184,12 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(column.implicitHeight)
+    contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight : column.implicitHeight)
 
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      onCloseRequested: root.close()
+      onCloseRequested: if (root.page) root.page = ""; else root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
       ColumnLayout {
@@ -181,6 +197,7 @@ Panel {
         anchors.left: parent.left
         anchors.right: parent.right
         spacing: Style.space(12)
+        visible: root.page === ""
 
         // Header: who and how long, with settings, lock and power
         RowLayout {
@@ -402,12 +419,13 @@ Panel {
               : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
           }
           QuickTile {
-            icon: "󰁪"
-            label: "Wallpaper rotation"
+            icon: "󰸉"
+            label: "Wallpaper"
             Layout.columnSpan: 2
-            subtitle: root.rotation ? "Every " + root.rotation + " min" : "Off"
+            subtitle: root.rotation ? "New one every " + root.rotationLabel(root.rotation) : root.wallpaperName
             active: root.rotation !== ""
-            onClicked: root.act(root.rotation ? "neko-wallpaper auto off" : "neko-wallpaper auto 30")
+            opensPage: true
+            onClicked: root.page = "wallpaper"
           }
         }
 
@@ -488,15 +506,67 @@ Panel {
             }
           }
         }
+      }
 
-        // Wallpaper
+      // The wallpaper page: what's up now, changing it, rotation and colors
+      ColumnLayout {
+        id: wallpaperPage
+        anchors.left: parent.left
+        anchors.right: parent.right
+        spacing: Style.space(12)
+        visible: root.page === "wallpaper"
+
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          PanelActionButton {
+            iconText: "󰅁"
+            tooltipText: "Back"
+            foreground: root.foreground
+            onClicked: root.page = ""
+          }
+          Text {
+            Layout.fillWidth: true
+            text: "Wallpaper"
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.title
+            font.weight: Font.DemiBold
+          }
+        }
+
+        ClippingRectangle {
+          Layout.fillWidth: true
+          implicitHeight: Math.round(width * 9 / 16)
+          radius: Style.space(14)
+          color: Util.alpha(root.foreground, 0.06)
+
+          Image {
+            anchors.fill: parent
+            // Only decoded while the page shows, at about twice its size
+            source: root.page === "wallpaper" && root.wallpaper ? "file://" + root.wallpaper : ""
+            sourceSize.width: Style.space(760)
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+          }
+        }
+        Text {
+          Layout.fillWidth: true
+          Layout.topMargin: -Style.space(4)
+          text: root.wallpaperName
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          elide: Text.ElideMiddle
+        }
+
         RowLayout {
           Layout.fillWidth: true
           spacing: Style.space(8)
           Button {
             Layout.fillWidth: true
             iconText: "󰋩"
-            text: "Pick wallpaper"
+            text: "Pick"
             bordered: true
             onClicked: root.runAndClose("neko-wallpaper pick")
           }
@@ -508,6 +578,34 @@ Panel {
             onClicked: root.act("neko-wallpaper random")
           }
         }
+
+        Text {
+          text: "Rotate"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+        ButtonGroup {
+          Layout.fillWidth: true
+          fontSize: Style.font.bodySmall
+          options: [ { value: "off", label: "Off" }, { value: "15", label: "15 min" }, { value: "30", label: "30 min" }, { value: "60", label: "1 hour" } ]
+          value: root.rotation || "off"
+          onChanged: function(v) { root.act("neko-wallpaper auto " + v) }
+        }
+
+        Text {
+          text: "Colors"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+        }
+        ButtonGroup {
+          Layout.fillWidth: true
+          fontSize: Style.font.bodySmall
+          options: [ { value: "material", label: "From wallpaper" }, { value: "neko", label: "Neko" } ]
+          value: root.colors
+          onChanged: function(v) { root.act("neko-settings set colors " + v) }
+        }
       }
     }
   }
@@ -518,6 +616,8 @@ Panel {
     property string label: ""
     property string subtitle: ""
     property bool active: false
+    // Opens a page of its own rather than toggling, marked with a chevron
+    property bool opensPage: false
     signal clicked()
 
     Layout.fillWidth: true
@@ -560,6 +660,13 @@ Panel {
           font.pixelSize: Style.font.caption
           elide: Text.ElideRight
         }
+      }
+      Text {
+        visible: tile.opensPage
+        text: "󰅂"
+        color: root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.iconLarge
       }
     }
 
