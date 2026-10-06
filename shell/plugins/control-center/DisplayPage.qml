@@ -693,13 +693,29 @@ ColumnLayout {
       onChanged: function(v) { root.change("scale", v) }
     }
 
+    // Hyprland's transform: 0-3 turn by 90 degrees each, 4-7 the same
+    // reversed. Landscape or portrait, flip turns it the other way up.
     Caption { text: "Rotation" }
-    ButtonGroup {
+    RowLayout {
+      id: orientation
+      readonly property int turn: Number(root.current("transform")) || 0
+      readonly property int reversed: turn >= 4 ? 4 : 0
+      readonly property bool flipped: turn % 4 >= 2
+
       Layout.fillWidth: true
-      fontSize: Style.font.bodySmall
-      options: [ { value: "0", label: "Normal" }, { value: "1", label: "90°" }, { value: "2", label: "180°" }, { value: "3", label: "270°" } ]
-      value: String(Number(root.current("transform")) % 4)
-      onChanged: function(v) { root.setRisky("transform", Number(v) + (Number(root.current("transform")) >= 4 ? 4 : 0)) }
+      spacing: Style.space(10)
+      ButtonGroup {
+        Layout.fillWidth: true
+        fontSize: Style.font.bodySmall
+        options: [ { value: "0", label: "Landscape" }, { value: "1", label: "Portrait" } ]
+        value: String(orientation.turn % 2)
+        onChanged: function(v) { root.setRisky("transform", Number(v) + (orientation.flipped ? 2 : 0) + orientation.reversed) }
+      }
+      Caption { text: "Flip" }
+      ToggleSwitch {
+        checked: orientation.flipped
+        onToggled: root.setRisky("transform", (orientation.turn % 4 + 2) % 4 + orientation.reversed)
+      }
     }
 
     // Overrides for what the display reports about itself, and the rest
@@ -792,7 +808,7 @@ ColumnLayout {
 
       RowLayout {
         Layout.fillWidth: true
-        Caption { Layout.fillWidth: true; text: "Flip the picture, as for a projector" }
+        Caption { Layout.fillWidth: true; text: "Reverse the picture, as for a projector" }
         ToggleSwitch {
           checked: Number(root.current("transform")) >= 4
           onToggled: root.setRisky("transform", (Number(root.current("transform")) + 4) % 8)
