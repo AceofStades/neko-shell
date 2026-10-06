@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# neko:summary=Turn the laptop screen off while the lid is closed on an external monitor, and back on when it opens
+# neko:args=apply
+
+# Suspend stays logind's job: with the default HandleLidSwitch it suspends on
+# lid close unless an external display is connected (docked), and suspends
+# when the last one is unplugged with the lid shut. This only decides whether
+# the laptop panel should be on, from the lid and the monitors right now, so
+# running it again is always safe. Turning the panel back on reloads the
+# Hyprland config, which re-applies your own rule for it (mode, position,
+# scale) instead of guessing one.
+
+if [[ $1 != "apply" ]]; then
+  echo "Usage: neko-lid apply" >&2
+  exit 1
+fi
+
+monitors=$(hyprctl monitors all -j) || exit 0
+internal=$(jq -r '[.[] | select(.name | test("^(eDP|LVDS|DSI)"))][0].name // empty' <<< "$monitors")
+
+# The name goes into Lua below, so only ever a plain connector name
+if [[ -z $internal || ! $internal =~ ^[A-Za-z0-9._-]+$ ]]; then
+  exit 0
+fi
+
+lid_closed=false
+if grep -qis closed /proc/acpi/button/lid/*/state; then
+  lid_closed=true
+fi
+
+externals=$(jq --arg internal "$internal" '[.[] | select(.name != $internal and .disabled != true)] | length' <<< "$monitors")
+internal_disabled=$(jq -r --arg internal "$internal" '.[] | select(.name == $internal) | .disabled' <<< "$monitors")
+
+if [[ $lid_closed == true ]] && (( externals > 0 )); then
+  if [[ $internal_disabled != "true" ]]; then
+    hyprctl eval "hl.monitor({ output = \"$internal\", disabled = true })" > /dev/null
+  fi
+elif [[ $lid_closed == false && $internal_disabled == "true" ]]; then
+  hyprctl reload > /dev/null
+fi
