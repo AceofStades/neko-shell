@@ -13,6 +13,9 @@
       "left": [
         {
           "id": "neko.system-monitor"
+        },
+        {
+          "id": "neko.active-window"
         }
       ],
       "center": [
