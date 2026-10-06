@@ -28,14 +28,33 @@ print_idle_state() {
   fi
 }
 
+# A systemd idle inhibitor alongside the flag, so idle daemons outside the
+# shell (hypridle honors systemd-inhibit) stay awake too
+INHIBITOR_PID="${XDG_RUNTIME_DIR:-/tmp}/neko-stay-awake.pid"
+
+hold_inhibitor() {
+  release_inhibitor
+  setsid -f systemd-inhibit --what=idle --who=neko --why="Stay awake" sleep infinity > /dev/null 2>&1
+  pgrep -n -f '^systemd-inhibit --what=idle --who=neko' > "$INHIBITOR_PID"
+}
+
+release_inhibitor() {
+  if [[ -f $INHIBITOR_PID ]]; then
+    kill "$(cat "$INHIBITOR_PID")" 2> /dev/null
+    rm -f "$INHIBITOR_PID"
+  fi
+}
+
 apply_state() {
   case "$1" in
     stay-awake)
       mkdir -p "$STATE_DIR"
       touch "$STATE_FILE"
+      hold_inhibitor
       ;;
     allow-idle)
       rm -f "$STATE_FILE"
+      release_inhibitor
       ;;
   esac
 }
