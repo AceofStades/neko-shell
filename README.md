@@ -19,7 +19,7 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Panels: Wi-Fi QR code, speed test, AI agent usage, Tailscale
 - [x] Agents panel: launch and account actions work (`neko-default-agent`, Settings > Default agent)
 - [x] Self-documenting `neko` commands and hooks (`neko`, `~/.config/neko/hooks/`)
-- [ ] A Claude Code skill describing the setup
+- [x] A Claude Code skill describing the setup (`skills/neko`, linked into `~/.claude/skills`)
 
 ## Running
 
