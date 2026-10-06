@@ -9,6 +9,7 @@ import qs.Commons
 import qs.Ui
 import "../panels/monitor/Model.js" as MonitorModel
 import "../panels/weather/Model.js" as WeatherModel
+import "../../services/BrightnessModel.js" as BrightnessModel
 
 // The cat button and its control center: quick toggles, volume and
 // brightness, weather and wallpaper in one popup. Left click opens it,
@@ -39,7 +40,9 @@ Panel {
   property int reminders: 0
   property bool recorderInstalled: false
   property bool recording: false
-  property real brightness: 0
+  // Brightness as a tick on the curve (0-64) and the backlight's raw maximum
+  property int brightnessTick: 0
+  property int brightnessMax: 0
   property var displays: []
 
   readonly property var scalePresets: ["1", "1.25", "1.5", "1.6", "2", "3", "4"]
@@ -88,7 +91,7 @@ Panel {
       "echo reminders=$(neko-reminder show --json 2>/dev/null | jq -r .count)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
       "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
-      "echo brightness=$(brightnessctl -m | awk -F, '{print $3/$5}')",
+      "echo brightness=$(brightnessctl -m | awk -F, '{print $3","$5}')",
       "echo displays=$(hyprctl monitors all -j | jq -c '[.[] | {name, width, height, scale, focused, disabled}]')"
     ].join("; ")]
     stdout: StdioCollector {
@@ -108,7 +111,11 @@ Panel {
           else if (key === "reminders") root.reminders = Number(value) || 0
           else if (key === "recorder") root.recorderInstalled = value === "yes"
           else if (key === "recording") root.recording = value === "yes"
-          else if (key === "brightness" && !brightnessSlider.dragging) root.brightness = Number(value) || 0
+          else if (key === "brightness" && !brightnessSlider.dragging) {
+            var reading = value.split(",")
+            root.brightnessMax = Number(reading[1]) || 0
+            if (root.brightnessMax > 0) root.brightnessTick = BrightnessModel.tickForRaw(Number(reading[0]) || 0, root.brightnessMax)
+          }
           else if (key === "displays") { try { root.displays = JSON.parse(value) } catch (e) {} }
         }
       }
@@ -138,7 +145,7 @@ Panel {
   Timer {
     id: brightnessDebounce
     interval: 60
-    onTriggered: Quickshell.execDetached(["brightnessctl", "-q", "set", Math.max(1, Math.round(root.brightness * 100)) + "%"])
+    onTriggered: if (root.brightnessMax > 0) Quickshell.execDetached(["brightnessctl", "-q", "set", String(BrightnessModel.rawForTick(root.brightnessTick, root.brightnessMax))])
   }
 
   BarIconButton {
@@ -407,6 +414,7 @@ Panel {
         // Volume and brightness
         SliderRow {
           icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"
+          label: root.sink && root.sink.audio ? Math.round(root.sink.audio.volume * 100) + "%" : ""
           visible: !!(root.sink && root.sink.audio)
           PanelSlider {
             Layout.fillWidth: true
@@ -415,15 +423,23 @@ Panel {
             onMoved: function(v) { if (root.sink && root.sink.audio) root.sink.audio.volume = v }
           }
         }
+        // Brightness moves by ticks on the curve: a mark per full step, the
+        // wheel and drag landing on the fine steps between them
         SliderRow {
           icon: "󰃟"
+          label: BrightnessModel.tickLabel(root.brightnessTick)
+          visible: root.brightnessMax > 0
           PanelSlider {
             id: brightnessSlider
             Layout.fillWidth: true
             bar: root.bar
-            minimum: 0.01
-            value: root.brightness
-            onMoved: function(v) { root.brightness = v; brightnessDebounce.restart() }
+            maximum: BrightnessModel.ticks
+            integer: true
+            step: 1
+            tickCount: BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1
+            tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
+            value: root.brightnessTick
+            onMoved: function(v) { root.brightnessTick = v; brightnessDebounce.restart() }
           }
         }
 
@@ -558,6 +574,7 @@ Panel {
 
   component SliderRow: RowLayout {
     property string icon: ""
+    property string label: ""
     default property alias slider: sliderSlot.data
 
     Layout.fillWidth: true
@@ -573,6 +590,14 @@ Panel {
     RowLayout {
       id: sliderSlot
       Layout.fillWidth: true
+    }
+    Text {
+      text: parent.label
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      horizontalAlignment: Text.AlignRight
+      Layout.preferredWidth: Style.space(32)
     }
   }
 }

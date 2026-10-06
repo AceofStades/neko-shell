@@ -9,9 +9,9 @@ import "BrightnessModel.js" as BrightnessModel
 // panel they step the backlight here: one brightnessctl write and the OSD in
 // process, instead of neko-brightness-display resolving the monitor and
 // device, reading, writing and reading back, then an IPC client for the OSD.
-// They step, clamp and read back the way that script does, so either path
-// lands on the same level and OSD. External and Apple displays go through the
-// script, which drives them over DDC or their own helper.
+// They move a full step along the brightness curve, like neko-brightness-step.
+// External and Apple displays go through the script, which drives them over
+// DDC or their own helper.
 Item {
   id: root
 
@@ -36,9 +36,9 @@ Item {
 
     var max = readNumber(maxFile)
     if (!(max > 0)) return false
-    var current = Math.round(100 * readNumber(brightnessFile) / max)
+    var tick = BrightnessModel.brightnessKeyTarget(action, readNumber(brightnessFile), max, false)
 
-    setProc.command = ["brightnessctl", "-q", "-d", device, "set", BrightnessModel.brightnessKeyTarget(action, current) + "%"]
+    setProc.command = ["brightnessctl", "-q", "-d", device, "set", String(BrightnessModel.rawForTick(tick, max))]
     setProc.running = true
     return true
   }
@@ -56,13 +56,13 @@ Item {
   function showOsd() {
     var max = readNumber(maxFile)
     if (!host || !(max > 0)) return
-    var percent = Math.round(100 * readNumber(brightnessFile) / max)
+    var tick = BrightnessModel.tickForRaw(readNumber(brightnessFile), max)
     host.summon("neko.osd", JSON.stringify({
       icon: "brightness",
       message: "",
-      value: String(percent),
-      progressText: percent + "%",
-      max: "100",
+      value: String(tick),
+      progressText: BrightnessModel.tickLabel(tick),
+      max: String(BrightnessModel.ticks),
       duration: ""
     }))
   }

@@ -85,34 +85,18 @@ if use_apple_display; then
 elif use_ddc_display; then
   brightness="$(neko-brightness-display-ddc "$monitor" "$step")" || exit 1
   (( no_osd )) || neko-osd -i brightness -p "$brightness"
+elif [[ $step == "+5%" || $step == "5%-" ]]; then
+  # The brightness keys move along the perceptual curve
+  direction=down
+  [[ $step == "+5%" ]] && direction=up
+  if (( no_osd )); then
+    neko-brightness-step "$direction" --no-osd
+  else
+    neko-brightness-step "$direction"
+  fi
 else
   # Current device highlighted
   device="$(neko-hw-display)" || exit 1
-
-  # Current brightness percentage
-  current=$(backlight_brightness "$device") || exit 1
-
-  # Apply non-uniform step size: 1% steps if at or below 5%, otherwise set an
-  # absolute target percentage to avoid raw backlight rounding causing uneven OSD steps.
-  if [[ $step == "+5%" ]]; then
-    if (( current < 5 )); then
-      (( target = current + 1 ))
-    else
-      (( target = current + 5 ))
-    fi
-
-    (( target > 100 )) && target=100
-    step="$target%"
-  elif [[ $step == "5%-" ]]; then
-    if (( current <= 5 )); then
-      (( target = current - 1 ))
-    else
-      (( target = current - 5 ))
-    fi
-
-    (( target < 1 )) && target=1
-    step="$target%"
-  fi
 
   # Set brightness of the display device.
   brightnessctl -d "$device" set "$step" >/dev/null

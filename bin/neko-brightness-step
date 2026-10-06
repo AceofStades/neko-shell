@@ -8,6 +8,7 @@
 # spaced on a gamma 2.5 power curve so every step looks like the same change:
 # small at the dark end, larger near full brightness. Each fine step is at
 # least one backlight unit above the one before, so none of them is a no-op.
+# The shell builds the same curve in shell/services/BrightnessModel.js.
 
 direction=$1
 osd=1
@@ -60,6 +61,9 @@ read -r step raw < <(awk -v current="$current" -v max="$max" -v delta="$delta" '
 
 brightnessctl -q set "$raw"
 
+# The OSD shows the tick: "8" on a full step, "8.2" two fine steps past it
 if (( osd )); then
-  neko-osd -i brightness -p "$(( (step * 100 + 32) / 64 ))"
+  label=$(( step / 4 ))
+  (( step % 4 )) && label+=".$(( step % 4 ))"
+  neko-osd -i brightness -p "$step" --max 64 --label "$label"
 fi
