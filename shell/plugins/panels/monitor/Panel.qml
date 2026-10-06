@@ -34,14 +34,14 @@ Panel {
   //   "brightness" - single slider row, selectedIndex = -1 sentinel
   //                  (mirrors Audio's slider rows). Only present if a
   //                  controllable backlight was detected.
-  //   "scale"      - 6 Button scale presets; treated as a single
+  //   "scale"      - 7 Button scale presets; treated as a single
   //                  horizontal row from j/k's perspective. h/l moves
   //                  between presets, identical to bluetooth's header.
   //   "monitors"   - vertical display row list for enabling/disabling displays;
   //                  j/k walks each row.
   // Mouse hover on a target updates root state via the components' `hovered`
   // signal so keyboard cursor and pointer share one highlight.
-  readonly property var scalePresets: ["1", "1.25", "1.6", "2", "3", "4"]
+  readonly property var scalePresets: ["1", "1.25", "1.5", "1.6", "2", "3", "4"]
   readonly property var scaleValues: {
     for (var i = 0; i < displays.length; i++) {
       var display = displays[i]
