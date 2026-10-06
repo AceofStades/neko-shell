@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.system-monitor",
+  "name": "System monitor",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "CPU use, CPU temperature and memory as small gauges",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "SystemMonitor.qml"
+  },
+  "barWidget": {
+    "displayName": "System monitor",
+    "description": "CPU use, CPU temperature and memory as small gauges",
+    "category": "System",
+    "allowMultiple": false
+  }
+}

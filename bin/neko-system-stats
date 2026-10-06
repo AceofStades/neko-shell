@@ -2,7 +2,7 @@
 
 # neko:summary=Print CPU and memory stats for the shell
 # neko:group=system
-# neko:args=[--bar-widget]
+# neko:args=[--bar-widget|--cpu-temperature-file]
 
 bar_widget_stats() {
   awk '
@@ -25,6 +25,26 @@ bar_widget_stats() {
   awk '{ print "load\t" $1 }' /proc/loadavg
 }
 
+# The file with the CPU's temperature in millidegrees: the package sensor
+# (Intel coretemp, AMD k10temp or zenpower), else the package thermal zone,
+# else the first zone. hwmon numbers change between boots, so look it up.
+cpu_temperature_file() {
+  local hwmon zone
+  for hwmon in /sys/class/hwmon/hwmon*; do
+    if [[ $(< "$hwmon/name") =~ ^(coretemp|k10temp|zenpower)$ && -r $hwmon/temp1_input ]]; then
+      echo "$hwmon/temp1_input"
+      return
+    fi
+  done
+  for zone in /sys/class/thermal/thermal_zone*; do
+    if [[ $(< "$zone/type") == "x86_pkg_temp" ]]; then
+      echo "$zone/temp"
+      return
+    fi
+  done
+  [[ -r /sys/class/thermal/thermal_zone0/temp ]] && echo /sys/class/thermal/thermal_zone0/temp
+}
+
 case "${1:-}" in
   "")
     ;;
@@ -32,8 +52,12 @@ case "${1:-}" in
     bar_widget_stats
     exit
     ;;
+  --cpu-temperature-file)
+    cpu_temperature_file
+    exit
+    ;;
   *)
-    echo "Usage: neko-system-stats [--bar-widget]" >&2
+    echo "Usage: neko-system-stats [--bar-widget|--cpu-temperature-file]" >&2
     exit 1
     ;;
 esac
