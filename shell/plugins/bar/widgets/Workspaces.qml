@@ -5,16 +5,13 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// Workspaces 1 to 10, always all ten, written in kanji (一 to 十). While
-// Super is held each one shows the number key that reaches it, and its kanji
-// steps aside to the top right corner. The focused one sits on an accent pill;
-// empty ones are dimmed.
+// Workspaces 1 to 10, always all ten, written in kanji (一 to 十). The
+// focused one sits on an accent pill; empty ones are dimmed.
 BarWidget {
   id: root
   moduleName: "neko.workspaces"
 
   readonly property var kanji: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
-  readonly property bool showNumbers: SuperKey.held
   readonly property color accent: NekoColor.accent
   readonly property real cellSize: root.vertical ? root.barSize : Style.space(24)
 
@@ -90,39 +87,14 @@ BarWidget {
           Behavior on opacity { NumberAnimation { duration: 140 } }
         }
 
-        // The kanji: centered, or small in the top right corner while the
-        // number takes its place
         Text {
           anchors.centerIn: parent
-          anchors.horizontalCenterOffset: root.showNumbers ? cell.width * 0.3 : 0
-          anchors.verticalCenterOffset: root.showNumbers ? -cell.height * 0.22 : 0
-          scale: root.showNumbers ? 0.55 : 1
-          opacity: cell.shown * (root.showNumbers ? 0.8 : 1)
+          opacity: cell.shown
           text: root.kanji[cell.index]
           color: cell.focused ? root.accent : cell.foreground
           font.family: root.kanjiFamily || cell.fontFamily
           font.pixelSize: Style.font.body
           font.weight: cell.focused ? Font.Bold : Font.Normal
-
-          Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-          Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-          Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-          Behavior on opacity { NumberAnimation { duration: 160 } }
-        }
-
-        // The key that reaches it: 1 to 9, and 0 for the tenth
-        Text {
-          anchors.centerIn: parent
-          scale: root.showNumbers ? 1 : 0.6
-          opacity: root.showNumbers ? cell.shown : 0
-          text: cell.number === 10 ? "0" : String(cell.number)
-          color: cell.focused ? root.accent : cell.foreground
-          font.family: cell.fontFamily
-          font.pixelSize: Style.font.body
-          font.weight: Font.Bold
-
-          Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
-          Behavior on opacity { NumberAnimation { duration: 160 } }
         }
       }
     }

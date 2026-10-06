@@ -4,5 +4,4 @@ singleton NekoColor 1.0 NekoColor.qml
 singleton IpcRegistry 1.0 IpcRegistry.qml
 singleton Style 1.0 Style.qml
 singleton Util 1.0 Util.qml
-singleton SuperKey 1.0 SuperKey.qml
 ShellIpc 1.0 ShellIpc.qml

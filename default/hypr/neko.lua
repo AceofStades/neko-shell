@@ -90,14 +90,6 @@ if flag then
   hl.bind("SUPER + SLASH", hl.dsp.exec_cmd(run .. "neko-menu-keybindings"), { description = "Keybindings cheat sheet" })
   hl.bind("SUPER + W", hl.dsp.exec_cmd(run .. "neko-wallpaper pick"), { description = "Pick a wallpaper" })
 
-  -- Super held down: the workspaces show their numbers. Both binds leave the
-  -- key to everything else (a tap still reaches your own Super binds), and
-  -- ignore the modifiers, so the release counts after a combination too.
-  for _, super in ipairs({ "SUPER_L", "SUPER_R" }) do
-    hl.bind(super, hl.dsp.global("neko:super"), { ignore_mods = true, non_consuming = true })
-    hl.bind(super, hl.dsp.global("neko:super-released"), { release = true, ignore_mods = true, non_consuming = true })
-  end
-
   -- Lid: with an external monitor the laptop screen goes off instead of the
   -- machine suspending; without one, logind's default suspend still applies.
   -- Re-checked on every config load so a reload while docked keeps it off.

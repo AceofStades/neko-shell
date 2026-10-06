@@ -4,7 +4,7 @@
   "name": "Workspaces",
   "version": "1.0.0",
   "author": "Neko",
-  "description": "Workspaces 1 to 10 in kanji, numbered while Super is held",
+  "description": "Workspaces 1 to 10 in kanji",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "Workspaces",
-    "description": "Workspaces 1 to 10 in kanji, numbered while Super is held",
+    "description": "Workspaces 1 to 10 in kanji",
     "category": "Compositor",
     "allowMultiple": false
   }
