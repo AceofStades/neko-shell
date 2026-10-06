@@ -348,10 +348,13 @@ QtObject {
   readonly property QtObject bar: QtObject {
     readonly property int sizeHorizontal: root.barToken("size-horizontal", 26)
     readonly property int sizeVertical:   root.barToken("size-vertical",   28)
-    readonly property int iconSlot:       root.barToken("icon-slot",       27)
+    // How much room each widget gets around its content, and the gap between widgets
+    readonly property real paddingScale:  Number(root.barOverrides["padding-scale"]) > 0 ? Number(root.barOverrides["padding-scale"]) : 1
+    readonly property int widgetGap:      root.barFloatToken("widget-gap")
+    readonly property int iconSlot:       Math.round(root.barToken("icon-slot",       27) * paddingScale)
     readonly property int iconCanvas:     root.barToken("icon-canvas",     16)
     readonly property int iconFont:       root.barToken("icon-font",       13)
-    readonly property int statusSlot:     root.barToken("status-slot",     21)
+    readonly property int statusSlot:     Math.round(root.barToken("status-slot",     21) * paddingScale)
     readonly property int floatMargin:    root.barFloatToken("float-margin")
     readonly property int floatRadius:    root.barFloatToken("float-radius")
   }
@@ -424,9 +427,13 @@ QtObject {
       } else if (section === "bar") {
         if (key === "scale-with-font") {
           nextBarScaleWithFont = boolToken(raw, nextBarScaleWithFont)
-        } else if (key === "size-horizontal" || key === "size-vertical" || key === "float-margin" || key === "float-radius") {
+        } else if (key === "size-horizontal" || key === "size-vertical" || key === "float-margin" || key === "float-radius"
+                   || key === "icon-slot" || key === "status-slot" || key === "widget-gap") {
           var b = parseInt(raw, 10)
           if (isFinite(b)) barOut[key] = b
+        } else if (key === "padding-scale") {
+          var f = parseFloat(raw)
+          if (isFinite(f) && f > 0) barOut[key] = f
         }
       } else if (section === "spacing") {
         if (key === "scale-with-font") {

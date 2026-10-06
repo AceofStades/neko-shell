@@ -1878,8 +1878,11 @@ Item {
       if (hint !== undefined && hint !== null && hint > 0) return Math.round(hint)
       return Math.max(Style.space(10), Math.round((root.vertical ? slot.height : slot.width) * 0.55))
     }
-    implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth) : 0
-    implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight : 0
+    // Widgets that take space get the theme's gap added to their slot; the
+    // capsule is inset by half of it, so the gap shows between capsules
+    readonly property int gap: activeItem && activeItem.visible && (root.vertical ? activeItem.implicitHeight : activeItem.implicitWidth) > 0 ? Style.bar.widgetGap : 0
+    implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth + gap) : 0
+    implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight + (root.vertical ? gap : 0) : 0
     width: implicitWidth
     height: implicitHeight
     z: modulePointer.dragging ? 100 : 0
@@ -1898,11 +1901,11 @@ Item {
 
       visible: NekoColor.bar.capsule.a > 0 && slot.width > 0 && !root.transparent
       anchors.fill: parent
-      anchors.topMargin: root.vertical ? 2 : inset
-      anchors.bottomMargin: root.vertical ? 2 : inset
+      anchors.topMargin: root.vertical ? 2 + slot.gap / 2 : inset
+      anchors.bottomMargin: root.vertical ? 2 + slot.gap / 2 : inset
       // A small gap between neighbouring capsules
-      anchors.leftMargin: root.vertical ? inset : 2
-      anchors.rightMargin: root.vertical ? inset : 2
+      anchors.leftMargin: root.vertical ? inset : 2 + slot.gap / 2
+      anchors.rightMargin: root.vertical ? inset : 2 + slot.gap / 2
       radius: Math.min(width, height) / 2
       color: NekoColor.bar.capsule
     }

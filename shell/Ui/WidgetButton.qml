@@ -58,7 +58,7 @@ Item {
 
   readonly property bool vertical: bar ? bar.vertical : false
   readonly property int barSize: bar ? bar.barSize : Style.bar.sizeHorizontal
-  readonly property real scaledHorizontalMargin: Style.spaceReal(horizontalMargin)
+  readonly property real scaledHorizontalMargin: Style.spaceReal(horizontalMargin) * (bar ? Style.bar.paddingScale : 1)
   readonly property real scaledVerticalPadding: Style.spaceReal(verticalPadding)
   readonly property bool tooltipHovered: visible && interactive && !concealed && mouseArea.containsMouse
   // Width of the painted label, for bar chrome that wants to line up with the
