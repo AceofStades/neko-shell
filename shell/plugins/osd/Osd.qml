@@ -58,6 +58,12 @@ Item {
 
   function show(iconName, rawMessage, rawValue, rawMax, rawProgressText, rawDuration) {
     var next = OsdModel.stateForShow(iconName, rawMessage, rawValue, rawMax, rawProgressText, rawDuration)
+    // The bar's island shows it instead while it's up
+    if (Island.active) {
+      opened = false
+      Island.showOsd({ icon: next.icon, message: next.message, value: next.value, maxValue: next.maxValue, hasProgress: next.hasProgress }, next.duration)
+      return
+    }
     // Update before opening so a fresh OSD starts at its new value; only
     // subsequent updates while it remains open animate the progress bar.
     iconKey = next.iconKey
@@ -120,7 +126,7 @@ Item {
       root.open(payloadJson)
       return "ok"
     }
-    function close(): string { root.close(); return "ok" }
+    function close(): string { root.close(); Island.hideOsd(); return "ok" }
     function state(): string { return root.opened ? "open" : "closed" }
     function ping(): string { return "ok" }
   }

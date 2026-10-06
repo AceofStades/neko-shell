@@ -868,6 +868,8 @@ Item {
   }
 
   Component.onCompleted: {
+    // The bar's island shows the popups while it's up (see Island)
+    Island.notifications = service
     ensureDirsProc.running = true
     // Once mkdir has had a tick, load the existing settings file. FileView
     // surfaces an empty string when the file doesn't exist; loadSettings
@@ -1000,7 +1002,8 @@ Item {
       id: popupWindow
       required property var modelData
       screen: modelData
-      visible: popupModel.count > 0
+      // The bar's island shows them instead while it's up
+      visible: popupModel.count > 0 && !Island.active
 
       WlrLayershell.namespace: "neko-notifications"
       WlrLayershell.layer: WlrLayer.Overlay
