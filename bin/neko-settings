@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # neko:summary=Read and change neko's settings (what the Settings menu uses)
-# neko:args=<get|is|set|toggle> <key> [value]
+# neko:args=<get|is|set|toggle> <key> [value] | json
 # neko:examples=neko-settings set colors material|neko-settings toggle bar.capsules|neko-settings is app.btop on
 
 # Keys:
@@ -144,7 +144,37 @@ set_value() {
   esac
 }
 
+# Everything the settings window shows, in one read
+json() {
+  local layout=$HOME/.config/neko/shell.json agents=()
+  [[ -f $layout ]] || layout=$NEKO_PATH/config/neko/shell.json
+  for agent in claude codex opencode pi crush grok copilot cursor-agent; do
+    command -v "$agent" > /dev/null && agents+=("$agent")
+  done
+
+  jq -n \
+    --arg colors "$(get colors)" \
+    --arg float "$(get bar.float)" \
+    --arg capsules "$(get bar.capsules)" \
+    --arg position "$(jq -r '.bar.position // "top"' "$layout" 2> /dev/null)" \
+    --arg rotation "$(cat "$HOME/.config/neko/wallpaper-rotation" 2> /dev/null)" \
+    --arg apps "$(themed_apps)" \
+    --arg agent "$(neko-default-agent 2> /dev/null)" \
+    --arg agents "${agents[*]}" \
+    '{
+      colors: $colors,
+      barFloat: ($float == "on"),
+      barCapsules: ($capsules == "on"),
+      barPosition: $position,
+      rotation: (if $rotation == "" then "off" else $rotation end),
+      apps: ($apps | split(" ") | map(select(. != ""))),
+      agent: $agent,
+      agents: ($agents | split(" ") | map(select(. != "")))
+    }'
+}
+
 case $1 in
+  json) json ;;
   get) get "$2" ;;
   is)
     value=$(get "$2") || exit 1
