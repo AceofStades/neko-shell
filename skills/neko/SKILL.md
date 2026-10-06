@@ -31,7 +31,7 @@ Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. 
 - Settings: `neko-settings get|set|toggle <key>` with `colors` (material|neko), `bar.float`, `bar.capsules`, `app.<kitty|btop|tmux|gtk>`. The same options are in the menu under Settings.
 - Theme: `neko-theme-material` re-themes from the wallpaper; `neko-session theme` re-applies the current theme.
 - Wallpaper: `neko-wallpaper pick|random|set <image>|auto <minutes|off>`.
-- Displays: `neko-display set <output> key=value...` for any `hl.monitor` field (`key=` clears it), `--trial` to undo after 15 seconds unless `neko-display keep`, `neko-display reset <output>` to go back to `monitors.lua`.
+- Displays: `neko-display set <output> key=value...` for any `hl.monitor` field (`key=` clears it), `--trial` to undo after 15 seconds unless `neko-display keep`, `neko-display place <output>=<XxY>...` to move several at once, `neko-display reset <output>` to go back to `monitors.lua`.
 - Shell: `neko-session start|stop|restart`. Restart after any QML change.
 - Keybindings: edit `configs/keybinds.lua`; give a bind `{ description = "..." }` so the SUPER+/ cheat sheet names it. Keys owned by `neko.lua` are rebound there only while neko runs.
 - Bar widgets: `neko-shell shell putBarWidget <id> '{"section":"right","index":0}'`, or edit `bar.layout` in `shell.json` and restart.

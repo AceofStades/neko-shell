@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # neko:summary=Show and change each display's Hyprland settings, kept across reloads
-# neko:args=json | set [--trial] <output> <key=value>... | keep | undo | reset <output>
-# neko:examples=neko-display json|neko-display set eDP-1 scale=1.5|neko-display set --trial DP-1 mode=2560x1440@144|neko-display keep|neko-display set DP-1 cm=|neko-display reset DP-1
+# neko:args=json | set [--trial] <output> <key=value>... | place <output>=<XxY>... | keep | undo | reset <output>
+# neko:examples=neko-display json|neko-display set eDP-1 scale=1.5|neko-display set --trial DP-1 mode=2560x1440@144|neko-display place eDP-1=0x0 DP-1=1920x0|neko-display keep|neko-display set DP-1 cm=|neko-display reset DP-1
 
 # Settings live in ~/.config/neko/displays.json, one entry per output. Each
 # change is applied at once and written to ~/.config/neko/displays.lua, which
@@ -10,6 +10,10 @@
 # output's first change starts from how it runs now, so the saved rule is
 # complete and replaces the one in your config. `key=` drops a setting back to
 # Hyprland's default; `reset` forgets the output and reloads your config.
+#
+# `place` moves several displays at once (positions in layout pixels, which
+# are scaled and rotated), so a new arrangement never passes through one
+# where two of them overlap.
 #
 # `set --trial` is for changes a screen might not survive: unless `keep`
 # follows within 15 seconds, the settings from before come back on their own
@@ -40,7 +44,7 @@ trial=${XDG_RUNTIME_DIR:-/tmp}/neko-display-trial.json
 trial_seconds=15
 
 usage() {
-  echo "Usage: neko-display json | set <output> <key=value>... | reset <output>" >&2
+  echo "Usage: neko-display json | set [--trial] <output> <key=value>... | place <output>=<XxY>... | keep | undo | reset <output>" >&2
   exit 1
 }
 
@@ -220,6 +224,41 @@ set_settings() {
   fi
 }
 
+# Every display named takes its new position in one go
+place() {
+  (( $# > 0 )) || usage
+  local all monitors pair output position entry rules="" result
+  all=$(saved)
+  monitors=$(hyprctl monitors all -j)
+  for pair in "$@"; do
+    output=${pair%%=*}
+    position=${pair#*=}
+    # The name goes into Lua, so only a plain connector name may pass
+    if [[ $pair != *=* || ! $output =~ ^[A-Za-z0-9._-]+$ ]] \
+      || ! jq -e --arg name "$output" 'any(.[]; .name == $name and (.disabled | not))' <<< "$monitors" > /dev/null; then
+      echo "No display named $output that's on" >&2
+      exit 1
+    fi
+    if [[ ! $position =~ ^-?[0-9]+x-?[0-9]+$ ]]; then
+      echo "Not a position: $position" >&2
+      exit 1
+    fi
+    entry=$(jq -c --arg name "$output" '.[$name] // empty' <<< "$all")
+    [[ -n $entry ]] || entry=$(live_settings "$output")
+    entry=$(jq -c --arg p "$position" '.position = $p' <<< "$entry")
+    all=$(jq -c --arg name "$output" --argjson entry "$entry" '.[$name] = $entry' <<< "$all")
+    rules+=$(rule "$output" "$entry")$'\n'
+  done
+  result=$(hyprctl eval "$rules")
+  if [[ $result != "ok" ]]; then
+    echo "$result" >&2
+    exit 1
+  fi
+  mkdir -p "$(dirname "$config")"
+  jq . <<< "$all" > "$config.tmp" && mv "$config.tmp" "$config"
+  write_lua
+}
+
 # Remember the settings from before (an earlier trial's, if one is still
 # open) and undo to them unless kept in time. The deadline names the trial,
 # so an undo left over from an earlier one does nothing.
@@ -270,6 +309,7 @@ reset() {
 case $1 in
   json) json ;;
   set) shift; set_settings "$@" ;;
+  place) shift; place "$@" ;;
   keep) keep ;;
   undo) undo "$2" ;;
   reset) reset "$2" ;;
