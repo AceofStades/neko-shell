@@ -5,10 +5,13 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 import "../panels/monitor/Model.js" as MonitorModel
+import "Arrange.js" as Arrange
 
 // The control center's display page: every Hyprland monitor setting for one
-// display, applied and kept through neko-display. Changes that can leave a
-// screen unreadable (mode, rotation, color depth and mode, mirroring) are
+// display, applied and kept through neko-display, and with more than one,
+// how they work together: extended (arranged by dragging them), mirrored, or
+// just one of them on. Changes that can leave a screen unreadable (mode,
+// rotation, color depth and mode, mirroring, turning displays off) are
 // trials, undone after 15 seconds unless kept.
 ColumnLayout {
   id: root
@@ -35,6 +38,8 @@ ColumnLayout {
   readonly property var others: displays.filter(function(d) { return display && d.name !== display.name })
   readonly property int enabledCount: displays.filter(function(d) { return d.enabled }).length
   property bool advanced: false
+  // Dragged displays snap their edges and centers to the others'
+  property bool snapping: true
 
   // Modes as "2880x1800@60.00Hz": the resolutions, largest first, and the
   // rates each one offers, fastest first
@@ -92,6 +97,50 @@ ColumnLayout {
   function setRisky(key, value) {
     if (!display || current(key) === String(value)) return
     run(["neko-display", "set", "--trial", display.name, key + "=" + value])
+  }
+
+  // How the displays work together: "extend", "mirror:<shown>" or "only:<on>"
+  readonly property string layoutMode: {
+    for (var i = 0; i < displays.length; i++) {
+      if (displays[i].enabled && displays[i].mirrorOf !== "none") return "mirror:" + displays[i].mirrorOf
+    }
+    var on = displays.filter(function(d) { return d.enabled })
+    if (displays.length > 1 && on.length === 1) return "only:" + on[0].name
+    return "extend"
+  }
+
+  function screenName(d) {
+    return /^(eDP|LVDS|DSI)/.test(d.name) ? "the laptop screen" : d.name
+  }
+
+  function mirroring(d) {
+    return d.mirrorOf !== "none" || !!d.saved.mirror
+  }
+
+  // Extending only turns displays on, so it needs no undo; mirroring and
+  // leaving one display on can leave nothing to see
+  function setLayoutMode(mode) {
+    if (mode === layoutMode) return
+    var kind = mode.split(":")[0]
+    var target = mode.slice(kind.length + 1)
+    var later = []
+    for (var i = 0; i < displays.length; i++) {
+      var d = displays[i]
+      if (kind === "extend") {
+        if (!d.enabled) run(["neko-display", "set", d.name, "disabled=false"])
+        if (mirroring(d)) later.push(["neko-display", "set", d.name, "mirror="])
+      } else if (d.name === target) {
+        var on = ["neko-display", "set", "--trial", d.name]
+        if (!d.enabled) on.push("disabled=false")
+        if (mirroring(d)) on.push("mirror=")
+        if (on.length > 4) run(on)
+      } else if (kind === "mirror") {
+        later.push(["neko-display", "set", "--trial", d.name, "mirror=" + target].concat(d.enabled ? [] : ["disabled=false"]))
+      } else if (d.enabled) {
+        later.push(["neko-display", "set", "--trial", d.name, "disabled=true"])
+      }
+    }
+    later.forEach(run)
   }
 
   function keep() {
@@ -212,10 +261,201 @@ ColumnLayout {
     }
   }
 
-  // Which display
-  ButtonGroup {
+  // How the displays work together
+  Caption { text: "Multiple displays"; visible: root.displays.length > 1 }
+  Dropdown {
     Layout.fillWidth: true
     visible: root.displays.length > 1
+    showLabel: false
+    fontFamily: root.fontFamily
+    options: [{ value: "extend", label: "Extend across them" }]
+      .concat(root.displays.map(function(d) { return { value: "mirror:" + d.name, label: "Mirror " + root.screenName(d) } }))
+      .concat(root.displays.map(function(d) { return { value: "only:" + d.name, label: "Only " + root.screenName(d) } }))
+    value: root.layoutMode
+    onChanged: function(v) { root.setLayoutMode(v) }
+  }
+
+  // Extended displays as boxes to drag where they stand: the pointer
+  // crosses between displays where their boxes meet
+  Item {
+    id: arrangement
+    Layout.fillWidth: true
+    Layout.preferredHeight: Style.space(190)
+    visible: root.layoutMode === "extend" && rects.length > 1
+    clip: true
+
+    // Where the displays are, or where a drop put them until they're read again
+    property var placed: null
+    readonly property var rects: placed || Arrange.rects(root.displays)
+    // Held still while a box is dragged, so the view doesn't move under it
+    property var frozen: null
+    readonly property var view: frozen || Arrange.fit(rects, width, height, Style.space(10))
+    property string dragging: ""
+    property var dragRect: null
+    property var guides: ({ x: [], y: [] })
+
+    Connections {
+      target: root
+      function onDisplaysChanged() { arrangement.placed = null }
+    }
+
+    function others(name) {
+      return rects.filter(function(r) { return r.name !== name })
+    }
+
+    // Drag a box by dx, dy view pixels from where it is, snapping if asked
+    function dragBy(name, dx, dy) {
+      var from = null
+      for (var i = 0; i < rects.length; i++) if (rects[i].name === name) from = rects[i]
+      if (!from) return
+      if (!dragging) {
+        frozen = view
+        dragging = name
+        root.selectedName = name
+      }
+      var scale = view.scale
+      var r = { x: from.x + dx / scale, y: from.y + dy / scale, width: from.width, height: from.height }
+      if (root.snapping) {
+        var snapped = Arrange.snap(r, others(name), Style.space(10) / scale)
+        r.x = snapped.x
+        r.y = snapped.y
+        guides = { x: snapped.guidesX, y: snapped.guidesY }
+      }
+      dragRect = r
+    }
+
+    function endDrag() {
+      dragging = ""
+      dragRect = null
+      frozen = null
+      guides = { x: [], y: [] }
+    }
+
+    // Drop a box: out of the others' way, touching one, applied at once
+    function drop(name) {
+      var placed = Arrange.drop(rects, name, dragRect.x, dragRect.y)
+      endDrag()
+      var moved = placed.some(function(p) {
+        return rects.some(function(r) { return r.name === p.name && (r.x !== p.x || r.y !== p.y) })
+      })
+      if (!moved) return
+      arrangement.placed = placed
+      root.run(["neko-display", "place"].concat(placed.map(function(p) { return p.name + "=" + p.x + "x" + p.y })))
+    }
+
+    Rectangle {
+      anchors.fill: parent
+      radius: Style.space(12)
+      color: Util.alpha(root.foreground, 0.05)
+    }
+
+    // Where a dragged box meets another's edge or center
+    Repeater {
+      model: arrangement.guides.x
+      delegate: Rectangle {
+        required property var modelData
+        x: Math.round(arrangement.view.x + modelData * arrangement.view.scale)
+        width: 1
+        height: arrangement.height
+        color: root.accent
+      }
+    }
+    Repeater {
+      model: arrangement.guides.y
+      delegate: Rectangle {
+        required property var modelData
+        y: Math.round(arrangement.view.y + modelData * arrangement.view.scale)
+        width: arrangement.width
+        height: 1
+        color: root.accent
+      }
+    }
+
+    Repeater {
+      model: arrangement.rects
+      delegate: Rectangle {
+        id: box
+        required property var modelData
+        readonly property bool moving: arrangement.dragging === modelData.name
+        readonly property var at: moving ? arrangement.dragRect : modelData
+        readonly property bool selected: !!root.display && root.display.name === modelData.name
+
+        x: Math.round(arrangement.view.x + at.x * arrangement.view.scale)
+        y: Math.round(arrangement.view.y + at.y * arrangement.view.scale)
+        width: Math.round(modelData.width * arrangement.view.scale)
+        height: Math.round(modelData.height * arrangement.view.scale)
+        z: moving ? 2 : 1
+        radius: Style.space(6)
+        color: selected ? Util.alpha(root.accent, 0.3) : Util.alpha(root.foreground, 0.12)
+        border.width: selected ? 2 : 1
+        border.color: selected ? root.accent : Util.alpha(root.foreground, 0.3)
+        opacity: moving ? 0.85 : 1
+
+        Column {
+          anchors.centerIn: parent
+          width: parent.width - Style.space(8)
+          Text {
+            width: parent.width
+            text: box.modelData.name
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.weight: Font.DemiBold
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+          }
+          Text {
+            width: parent.width
+            visible: box.height > Style.space(44)
+            text: box.modelData.width + " × " + box.modelData.height
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            horizontalAlignment: Text.AlignHCenter
+            elide: Text.ElideRight
+          }
+        }
+
+        MouseArea {
+          property point start
+
+          anchors.fill: parent
+          // The page scrolls; a drag here moves the box instead
+          preventStealing: true
+          cursorShape: arrangement.dragging ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+          onPressed: function(mouse) { start = mapToItem(arrangement, mouse.x, mouse.y) }
+          onPositionChanged: function(mouse) {
+            var p = mapToItem(arrangement, mouse.x, mouse.y)
+            if (!arrangement.dragging && Math.abs(p.x - start.x) + Math.abs(p.y - start.y) < 4) return
+            arrangement.dragBy(box.modelData.name, p.x - start.x, p.y - start.y)
+          }
+          onReleased: {
+            if (arrangement.dragging) arrangement.drop(box.modelData.name)
+            else root.selectedName = box.modelData.name
+          }
+          onCanceled: arrangement.endDrag()
+        }
+      }
+    }
+  }
+
+  RowLayout {
+    Layout.fillWidth: true
+    visible: arrangement.visible
+    Caption {
+      Layout.fillWidth: true
+      text: root.snapping ? "Snap to edges and centers" : "Place freely (still touching another)"
+    }
+    ToggleSwitch {
+      checked: root.snapping
+      onToggled: root.snapping = !root.snapping
+    }
+  }
+
+  // Which display; the arrangement picks one too, when it shows them all
+  ButtonGroup {
+    Layout.fillWidth: true
+    visible: root.displays.length > 1 && (!arrangement.visible || arrangement.rects.length < root.displays.length)
     fontSize: Style.font.bodySmall
     options: root.displays.map(function(d) { return { value: d.name, label: d.name } })
     value: root.display ? root.display.name : ""
@@ -329,27 +569,6 @@ ColumnLayout {
       }
     }
 
-    // Placement and mirroring only mean something next to another display
-    Caption { text: "Place it"; visible: root.others.length > 0 }
-    ButtonGroup {
-      Layout.fillWidth: true
-      visible: root.others.length > 0
-      fontSize: Style.font.bodySmall
-      options: [ { value: "auto", label: "Auto" }, { value: "auto-left", label: "Left" }, { value: "auto-right", label: "Right" }, { value: "auto-up", label: "Above" }, { value: "auto-down", label: "Below" } ]
-      value: root.saved.position && String(root.saved.position).indexOf("auto") === 0 ? root.saved.position : ""
-      onChanged: function(v) { root.change("position", v) }
-    }
-    Caption { text: "Mirror"; visible: root.others.length > 0 }
-    Dropdown {
-      Layout.fillWidth: true
-      visible: root.others.length > 0
-      showLabel: false
-      fontFamily: root.fontFamily
-      options: [{ value: "", label: "Don't mirror" }].concat(root.others.map(function(d) { return { value: d.name, label: "Mirror " + d.name } }))
-      value: root.current("mirror")
-      onChanged: function(v) { root.setRisky("mirror", v) }
-    }
-
     PanelSeparator { foreground: root.foreground; Layout.fillWidth: true }
 
     Caption { text: "Color depth" }
@@ -439,6 +658,27 @@ ColumnLayout {
       Layout.fillWidth: true
       visible: root.advanced
       spacing: Style.space(10)
+
+      // Placement that follows the other displays, and mirroring just this one
+      Caption { text: "Place it automatically"; visible: root.others.length > 0 }
+      ButtonGroup {
+        Layout.fillWidth: true
+        visible: root.others.length > 0
+        fontSize: Style.font.bodySmall
+        options: [ { value: "auto", label: "Auto" }, { value: "auto-left", label: "Left" }, { value: "auto-right", label: "Right" }, { value: "auto-up", label: "Above" }, { value: "auto-down", label: "Below" } ]
+        value: root.saved.position && String(root.saved.position).indexOf("auto") === 0 ? root.saved.position : ""
+        onChanged: function(v) { root.change("position", v) }
+      }
+      Caption { text: "Mirror"; visible: root.others.length > 0 }
+      Dropdown {
+        Layout.fillWidth: true
+        visible: root.others.length > 0
+        showLabel: false
+        fontFamily: root.fontFamily
+        options: [{ value: "", label: "Don't mirror" }].concat(root.others.map(function(d) { return { value: d.name, label: "Mirror " + d.name } }))
+        value: root.current("mirror")
+        onChanged: function(v) { root.setRisky("mirror", v) }
+      }
 
       Caption { text: "HDR support" }
       ButtonGroup {

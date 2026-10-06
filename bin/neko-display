@@ -78,10 +78,13 @@ write_lua() {
   } > "$lua.tmp" && mv "$lua.tmp" "$lua"
 }
 
+# Hyprland names the display another one mirrors by its id
+mirror_names='. as $all | map(.mirrorOf = (.mirrorOf as $id | if $id == "none" then "none" else ([$all[] | select((.id | tostring) == $id) | .name][0] // $id) end))'
+
 # How an output runs now, as settings: the starting point for its first change
 live_settings() {
-  hyprctl monitors all -j | jq -c --arg name "$1" '
-    .[] | select(.name == $name)
+  hyprctl monitors all -j | jq -c --arg name "$1" "$mirror_names"'
+    | .[] | select(.name == $name)
     | if .disabled then {} else
         { mode: "\(.width)x\(.height)@\(.refreshRate * 1000 | round / 1000)",
           position: "\(.x)x\(.y)",
@@ -139,8 +142,8 @@ json() {
   vrr=$(hyprctl getoption misc:vrr -j 2> /dev/null | jq '.int // 0')
   local until=0
   [[ -f $trial ]] && until=$(jq '.until' "$trial")
-  hyprctl monitors all -j | jq -c --argjson saved "$(saved)" --argjson vrr "${vrr:-0}" --argjson until "${until:-0}" '
-    [.[] | {
+  hyprctl monitors all -j | jq -c --argjson saved "$(saved)" --argjson vrr "${vrr:-0}" --argjson until "${until:-0}" "$mirror_names"'
+    | [.[] | {
       name, description, focused,
       enabled: (.disabled | not),
       width, height, refreshRate, x, y, scale, transform,
