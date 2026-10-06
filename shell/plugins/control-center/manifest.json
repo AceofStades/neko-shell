@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.control-center",
+  "name": "Control center",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Quick toggles, sliders, weather and wallpaper behind the cat button",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Control center",
+    "description": "Quick toggles, sliders, weather and wallpaper behind the cat button",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

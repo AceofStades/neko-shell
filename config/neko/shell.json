@@ -11,9 +11,6 @@
     "layout": {
       "left": [
         {
-          "id": "neko.menu"
-        },
-        {
           "id": "neko.workspaces"
         }
       ],
@@ -61,6 +58,9 @@
         },
         {
           "id": "neko.power"
+        },
+        {
+          "id": "neko.control-center"
         }
       ]
     }
