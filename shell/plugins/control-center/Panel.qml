@@ -7,6 +7,7 @@ import Quickshell.Networking
 import Quickshell.Services.Pipewire
 import qs.Commons
 import qs.Ui
+import "../panels/monitor/Model.js" as MonitorModel
 
 // The cat button and its control center: quick toggles, volume and
 // brightness, weather and wallpaper in one popup. Left click opens it,
@@ -36,6 +37,17 @@ Panel {
   property bool recorderInstalled: false
   property bool recording: false
   property real brightness: 0
+  property var displays: []
+
+  readonly property var scalePresets: ["1", "1.25", "1.5", "1.6", "2", "3", "4"]
+  readonly property var focusedDisplay: {
+    for (var i = 0; i < displays.length; i++) if (displays[i].focused) return displays[i]
+    return displays.length > 0 ? displays[0] : null
+  }
+  readonly property var scaleOptions: focusedDisplay
+    ? MonitorModel.availableScales(scalePresets, focusedDisplay.width, focusedDisplay.height)
+    : []
+  readonly property int enabledDisplays: displays.filter(function(d) { return !d.disabled }).length
 
   readonly property var sink: Pipewire.defaultAudioSink
   readonly property var adapter: Bluetooth.defaultAdapter
@@ -73,7 +85,8 @@ Panel {
       "echo reminders=$(neko-reminder show --json 2>/dev/null | jq -r .count)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
       "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
-      "echo brightness=$(brightnessctl -m | awk -F, '{print $3/$5}')"
+      "echo brightness=$(brightnessctl -m | awk -F, '{print $3/$5}')",
+      "echo displays=$(hyprctl monitors all -j | jq -c '[.[] | {name, width, height, scale, focused, disabled}]')"
     ].join("; ")]
     stdout: StdioCollector {
       waitForEnd: true
@@ -93,6 +106,7 @@ Panel {
           else if (key === "recorder") root.recorderInstalled = value === "yes"
           else if (key === "recording") root.recording = value === "yes"
           else if (key === "brightness" && !brightnessSlider.dragging) root.brightness = Number(value) || 0
+          else if (key === "displays") { try { root.displays = JSON.parse(value) } catch (e) {} }
         }
       }
     }
@@ -319,6 +333,52 @@ Panel {
             minimum: 0.01
             value: root.brightness
             onMoved: function(v) { root.brightness = v; brightnessDebounce.restart() }
+          }
+        }
+
+        // Display: scale for the focused screen, and on/off once there are several
+        ColumnLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          visible: root.scaleOptions.length > 0
+
+          Text {
+            text: "Display scale" + (root.focusedDisplay && root.displays.length > 1 ? " · " + root.focusedDisplay.name : "")
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+          ButtonGroup {
+            Layout.fillWidth: true
+            fontSize: Style.font.bodySmall
+            options: root.scaleOptions.map(function(v) { return { value: String(v), label: v + "x" } })
+            value: root.focusedDisplay ? MonitorModel.normalizeScale(root.focusedDisplay.scale) : ""
+            onChanged: function(v) { root.act("neko-hyprland-monitor-scaling " + v) }
+          }
+        }
+        Repeater {
+          model: root.displays.length > 1 ? root.displays : []
+          delegate: RowLayout {
+            required property var modelData
+            Layout.fillWidth: true
+            Text {
+              Layout.fillWidth: true
+              text: modelData.name + "  " + modelData.width + "x" + modelData.height
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+            ToggleSwitch {
+              checked: !modelData.disabled
+              // Never switch off the last screen that's on
+              interactive: modelData.disabled || root.enabledDisplays > 1
+              onToggled: {
+                var output = JSON.stringify(String(modelData.name))
+                root.act(modelData.disabled
+                  ? "hyprctl eval 'hl.monitor({ output = " + output + ", disabled = false, mode = \"preferred\", position = \"auto\", scale = \"auto\" })'"
+                  : "hyprctl eval 'hl.monitor({ output = " + output + ", disabled = true })'")
+              }
+            }
           }
         }
 
