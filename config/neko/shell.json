@@ -11,15 +11,18 @@
     "layout": {
       "left": [
         {
-          "id": "neko.workspaces"
+          "id": "neko.system-monitor"
         }
       ],
       "center": [
         {
-          "id": "neko.keyboard-layout"
+          "id": "neko.workspaces"
         }
       ],
       "right": [
+        {
+          "id": "neko.keyboard-layout"
+        },
         {
           "id": "neko.tray"
         },
