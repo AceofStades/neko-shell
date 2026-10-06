@@ -32,6 +32,9 @@ Panel {
   property bool dnd: false
   property bool stayAwake: false
   property string rotation: ""
+  property int reminders: 0
+  property bool recorderInstalled: false
+  property bool recording: false
   property real brightness: 0
 
   readonly property var sink: Pipewire.defaultAudioSink
@@ -67,6 +70,9 @@ Panel {
       "echo dnd=$(neko-shell notifications isDnd 2>/dev/null)",
       "echo awake=$(neko-toggle-idle status | jq -r .enabled)",
       "echo rotation=$(cat ~/.config/neko/wallpaper-rotation 2>/dev/null)",
+      "echo reminders=$(neko-reminder show --json 2>/dev/null | jq -r .count)",
+      "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
+      "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
       "echo brightness=$(brightnessctl -m | awk -F, '{print $3/$5}')"
     ].join("; ")]
     stdout: StdioCollector {
@@ -83,6 +89,9 @@ Panel {
           else if (key === "dnd") root.dnd = value === "on"
           else if (key === "awake") root.stayAwake = value === "true"
           else if (key === "rotation") root.rotation = value
+          else if (key === "reminders") root.reminders = Number(value) || 0
+          else if (key === "recorder") root.recorderInstalled = value === "yes"
+          else if (key === "recording") root.recording = value === "yes"
           else if (key === "brightness" && !brightnessSlider.dragging) root.brightness = Number(value) || 0
         }
       }
@@ -261,6 +270,24 @@ Panel {
             subtitle: root.stayAwake ? "On" : "Off"
             active: root.stayAwake
             onClicked: root.act("neko-toggle-idle toggle")
+          }
+          QuickTile {
+            icon: "󰀠"
+            label: "Reminders"
+            subtitle: root.reminders > 0 ? root.reminders + " set" : "Set one"
+            active: root.reminders > 0
+            Layout.columnSpan: root.recorderInstalled ? 1 : 2
+            onClicked: root.runAndClose("neko-reminder -i")
+          }
+          QuickTile {
+            visible: root.recorderInstalled
+            icon: "󰑊"
+            label: "Screen record"
+            subtitle: root.recording ? "Recording" : "Off"
+            active: root.recording
+            onClicked: root.recording
+              ? root.act("neko-capture-screenrecording --stop-recording")
+              : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
           }
           QuickTile {
             icon: "󰁪"
