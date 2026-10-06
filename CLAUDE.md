@@ -16,6 +16,7 @@ A Quickshell desktop for Hyprland (Lua config). `shell/` is the QML desktop (bar
 - `neko-session theme` re-renders the theme and applies it live; `neko-session start|stop` swaps neko in and out of the session.
 - Commands need `NEKO_PATH=<checkout> PATH=<checkout>/bin:$PATH`; `~/.config/neko/env` holds machine settings and is sourced by `neko-session` (`NEKO_QUICKSHELL` points at the Quickshell build to use).
 - `neko-shell <target> <method> [args]` talks to the running shell; `neko-shell shell debugBarGeometry` reports every bar widget's position and size, which is the way to check layout changes without a screenshot.
+- `hyprctl output create headless NAME` adds a pretend display for testing multi-display features (`hyprctl output remove NAME` when done); each display gets its own bar, so the duplicate IPC handler warnings that follow are expected.
 - `neko commands --check` validates the `# neko:summary=` / `# neko:args=` metadata every command carries.
 - Don't run `bash -x` or test loops from zsh with unquoted variables (zsh doesn't word-split); use `bash -c` or a script.
 
@@ -25,5 +26,6 @@ A Quickshell desktop for Hyprland (Lua config). `shell/` is the QML desktop (bar
 - `hyprctl dispatch` takes Lua in this setup: `hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'`, not `dpms on`. `hyprctl eval '<lua>'` changes Hyprland at runtime; a config reload undoes it.
 - Adding a bar widget while the shell runs rebuilds the bar's widgets before the old ones are gone. Quickshell keeps only the first IpcHandler per target and never promotes a later one, so those panels drop out of `qs ipc` until the next restart; neko's own socket (what `neko-shell` uses when socat is installed) tracks handlers itself and keeps working. Don't try to fix it by toggling a handler's `enabled` on unregister: that crashes Quickshell (SIGSEGV in its handler registry).
 - `hl.monitor` keeps any field a later call leaves out, so going back to a default at runtime takes `hyprctl reload` (`neko-display` does this).
+- `hyprctl monitors` gives `mirrorOf` as the mirrored display's id, not its name; `neko-display json` turns it into the name.
 - QML `Timer`s were seen to stall while an open panel drew nothing new, and the shell can stall with a screen that's gone dark. Deadlines that must hold (like `neko-display`'s 15-second undo) run as their own process, and countdowns read `SystemClock`.
 - Theme sections override whole `[section]`s via `themes/<name>/shell.<section>.toml`; `neko-theme-material` builds a theme from the wallpaper by recoloring `themes/neko`'s files, so new colors in those files need a mapping there.
