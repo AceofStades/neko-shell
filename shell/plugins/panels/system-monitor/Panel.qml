@@ -519,7 +519,8 @@ Panel {
       text: ring.icon
       color: ring.tint === root.accent ? button.foreground : ring.tint
       font.family: button.fontFamily
-      font.pixelSize: Math.round(ring.size * 0.48)
+      // The bar's text size, as far as the inside of the ring allows
+      font.pixelSize: Math.min(Style.bar.fontSize, Math.round((ring.size - 2 * ring.stroke) * 0.8))
     }
   }
 

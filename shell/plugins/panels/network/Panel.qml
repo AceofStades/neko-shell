@@ -1111,7 +1111,7 @@ Panel {
     elide: Text.ElideRight
     color: button.foreground
     font.family: button.fontFamily
-    font.pixelSize: Style.font.body
+    font.pixelSize: Style.bar.fontSize
     font.weight: Font.Medium
 
     MouseArea {
