@@ -8,6 +8,7 @@ import Quickshell.Services.Pipewire
 import qs.Commons
 import qs.Ui
 import "../panels/monitor/Model.js" as MonitorModel
+import "../panels/weather/Model.js" as WeatherModel
 
 // The cat button and its control center: quick toggles, volume and
 // brightness, weather and wallpaper in one popup. Left click opens it,
@@ -27,8 +28,10 @@ Panel {
 
   // State read when the popup opens
   property string uptime: ""
-  property string weatherIcon: ""
-  property string weatherText: ""
+  // The last good weather report; a failed fetch keeps it rather than blanking the card
+  property var weather: null
+  readonly property var weatherNow: WeatherModel.openMeteoCurrentCondition(weather)
+  readonly property var weatherDays: WeatherModel.openMeteoForecastDays(weather, Qt.formatDate(new Date(), "yyyy-MM-dd"))
   property string ssid: ""
   property bool dnd: false
   property bool stayAwake: false
@@ -114,13 +117,14 @@ Panel {
 
   Process {
     id: weatherProc
-    command: ["bash", "-c", "echo \"$(neko-weather-icon)\"; neko-weather-status"]
+    command: ["neko-weather-report"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        var lines = String(text || "").trim().split("\n")
-        root.weatherIcon = lines[0] || ""
-        root.weatherText = (lines[1] || "").replace(/\s+·\s+/g, "  ·  ")
+        try {
+          var report = JSON.parse(String(text || ""))
+          if (report && report.current) root.weather = report
+        } catch (e) {}
       }
     }
   }
@@ -219,33 +223,119 @@ Panel {
           }
         }
 
-        // Weather
+        // Weather: now, and the next three days
         Rectangle {
           Layout.fillWidth: true
-          // Hidden while the weather can't be fetched rather than saying so
-          visible: root.weatherIcon !== "" && root.weatherText !== ""
-          implicitHeight: weatherRow.implicitHeight + Style.space(20)
+          visible: root.weatherNow !== null
+          implicitHeight: weatherColumn.implicitHeight + Style.space(24)
           radius: Style.space(14)
           color: Util.alpha(root.foreground, 0.06)
 
-          RowLayout {
-            id: weatherRow
-            anchors.fill: parent
-            anchors.margins: Style.space(10)
+          ColumnLayout {
+            id: weatherColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Style.space(12)
             spacing: Style.space(10)
-            Text {
-              text: root.weatherIcon
-              color: root.accent
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.displayLarge
-            }
-            Text {
+
+            RowLayout {
               Layout.fillWidth: true
-              text: root.weatherText
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
-              elide: Text.ElideRight
+              spacing: Style.space(12)
+
+              Text {
+                text: root.weatherNow ? WeatherModel.iconForOpenMeteoCode(root.weatherNow.openMeteoWeatherCode, root.weatherNow.isDay === 0) : ""
+                color: root.accent
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.displayLarge * 1.4
+              }
+              ColumnLayout {
+                spacing: 0
+                Text {
+                  text: root.weatherNow ? root.weatherNow.temp_C + "°" : ""
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.displayLarge
+                  font.weight: Font.DemiBold
+                }
+                Text {
+                  text: root.weather ? root.weather.condition : ""
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                }
+              }
+              Item { Layout.fillWidth: true }
+              ColumnLayout {
+                spacing: Style.space(2)
+                Text {
+                  Layout.alignment: Qt.AlignRight
+                  text: root.weather ? root.weather.city : ""
+                  color: root.foreground
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.body
+                  font.weight: Font.Medium
+                }
+                Repeater {
+                  model: root.weatherNow ? [
+                    "Feels " + root.weatherNow.FeelsLikeC + "°",
+                    "Humidity " + root.weatherNow.humidity + "%",
+                    "Wind " + root.weatherNow.windspeedKmph + " km/h"
+                  ] : []
+                  delegate: Text {
+                    required property string modelData
+                    Layout.alignment: Qt.AlignRight
+                    text: modelData
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                }
+              }
+            }
+
+            RowLayout {
+              Layout.fillWidth: true
+              visible: root.weatherDays.length > 0
+              spacing: Style.space(6)
+
+              Repeater {
+                model: root.weatherDays
+                delegate: Rectangle {
+                  required property var modelData
+                  Layout.fillWidth: true
+                  implicitHeight: dayColumn.implicitHeight + Style.space(12)
+                  radius: Style.space(10)
+                  color: Util.alpha(root.foreground, 0.05)
+
+                  ColumnLayout {
+                    id: dayColumn
+                    anchors.centerIn: parent
+                    spacing: Style.space(2)
+                    Text {
+                      Layout.alignment: Qt.AlignHCenter
+                      text: Qt.formatDate(new Date(modelData.date + "T12:00:00"), "ddd")
+                      color: root.dim
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+                    Text {
+                      Layout.alignment: Qt.AlignHCenter
+                      text: WeatherModel.iconForOpenMeteoCode(modelData.openMeteoWeatherCode, false)
+                      color: root.accent
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.iconLarge
+                    }
+                    Text {
+                      Layout.alignment: Qt.AlignHCenter
+                      text: modelData.maxtempC + "° / " + modelData.mintempC + "°"
+                      color: root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+                  }
+                }
+              }
             }
           }
         }
