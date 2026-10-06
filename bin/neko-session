@@ -54,6 +54,7 @@ apply_theme() {
   render_theme
   neko-shell shell applyTheme "$(base64 -w 0 "$state/theme/colors.toml")" "$(base64 -w 0 "$state/theme/shell.toml")" > /dev/null
   neko-theme-apps
+  neko-hook theme-set "$(cat "$state/theme.name")"
   echo "theme $(cat "$state/theme.name") applied"
 }
 
@@ -107,6 +108,7 @@ start() {
   # Rotation is a transient timer, so it needs arming again after a reboot
   neko-wallpaper auto resume
   setsid -f neko-wallpaper warm
+  neko-hook session-start
   echo "neko-shell started"
 }
 

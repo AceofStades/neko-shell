@@ -39,6 +39,7 @@ set_wallpaper() {
   if [[ $(cat "$state/current/theme.name" 2> /dev/null) == "material" ]]; then
     neko-theme-material "$image" > /dev/null
   fi
+  neko-hook wallpaper-set "$image"
 }
 
 pick() {
