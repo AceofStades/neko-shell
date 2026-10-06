@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.settings",
+  "name": "Settings",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "A window for neko's settings: colors, bar, wallpaper, themed apps and the default agent",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "Settings.qml"
+  }
+}
