@@ -6,12 +6,12 @@
 
 # Keys:
 #   colors        material (from the wallpaper) | neko (the fixed palette)
-#   bar.float     on | off  (bar floats off the screen edge with rounded corners)
+#   bar.float     on | off  (bar floats 6px off the screen edge; docked by default)
 #   bar.capsules  on | off  (pill behind each bar widget)
 #   app.<name>    on | off  (kitty, btop, tmux or gtk follows the theme)
 #
 # Bar settings are overrides in ~/.config/neko/shell.toml, which the shell
-# watches live; "on" removes the override so the theme's own look applies.
+# watches live; turning a setting back to the theme's choice removes the override.
 
 env_file=$HOME/.config/neko/env
 overrides=$HOME/.config/neko/shell.toml
@@ -80,7 +80,10 @@ get() {
       cat "$state/theme.name" 2> /dev/null
       ;;
     bar.float)
-      [[ $(toml_get bar float-margin) == "0" ]] && echo off || echo on
+      # The bar docks unless an override gives it a margin to float on
+      local margin
+      margin=$(toml_get bar float-margin)
+      (( ${margin:-0} > 0 )) && echo on || echo off
       ;;
     bar.capsules)
       [[ $(toml_get bar capsule-alpha) == "0" ]] && echo off || echo on
@@ -108,8 +111,8 @@ set_value() {
       esac
       ;;
     bar.float)
-      if [[ $value == "off" ]]; then
-        toml_set bar float-margin 0
+      if [[ $value == "on" ]]; then
+        toml_set bar float-margin 6
       else
         toml_unset bar float-margin
       fi
