@@ -59,6 +59,49 @@ ColumnLayout {
     return resolutions
   }
   readonly property string resolution: display ? display.width + "x" + display.height : ""
+
+  // Common resolutions for each aspect ratio, offered as custom modes when
+  // the display doesn't list them
+  readonly property var ratios: [
+    { value: "16:9", width: 16, height: 9, presets: ["3840x2160", "3200x1800", "2560x1440", "1920x1080", "1600x900", "1366x768", "1280x720"] },
+    { value: "16:10", width: 16, height: 10, presets: ["3840x2400", "2880x1800", "2560x1600", "1920x1200", "1680x1050", "1440x900", "1280x800"] },
+    { value: "3:2", width: 3, height: 2, presets: ["3000x2000", "2256x1504", "1920x1280", "1500x1000"] },
+    { value: "21:9", width: 64, height: 27, presets: ["5120x2160", "3440x1440", "2560x1080"] },
+    { value: "4:3", width: 4, height: 3, presets: ["2048x1536", "1600x1200", "1280x960", "1024x768"] }
+  ]
+
+  // The aspect ratio a resolution is closest to, if it's close to one
+  function ratioOf(width, height) {
+    var best = "", bestDistance = 0.04
+    for (var i = 0; i < ratios.length; i++) {
+      var distance = Math.abs(width / height / (ratios[i].width / ratios[i].height) - 1)
+      if (distance < bestDistance) { best = ratios[i].value; bestDistance = distance }
+    }
+    return best
+  }
+
+  // The aspect ratio picked, else the one the display runs at; "all" lists
+  // every mode the display offers and nothing else
+  property string aspect: ""
+  onSelectedNameChanged: aspect = ""
+  readonly property string shownAspect: aspect || (display ? ratioOf(display.width, display.height) : "") || "all"
+
+  // The resolutions to offer: the display's own in the aspect ratio shown,
+  // and that ratio's common ones that fit the display, as custom modes
+  readonly property var resolutions: {
+    var list = modes.filter(function(m) { return shownAspect === "all" || ratioOf(m.width, m.height) === shownAspect })
+      .map(function(m) { return { value: m.width + "x" + m.height, label: m.width + " × " + m.height, width: m.width, height: m.height } })
+    var ratio = ratios.filter(function(r) { return r.value === shownAspect })[0]
+    var widest = modes.length > 0 ? modes[0] : null
+    for (var i = 0; ratio && widest && i < ratio.presets.length; i++) {
+      var size = ratio.presets[i].split("x").map(Number)
+      if (size[0] > widest.width || size[1] > widest.height) continue
+      if (list.some(function(r) { return r.value === ratio.presets[i] })) continue
+      list.push({ value: ratio.presets[i], label: size[0] + " × " + size[1] + ", custom", width: size[0], height: size[1] })
+    }
+    list.sort(function(a, b) { return b.width * b.height - a.width * a.height })
+    return list
+  }
   readonly property var rates: {
     for (var i = 0; i < modes.length; i++) if (modes[i].width + "x" + modes[i].height === resolution) return modes[i].rates
     return []
@@ -141,6 +184,19 @@ ColumnLayout {
       }
     }
     later.forEach(run)
+  }
+
+  // The custom mode typed in; an empty field keeps what the display runs at
+  function tryCustomMode() {
+    if (!display) return
+    var width = Number(customWidth.text || display.width)
+    var height = Number(customHeight.text || display.height)
+    var rate = Number(customRate.text || display.refreshRate.toFixed(3))
+    if (!(width > 0 && height > 0 && rate > 0)) return
+    setRisky("mode", width + "x" + height + "@" + rate)
+    customWidth.text = ""
+    customHeight.text = ""
+    customRate.text = ""
   }
 
   function keep() {
@@ -499,21 +555,31 @@ ColumnLayout {
     spacing: Style.space(10)
 
     Caption { text: "Resolution" }
+    ButtonGroup {
+      Layout.fillWidth: true
+      fontSize: Style.font.bodySmall
+      options: root.ratios.map(function(r) { return { value: r.value, label: r.value } }).concat([{ value: "all", label: "Listed" }])
+      value: root.shownAspect
+      onChanged: function(v) { root.aspect = v }
+    }
     Dropdown {
       Layout.fillWidth: true
       showLabel: false
       fontFamily: root.fontFamily
-      options: root.modes.map(function(m) { return { value: m.width + "x" + m.height, label: m.width + " × " + m.height } })
+      options: root.resolutions.map(function(r) { return { value: r.value, label: r.label } })
         .concat([{ value: "preferred", label: "Preferred" }, { value: "highres", label: "Highest resolution" }, { value: "highrr", label: "Highest refresh rate" }])
       value: /^(preferred|highres|highrr)$/.test(root.current("mode")) ? root.current("mode") : root.resolution
       onChanged: function(v) {
         if (/^(preferred|highres|highrr)$/.test(v)) { root.setRisky("mode", v); return }
-        // Keep the rate when the new resolution offers it, else take its fastest
+        // Keep the rate when the new resolution offers it, else take its
+        // fastest; a custom one keeps the rate the display runs at
         for (var i = 0; i < root.modes.length; i++) {
           var m = root.modes[i]
           if (m.width + "x" + m.height !== v) continue
           root.setRisky("mode", v + "@" + (m.rates.indexOf(root.rate) >= 0 ? root.rate : m.rates[0]))
+          return
         }
+        root.setRisky("mode", v + "@" + (root.rate || Math.round(root.display.refreshRate)))
       }
     }
 
@@ -534,6 +600,36 @@ ColumnLayout {
       options: root.rates.map(function(r) { return { value: r, label: Number(r).toFixed(2) + " Hz" } })
       value: root.rate
       onChanged: function(v) { root.setRisky("mode", root.resolution + "@" + v) }
+    }
+
+    // Any mode at all; one the display can't show falls back to its
+    // preferred, and the undo is there either way
+    Caption { text: "Custom mode: width × height @ refresh rate" }
+    RowLayout {
+      Layout.fillWidth: true
+      spacing: Style.space(6)
+      ModeField {
+        id: customWidth
+        placeholder: root.display ? String(root.display.width) : ""
+        validator: RegularExpressionValidator { regularExpression: /[0-9]{0,5}/ }
+      }
+      Caption { text: "×" }
+      ModeField {
+        id: customHeight
+        placeholder: root.display ? String(root.display.height) : ""
+        validator: RegularExpressionValidator { regularExpression: /[0-9]{0,5}/ }
+      }
+      Caption { text: "@" }
+      ModeField {
+        id: customRate
+        placeholder: root.display ? String(Math.round(root.display.refreshRate)) : ""
+        validator: RegularExpressionValidator { regularExpression: /[0-9]{0,3}([.][0-9]{0,3})?/ }
+      }
+      Button {
+        text: "Try"
+        bordered: true
+        onClicked: root.tryCustomMode()
+      }
     }
 
     Caption { text: "Scale" }
@@ -729,6 +825,19 @@ ColumnLayout {
     color: root.dim
     font.family: root.fontFamily
     font.pixelSize: Style.font.caption
+  }
+
+  // One number of a custom mode, tried with the Try button or Enter
+  component ModeField: TextField {
+    property string placeholder: ""
+
+    Layout.fillWidth: true
+    foreground: root.foreground
+    font.family: root.fontFamily
+    font.pixelSize: Style.font.bodySmall
+    placeholderText: placeholder
+    inputMethodHints: Qt.ImhFormattedNumbersOnly
+    onAccepted: root.tryCustomMode()
   }
 
   // A typed setting, saved when editing ends; empty goes back to the default
