@@ -28,4 +28,5 @@ A Quickshell desktop for Hyprland (Lua config). `shell/` is the QML desktop (bar
 - `hl.monitor` keeps any field a later call leaves out, so going back to a default at runtime takes `hyprctl reload` (`neko-display` does this).
 - `hyprctl monitors` gives `mirrorOf` as the mirrored display's id, not its name; `neko-display json` turns it into the name.
 - QML `Timer`s were seen to stall while an open panel drew nothing new, and the shell can stall with a screen that's gone dark. Deadlines that must hold (like `neko-display`'s 15-second undo) run as their own process, and countdowns read `SystemClock`.
+- Qt's font fallback can draw boxes for CJK text when several files share a family name (every Droid Sans face is "Droid Sans"), and whether it does depends on which fonts happen to be loaded. Load the file `fc-match :lang=ja` names with a `FontLoader` and use its family, as the workspaces widget does.
 - Theme sections override whole `[section]`s via `themes/<name>/shell.<section>.toml`; `neko-theme-material` builds a theme from the wallpaper by recoloring `themes/neko`'s files, so new colors in those files need a mapping there.

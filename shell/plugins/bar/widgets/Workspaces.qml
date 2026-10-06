@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Hyprland
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
@@ -16,6 +17,26 @@ BarWidget {
   readonly property bool showNumbers: SuperKey.held
   readonly property color accent: NekoColor.accent
   readonly property real cellSize: root.vertical ? root.barSize : Style.space(24)
+
+  // A font with the kanji, loaded from its file: fontconfig knows which one
+  // has them, but Qt's own fallback can settle on another face of the same
+  // family that doesn't (Droid Sans has a dozen), and draws boxes
+  property string kanjiFontFile: ""
+  readonly property string kanjiFamily: kanjiFont.status === FontLoader.Ready ? kanjiFont.name : ""
+
+  Process {
+    running: true
+    command: ["fc-match", "--format=%{file}", ":lang=ja"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.kanjiFontFile = String(text || "").trim()
+    }
+  }
+
+  FontLoader {
+    id: kanjiFont
+    source: root.kanjiFontFile ? "file://" + root.kanjiFontFile : ""
+  }
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values
@@ -79,7 +100,7 @@ BarWidget {
           opacity: cell.shown * (root.showNumbers ? 0.8 : 1)
           text: root.kanji[cell.index]
           color: cell.focused ? root.accent : cell.foreground
-          font.family: cell.fontFamily
+          font.family: root.kanjiFamily || cell.fontFamily
           font.pixelSize: Style.font.body
           font.weight: cell.focused ? Font.Bold : Font.Normal
 
