@@ -26,6 +26,7 @@ Example `shell.json` (bar subtree only shown):
   "bar": {
     "position": "top",
     "transparent": false,
+    "glass": true,
     "centerAnchor": "neko.clock",
     "layout": {
       "left": [
@@ -45,6 +46,8 @@ Example `shell.json` (bar subtree only shown):
   }
 }
 ```
+
+`glass` gives the bar a neutral see-through tint that the compositor blurs behind (dark under light text, light under dark text), so it takes its color from what's under it rather than from the theme; its capsules turn to glass too. `transparent` wins over it, so double-clicking the bar goes between the two.
 
 `centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. Set to an empty string to disable anchoring (the center list is centered as a group).
 

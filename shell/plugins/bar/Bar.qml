@@ -45,6 +45,7 @@ Item {
   property var fallbackBarConfig: ({
     position: "top",
     transparent: false,
+    glass: false,
     centerAnchor: "neko.clock",
     layout: { left: [], center: [], right: [] }
   })
@@ -53,6 +54,14 @@ Item {
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
+  // Glass: a neutral see-through tint the compositor blurs behind, so the
+  // bar takes its color from what's under it rather than from the theme.
+  // Dark under light text, light under dark text; capsules are glass too.
+  property bool glass: false
+  readonly property bool lightText: themeForeground.hslLightness > 0.5
+  readonly property color glassTint: lightText ? Qt.rgba(0, 0, 0, 0.24) : Qt.rgba(1, 1, 1, 0.3)
+  readonly property color glassEdge: lightText ? Qt.rgba(1, 1, 1, 0.14) : Qt.rgba(0, 0, 0, 0.12)
+  readonly property color glassCapsule: lightText ? Qt.rgba(1, 1, 1, 0.07) : Qt.rgba(0, 0, 0, 0.05)
   property bool centerSectionHovered: false
   // One bar surface exists per monitor and each reports into this count, so a
   // pointer crossing from one monitor's bar to another's stays counted however
@@ -77,7 +86,7 @@ Item {
   property color foreground: themeForeground
   property color barForeground: useTransparentForeground ? transparentForeground : themeForeground
   property bool foregroundAnimationEnabled: true
-  property color background: NekoColor.bar.background
+  property color background: glass ? glassTint : NekoColor.bar.background
   property color urgent: NekoColor.bar.active
 
   Behavior on barForeground { enabled: root.foregroundAnimationEnabled; ColorAnimation { duration: Style.duration(420); easing.type: Easing.InOutCubic } }
@@ -610,6 +619,8 @@ Item {
     var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
 
     position = normalizePosition(config.position)
+    // Transparent wins, so double-clicking the bar goes between it and glass
+    glass = config.glass === true && config.transparent !== true
     setRequestedTransparency(config.transparent === true)
     centerAnchor = Util.canonicalWidgetId(config.centerAnchor || "")
 
@@ -1313,6 +1324,30 @@ Item {
       visible: barWindow.floating && !root.transparent
       color: root.background
       radius: Style.bar.floatRadius
+      border.width: root.glass ? 1 : 0
+      border.color: root.glassEdge
+    }
+
+    // Glass sheen: light catching the top, fading out toward the bottom
+    Rectangle {
+      anchors.fill: parent
+      visible: root.glass && !root.transparent
+      radius: barWindow.floating ? Style.bar.floatRadius : 0
+      gradient: Gradient {
+        orientation: root.vertical ? Gradient.Horizontal : Gradient.Vertical
+        GradientStop { position: 0.0; color: Qt.rgba(1, 1, 1, root.lightText ? 0.08 : 0.18) }
+        GradientStop { position: 0.55; color: Qt.rgba(1, 1, 1, 0) }
+      }
+    }
+
+    // A docked glass bar's edge toward the screen: a hairline of light
+    Rectangle {
+      visible: root.glass && !barWindow.floating && !root.transparent
+      color: root.glassEdge
+      x: root.position === "left" ? parent.width - 1 : 0
+      y: root.position === "top" ? parent.height - 1 : 0
+      width: root.vertical ? 1 : parent.width
+      height: root.vertical ? parent.height : 1
     }
 
     Loader {
@@ -1899,7 +1934,7 @@ Item {
     Rectangle {
       readonly property int inset: Style.space(3)
 
-      visible: NekoColor.bar.capsule.a > 0 && slot.width > 0 && !root.transparent
+      visible: (root.glass || NekoColor.bar.capsule.a > 0) && slot.width > 0 && !root.transparent
       anchors.fill: parent
       anchors.topMargin: root.vertical ? 2 + slot.gap / 2 : inset
       anchors.bottomMargin: root.vertical ? 2 + slot.gap / 2 : inset
@@ -1907,7 +1942,9 @@ Item {
       anchors.leftMargin: root.vertical ? inset : 2 + slot.gap / 2
       anchors.rightMargin: root.vertical ? inset : 2 + slot.gap / 2
       radius: Math.min(width, height) / 2
-      color: NekoColor.bar.capsule
+      color: root.glass ? root.glassCapsule : NekoColor.bar.capsule
+      border.width: root.glass ? 1 : 0
+      border.color: Qt.rgba(root.glassEdge.r, root.glassEdge.g, root.glassEdge.b, root.glassEdge.a * 0.6)
     }
 
     BorderSurface {
