@@ -33,6 +33,9 @@ Panel {
   property string uptime: ""
   // The last good weather report; a failed fetch keeps it rather than blanking the card
   property var weather: null
+  // When it was fetched: it's fetched as the shell starts, so it's there on
+  // the first open, and again on an open once it's a quarter of an hour old
+  property real weatherFetched: 0
   readonly property var weatherNow: WeatherModel.openMeteoCurrentCondition(weather)
   readonly property var weatherDays: WeatherModel.openMeteoForecastDays(weather, Qt.formatDate(new Date(), "yyyy-MM-dd"))
   property string ssid: ""
@@ -66,8 +69,10 @@ Panel {
   function refresh() {
     stateProc.running = false
     stateProc.running = true
-    if (!weatherProc.running) weatherProc.running = true
+    if (!weatherProc.running && Date.now() - weatherFetched > 15 * 60 * 1000) weatherProc.running = true
   }
+
+  Component.onCompleted: weatherProc.running = true
 
   function rotationLabel(minutes) {
     return minutes === "60" ? "hour" : minutes + " min"
@@ -141,7 +146,10 @@ Panel {
       onStreamFinished: {
         try {
           var report = JSON.parse(String(text || ""))
-          if (report && report.current) root.weather = report
+          if (report && report.current) {
+            root.weather = report
+            root.weatherFetched = Date.now()
+          }
         } catch (e) {}
       }
     }
@@ -241,6 +249,109 @@ Panel {
             tooltipText: "Power"
             foreground: root.foreground
             onClicked: root.runAndClose("neko-menu summon system")
+          }
+        }
+
+        // Quick toggles
+        GridLayout {
+          Layout.fillWidth: true
+          columns: 2
+          rowSpacing: Style.space(8)
+          columnSpacing: Style.space(8)
+
+          QuickTile {
+            icon: Networking.wifiEnabled ? "󰖩" : "󰖪"
+            label: "Wi-Fi"
+            subtitle: Networking.wifiEnabled ? (root.ssid || "On") : "Off"
+            active: Networking.wifiEnabled
+            onClicked: { Networking.wifiEnabled = !Networking.wifiEnabled; root.refresh() }
+          }
+          QuickTile {
+            icon: root.adapter && root.adapter.enabled ? "󰂯" : "󰂲"
+            label: "Bluetooth"
+            subtitle: root.adapter ? (root.adapter.enabled ? "On" : "Off") : "No adapter"
+            active: !!root.adapter && root.adapter.enabled
+            onClicked: if (root.adapter) root.adapter.enabled = !root.adapter.enabled
+          }
+          QuickTile {
+            icon: root.dnd ? "󰂛" : "󰂚"
+            label: "Do not disturb"
+            subtitle: root.dnd ? "On" : "Off"
+            active: root.dnd
+            onClicked: root.act("neko-shell notifications toggleDnd")
+          }
+          QuickTile {
+            icon: "󰅶"
+            label: "Stay awake"
+            subtitle: root.stayAwake ? "On" : "Off"
+            active: root.stayAwake
+            onClicked: root.act("neko-toggle-idle toggle")
+          }
+          QuickTile {
+            icon: "󰀠"
+            label: "Reminders"
+            subtitle: root.reminders > 0 ? root.reminders + " set" : "Set one"
+            active: root.reminders > 0
+            Layout.columnSpan: root.recorderInstalled ? 1 : 2
+            onClicked: root.runAndClose("neko-reminder -i")
+          }
+          QuickTile {
+            visible: root.recorderInstalled
+            icon: "󰑊"
+            label: "Screen record"
+            subtitle: root.recording ? "Recording" : "Off"
+            active: root.recording
+            onClicked: root.recording
+              ? root.act("neko-capture-screenrecording --stop-recording")
+              : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
+          }
+          QuickTile {
+            icon: root.displays.length > 1 ? "󰍺" : "󰍹"
+            label: "Display"
+            subtitle: root.displays.length > 1 ? root.displays.filter(function(d) { return d.enabled }).length + " of " + root.displays.length + " on"
+              : root.focusedDisplay ? MonitorModel.normalizeScale(root.focusedDisplay.scale) + "x, " + Math.round(root.focusedDisplay.refreshRate) + " Hz" : ""
+            opensPage: true
+            onClicked: root.page = "display"
+          }
+          QuickTile {
+            icon: "󰸉"
+            label: "Wallpaper"
+            subtitle: root.rotation ? "New one every " + root.rotationLabel(root.rotation) : root.wallpaperName
+            active: root.rotation !== ""
+            opensPage: true
+            onClicked: root.page = "wallpaper"
+          }
+        }
+
+        // Volume and brightness
+        SliderRow {
+          icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"
+          label: root.sink && root.sink.audio ? Math.round(root.sink.audio.volume * 100) + "%" : ""
+          visible: !!(root.sink && root.sink.audio)
+          PanelSlider {
+            Layout.fillWidth: true
+            bar: root.bar
+            value: root.sink && root.sink.audio ? root.sink.audio.volume : 0
+            onMoved: function(v) { if (root.sink && root.sink.audio) root.sink.audio.volume = v }
+          }
+        }
+        // Brightness moves by ticks on the curve: a mark per full step, the
+        // wheel and drag landing on the fine steps between them
+        SliderRow {
+          icon: "󰃟"
+          label: BrightnessModel.tickLabel(root.brightnessTick)
+          visible: root.brightnessMax > 0
+          PanelSlider {
+            id: brightnessSlider
+            Layout.fillWidth: true
+            bar: root.bar
+            maximum: BrightnessModel.ticks
+            integer: true
+            step: 1
+            tickCount: BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1
+            tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
+            value: root.brightnessTick
+            onMoved: function(v) { root.brightnessTick = v; brightnessDebounce.restart() }
           }
         }
 
@@ -358,109 +469,6 @@ Panel {
                 }
               }
             }
-          }
-        }
-
-        // Quick toggles
-        GridLayout {
-          Layout.fillWidth: true
-          columns: 2
-          rowSpacing: Style.space(8)
-          columnSpacing: Style.space(8)
-
-          QuickTile {
-            icon: Networking.wifiEnabled ? "󰖩" : "󰖪"
-            label: "Wi-Fi"
-            subtitle: Networking.wifiEnabled ? (root.ssid || "On") : "Off"
-            active: Networking.wifiEnabled
-            onClicked: { Networking.wifiEnabled = !Networking.wifiEnabled; root.refresh() }
-          }
-          QuickTile {
-            icon: root.adapter && root.adapter.enabled ? "󰂯" : "󰂲"
-            label: "Bluetooth"
-            subtitle: root.adapter ? (root.adapter.enabled ? "On" : "Off") : "No adapter"
-            active: !!root.adapter && root.adapter.enabled
-            onClicked: if (root.adapter) root.adapter.enabled = !root.adapter.enabled
-          }
-          QuickTile {
-            icon: root.dnd ? "󰂛" : "󰂚"
-            label: "Do not disturb"
-            subtitle: root.dnd ? "On" : "Off"
-            active: root.dnd
-            onClicked: root.act("neko-shell notifications toggleDnd")
-          }
-          QuickTile {
-            icon: "󰅶"
-            label: "Stay awake"
-            subtitle: root.stayAwake ? "On" : "Off"
-            active: root.stayAwake
-            onClicked: root.act("neko-toggle-idle toggle")
-          }
-          QuickTile {
-            icon: "󰀠"
-            label: "Reminders"
-            subtitle: root.reminders > 0 ? root.reminders + " set" : "Set one"
-            active: root.reminders > 0
-            Layout.columnSpan: root.recorderInstalled ? 1 : 2
-            onClicked: root.runAndClose("neko-reminder -i")
-          }
-          QuickTile {
-            visible: root.recorderInstalled
-            icon: "󰑊"
-            label: "Screen record"
-            subtitle: root.recording ? "Recording" : "Off"
-            active: root.recording
-            onClicked: root.recording
-              ? root.act("neko-capture-screenrecording --stop-recording")
-              : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
-          }
-          QuickTile {
-            icon: root.displays.length > 1 ? "󰍺" : "󰍹"
-            label: "Display"
-            subtitle: root.displays.length > 1 ? root.displays.filter(function(d) { return d.enabled }).length + " of " + root.displays.length + " on"
-              : root.focusedDisplay ? MonitorModel.normalizeScale(root.focusedDisplay.scale) + "x, " + Math.round(root.focusedDisplay.refreshRate) + " Hz" : ""
-            opensPage: true
-            onClicked: root.page = "display"
-          }
-          QuickTile {
-            icon: "󰸉"
-            label: "Wallpaper"
-            subtitle: root.rotation ? "New one every " + root.rotationLabel(root.rotation) : root.wallpaperName
-            active: root.rotation !== ""
-            opensPage: true
-            onClicked: root.page = "wallpaper"
-          }
-        }
-
-        // Volume and brightness
-        SliderRow {
-          icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"
-          label: root.sink && root.sink.audio ? Math.round(root.sink.audio.volume * 100) + "%" : ""
-          visible: !!(root.sink && root.sink.audio)
-          PanelSlider {
-            Layout.fillWidth: true
-            bar: root.bar
-            value: root.sink && root.sink.audio ? root.sink.audio.volume : 0
-            onMoved: function(v) { if (root.sink && root.sink.audio) root.sink.audio.volume = v }
-          }
-        }
-        // Brightness moves by ticks on the curve: a mark per full step, the
-        // wheel and drag landing on the fine steps between them
-        SliderRow {
-          icon: "󰃟"
-          label: BrightnessModel.tickLabel(root.brightnessTick)
-          visible: root.brightnessMax > 0
-          PanelSlider {
-            id: brightnessSlider
-            Layout.fillWidth: true
-            bar: root.bar
-            maximum: BrightnessModel.ticks
-            integer: true
-            step: 1
-            tickCount: BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1
-            tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
-            value: root.brightnessTick
-            onMoved: function(v) { root.brightnessTick = v; brightnessDebounce.restart() }
           }
         }
       }
