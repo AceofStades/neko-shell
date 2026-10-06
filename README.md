@@ -18,7 +18,7 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Laptop lid and external monitor handling (`neko-lid`)
 - [x] Panels: Wi-Fi QR code, speed test, AI agent usage, Tailscale
 - [x] Agents panel: launch and account actions work (`neko-default-agent`, Settings > Default agent)
-- [ ] Self-documenting `neko` commands and hooks
+- [x] Self-documenting `neko` commands and hooks (`neko`, `~/.config/neko/hooks/`)
 - [ ] A Claude Code skill describing the setup
 
 ## Running
@@ -41,6 +41,18 @@ Machine settings go in `~/.config/neko/env`, which `neko-session` sources:
 | `NEKO_RESTORES` | Command that brings that shell back on stop |
 
 Layout and plugins live in `~/.config/neko/shell.json`; turn off services another tool already handles with `"disabledPlugins": ["neko.idle", "neko.lock", "neko.polkit"]`.
+
+## Hooks
+
+Scripts in `~/.config/neko/hooks/` run on events; `<name>.d/` folders run every script inside.
+
+| Hook | When | Argument |
+|---|---|---|
+| `theme-set` | A theme is applied, including wallpaper Material colors | theme name |
+| `wallpaper-set` | The wallpaper changes | image path |
+| `session-start` | neko takes over the session | |
+| `font-set` | The font changes | font name |
+| `battery-low` | Battery runs low | |
 
 ## Inspiration
 
