@@ -54,6 +54,7 @@ if flag then
     "XF86MonBrightnessUp", "XF86MonBrightnessDown", "SUPER + XF86MonBrightnessUp", "SUPER + XF86MonBrightnessDown",
     "XF86AudioPlay", "XF86AudioPause",
     "SUPER + ALT + SPACE", "SUPER + SLASH", "SUPER + W",
+    "switch:on:Lid Switch", "switch:off:Lid Switch",
   }
   for _, key in ipairs(keys) do
     hl.unbind(key)
@@ -75,4 +76,11 @@ if flag then
   hl.bind("SUPER + ALT + SPACE", hl.dsp.global("neko:menu.root"), { description = "Neko menu" })
   hl.bind("SUPER + SLASH", hl.dsp.exec_cmd(run .. "neko-menu-keybindings"), { description = "Keybindings cheat sheet" })
   hl.bind("SUPER + W", hl.dsp.exec_cmd(run .. "neko-wallpaper pick"), { description = "Pick a wallpaper" })
+
+  -- Lid: with an external monitor the laptop screen goes off instead of the
+  -- machine suspending; without one, logind's default suspend still applies.
+  -- Re-checked on every config load so a reload while docked keeps it off.
+  hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd(run .. "neko-lid apply"), { locked = true })
+  hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd(run .. [[neko-lid apply; hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })']]), { locked = true })
+  hl.exec_cmd(run .. "neko-lid apply")
 end
