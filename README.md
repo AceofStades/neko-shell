@@ -11,7 +11,7 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Material You colors from the wallpaper (`neko-theme-material`, needs matugen)
 - [x] Wallpaper picker, randomizer and rotation (`neko-wallpaper`, Style > Wallpaper, `SUPER+W`)
 - [x] Settings in the menu: colors, bar, themed apps (`neko-settings`)
-- [ ] A full settings panel
+- [x] A settings window (Settings > Open settings window)
 - [x] Keybindings with descriptions and a searchable cheat sheet (`SUPER+/`; add `{ description = "..." }` to a bind to name it)
 - [x] Media keys through global shortcuts instead of a process per keypress (`default/hypr/neko.lua`)
 - [x] One palette for every app: kitty, btop, tmux, GTK (`NEKO_THEME_APPS`)
