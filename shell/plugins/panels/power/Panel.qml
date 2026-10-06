@@ -23,7 +23,7 @@ Panel {
   readonly property bool showPercentage: setting("showPercentage", true) === true
   readonly property bool drawnBattery: batteryPresent && !button.vertical
   // The open-panel mark spans the battery body rather than the whole slot
-  readonly property real openPanelIndicatorWidth: drawnBattery ? 24 : 0
+  readonly property real openPanelIndicatorWidth: drawnBattery ? 30 : 0
   readonly property bool batteryPresent: {
     var device = UPower.displayDevice
     return !!(device && device.isPresent)
@@ -279,8 +279,8 @@ Panel {
     bar: root.bar
     text: root.batteryIcon()
     iconComponent: root.drawnBattery ? batteryComponent : null
-    opticalSize: root.drawnBattery ? 40 : Style.bar.iconCanvas
-    slotSize: root.drawnBattery ? 44 : Style.bar.iconSlot
+    opticalSize: root.drawnBattery ? 46 : Style.bar.iconCanvas
+    slotSize: root.drawnBattery ? 50 : Style.bar.iconSlot
     tooltipText: ""
     onPressed: function(b) {
       if (!root.batteryPresent) return

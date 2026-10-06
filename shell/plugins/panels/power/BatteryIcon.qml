@@ -13,8 +13,8 @@ Item {
   property color foreground: NekoColor.bar.text
   property string fontFamily: Style.font.family
 
-  readonly property real bodyWidth: 24
-  readonly property real bodyHeight: 12
+  readonly property real bodyWidth: 30
+  readonly property real bodyHeight: 15
   readonly property real boltWidth: charging ? boltText.implicitWidth + 2 : 0
 
   implicitWidth: boltWidth + bodyWidth + 3
@@ -38,7 +38,7 @@ Item {
     anchors.verticalCenter: parent.verticalCenter
     width: root.bodyWidth
     height: root.bodyHeight
-    radius: 3
+    radius: 3.5
     color: "transparent"
     border.width: 1.2
     border.color: Util.alpha(root.foreground, 0.75)
@@ -61,7 +61,7 @@ Item {
       text: Math.round(root.fraction * 100)
       color: root.foreground
       font.family: root.fontFamily
-      font.pixelSize: 8
+      font.pixelSize: 10
       font.weight: Font.Bold
     }
   }
@@ -72,7 +72,7 @@ Item {
     anchors.leftMargin: 1
     anchors.verticalCenter: body.verticalCenter
     width: 2
-    height: 5
+    height: 6
     radius: 1
     color: Util.alpha(root.foreground, 0.75)
   }
