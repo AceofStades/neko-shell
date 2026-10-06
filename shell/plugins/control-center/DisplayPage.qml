@@ -687,7 +687,7 @@ ColumnLayout {
     ButtonGroup {
       Layout.fillWidth: true
       fontSize: Style.font.bodySmall
-      options: (root.display ? MonitorModel.availableScales(["1", "1.25", "1.5", "1.6", "2", "3"], root.display.width, root.display.height) : [])
+      options: (root.display ? MonitorModel.availableScales(["1", "1.25", "1.5", "1.6", "2", "3", "4"], root.display.width, root.display.height) : [])
         .map(function(v) { return { value: String(v), label: v + "x" } })
       value: root.display ? MonitorModel.normalizeScale(root.display.scale) : ""
       onChanged: function(v) { root.change("scale", v) }
