@@ -359,6 +359,21 @@ Item {
     moduleSlots = next
   }
 
+  // A widget's item by id, on the same bar window as `near` when given, so a
+  // widget can anchor its popup to a neighbour (the hidden world clock opens
+  // from the clock)
+  function moduleItem(id, near) {
+    var nearWindow = near ? near.QsWindow.window : null
+    var fallback = null
+    for (var i = 0; i < moduleSlots.length; i++) {
+      var slot = moduleSlots[i]
+      if (!slot || slot.moduleName !== id || !slot.activeItem) continue
+      if (!nearWindow || slot.QsWindow.window === nearWindow) return slot.activeItem
+      if (!fallback) fallback = slot.activeItem
+    }
+    return fallback
+  }
+
   function unregisterModuleSlot(slot) {
     var next = moduleSlots.filter(function(item) { return item !== slot })
     moduleSlots = next

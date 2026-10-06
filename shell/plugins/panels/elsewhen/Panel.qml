@@ -77,7 +77,10 @@ Panel {
   }
   onSearchZoneIdsChanged: probeSearchZones()
 
-  implicitWidth: button.implicitWidth
+  // With hideButton set the widget takes no space in the bar and is opened from
+  // elsewhere (the clock); its popup still anchors where the button would be
+  readonly property bool buttonHidden: setting("hideButton", false) === true
+  implicitWidth: buttonHidden ? 0 : button.implicitWidth
   implicitHeight: button.implicitHeight
 
   readonly property color foreground: bar ? bar.foreground : NekoColor.foreground
@@ -711,6 +714,7 @@ Panel {
   BarIconButton {
     id: button
     anchors.fill: parent
+    visible: !root.buttonHidden
     bar: root.bar
     slotSize: Style.bar.statusSlot
     text: "󰇧"
@@ -723,7 +727,9 @@ Panel {
 
   KeyboardPanel {
     id: panel
-    anchorItem: button
+    // Hidden, the button has no place in the bar; open beside the clock instead
+    anchorItem: (root.buttonHidden && root.bar && typeof root.bar.moduleItem === "function"
+      && root.bar.moduleItem("neko.clock", root)) || button
     owner: root
     bar: root.bar
     open: root.opened

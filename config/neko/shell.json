@@ -7,7 +7,7 @@
   "bar": {
     "position": "top",
     "transparent": false,
-    "centerAnchor": "neko.clock",
+    "centerAnchor": "",
     "layout": {
       "left": [
         {
@@ -16,19 +16,7 @@
       ],
       "center": [
         {
-          "id": "neko.elsewhen"
-        },
-        {
-          "id": "neko.clock",
-          "format": "dddd HH:mm",
-          "formatAlt": "d MMMM 'W'ww yyyy",
-          "verticalFormat": "HH\n—\nmm"
-        },
-        {
           "id": "neko.keyboard-layout"
-        },
-        {
-          "id": "neko.weather"
         }
       ],
       "right": [
@@ -58,6 +46,16 @@
         },
         {
           "id": "neko.control-center"
+        },
+        {
+          "id": "neko.elsewhen",
+          "hideButton": true
+        },
+        {
+          "id": "neko.clock",
+          "format": "dddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "verticalFormat": "HH\n—\nmm"
         }
       ]
     }
