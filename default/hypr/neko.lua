@@ -41,6 +41,19 @@ hl.window_rule({
   size = "875 600",
 })
 
+-- Display settings changed in the control center (neko-display writes them).
+-- They come after your own monitor rules, so they win; a broken file is
+-- reported rather than stopping the rest of this one.
+local displays = (os.getenv("HOME") or "") .. "/.config/neko/displays.lua"
+local displays_file = io.open(displays, "r")
+if displays_file then
+  displays_file:close()
+  local ok, err = pcall(dofile, displays)
+  if not ok then
+    print("neko: " .. tostring(err))
+  end
+end
+
 -- Media keys and the menu, only while neko is the running shell: neko-session
 -- start sets the flag (in XDG_RUNTIME_DIR, gone after a reboot) and stop
 -- clears it, so loading this file permanently never steals the keys from

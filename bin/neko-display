@@ -1,0 +1,277 @@
+#!/bin/bash
+
+# neko:summary=Show and change each display's Hyprland settings, kept across reloads
+# neko:args=json | set [--trial] <output> <key=value>... | keep | undo | reset <output>
+# neko:examples=neko-display json|neko-display set eDP-1 scale=1.5|neko-display set --trial DP-1 mode=2560x1440@144|neko-display keep|neko-display set DP-1 cm=|neko-display reset DP-1
+
+# Settings live in ~/.config/neko/displays.json, one entry per output. Each
+# change is applied at once and written to ~/.config/neko/displays.lua, which
+# neko.lua loads after your own config so the settings survive reloads. An
+# output's first change starts from how it runs now, so the saved rule is
+# complete and replaces the one in your config. `key=` drops a setting back to
+# Hyprland's default; `reset` forgets the output and reloads your config.
+#
+# `set --trial` is for changes a screen might not survive: unless `keep`
+# follows within 15 seconds, the settings from before come back on their own
+# (`undo` does it at once). The undo runs as its own process, so a screen gone
+# dark, or a shell stuck with it, can't stop it.
+#
+# Keys (Hyprland's hl.monitor fields):
+#   mode                 WxH@Hz | preferred | highres | highrr | maxwidth
+#   position             auto | auto-left|right|up|down | auto-center-left|right|up|down | XxY
+#   scale                number | auto
+#   transform            0-7 (0, 90, 180, 270 degrees; 4-7 the same flipped)
+#   mirror               output to mirror
+#   bitdepth             8 | 10
+#   vrr                  0 off | 1 on | 2 fullscreen | 3 fullscreen games and video
+#   cm                   auto | srgb | dcip3 | dp3 | adobe | wide | edid | hdr | hdredid
+#   sdr_eotf             default | gamma22 | srgb
+#   sdrbrightness, sdrsaturation, sdr_min_luminance, min_luminance   number
+#   sdr_max_luminance, max_luminance, max_avg_luminance              whole number
+#   supports_hdr, supports_wide_color   -1 never | 0 detect | 1 always
+#   icc                  path to an ICC profile
+#   reserved_area        "top right bottom left" in pixels
+#   disabled             true | false (this session only: a display saved off
+#                        could leave a laptop dark once its monitor is unplugged)
+
+config=$HOME/.config/neko/displays.json
+lua=$HOME/.config/neko/displays.lua
+trial=${XDG_RUNTIME_DIR:-/tmp}/neko-display-trial.json
+trial_seconds=15
+
+usage() {
+  echo "Usage: neko-display json | set <output> <key=value>... | reset <output>" >&2
+  exit 1
+}
+
+saved() {
+  if [[ -f $config ]]; then
+    cat "$config"
+  else
+    echo '{}'
+  fi
+}
+
+# hl.monitor calls for every saved output, or just the one named. Strings are
+# checked when set, so their JSON quoting is valid Lua.
+lua_rules() {
+  jq -r --arg only "${1:-}" '
+    def literal:
+      if type == "object" then "{ top = \(.top), right = \(.right), bottom = \(.bottom), left = \(.left) }"
+      elif type == "string" then tojson
+      else tostring end;
+    to_entries[]
+    | select($only == "" or .key == $only)
+    | "hl.monitor({ output = \(.key | tojson)"
+      + ([.value | to_entries[] | ", \(.key) = \(.value | literal)"] | join(""))
+      + " })"'
+}
+
+write_lua() {
+  {
+    echo "-- Written by neko-display from displays.json; changes here are overwritten."
+    saved | lua_rules
+  } > "$lua.tmp" && mv "$lua.tmp" "$lua"
+}
+
+# How an output runs now, as settings: the starting point for its first change
+live_settings() {
+  hyprctl monitors all -j | jq -c --arg name "$1" '
+    .[] | select(.name == $name)
+    | if .disabled then {} else
+        { mode: "\(.width)x\(.height)@\(.refreshRate * 1000 | round / 1000)",
+          position: "\(.x)x\(.y)",
+          scale: .scale,
+          transform: .transform }
+        + (if (.currentFormat | test("2101010")) then { bitdepth: 10 } else {} end)
+        + (if .mirrorOf != "none" then { mirror: .mirrorOf } else {} end)
+        + (if .colorManagementPreset != "srgb" then { cm: .colorManagementPreset } else {} end)
+      end'
+}
+
+# A setting's value as JSON, or nothing when it isn't one the key takes
+value_json() {
+  local key=$1 value=$2
+  local number='^[0-9]+(\.[0-9]+)?$'
+  case $key in
+    mode)
+      [[ $value =~ ^(preferred|highres|highrr|maxwidth|[0-9]+x[0-9]+(@[0-9]+(\.[0-9]+)?)?)$ ]] && jq -n --arg v "$value" '$v' ;;
+    position)
+      [[ $value =~ ^(auto(-(left|right|up|down)|-center-(left|right|up|down))?|-?[0-9]+x-?[0-9]+)$ ]] && jq -n --arg v "$value" '$v' ;;
+    scale)
+      if [[ $value == "auto" ]]; then echo '"auto"'; elif [[ $value =~ $number ]]; then echo "$value"; fi ;;
+    transform)
+      [[ $value =~ ^[0-7]$ ]] && echo "$value" ;;
+    mirror)
+      [[ $value =~ ^[A-Za-z0-9._-]+$ ]] && jq -n --arg v "$value" '$v' ;;
+    bitdepth)
+      [[ $value == 8 || $value == 10 ]] && echo "$value" ;;
+    vrr)
+      [[ $value =~ ^[0-3]$ ]] && echo "$value" ;;
+    cm)
+      [[ $value =~ ^(auto|srgb|dcip3|dp3|adobe|wide|edid|hdr|hdredid)$ ]] && jq -n --arg v "$value" '$v' ;;
+    sdr_eotf)
+      [[ $value =~ ^(default|gamma22|srgb)$ ]] && jq -n --arg v "$value" '$v' ;;
+    sdrbrightness | sdrsaturation | sdr_min_luminance | min_luminance)
+      [[ $value =~ $number ]] && echo "$value" ;;
+    sdr_max_luminance | max_luminance | max_avg_luminance)
+      [[ $value =~ ^[0-9]+$ ]] && echo "$value" ;;
+    supports_hdr | supports_wide_color)
+      [[ $value =~ ^(-1|0|1)$ ]] && echo "$value" ;;
+    icc)
+      [[ -f $value && $value != *[\"\\]* && $value != *$'\n'* ]] && jq -n --arg v "$(realpath "$value")" '$v' ;;
+    reserved_area)
+      if [[ $value =~ ^([0-9]+)\ ([0-9]+)\ ([0-9]+)\ ([0-9]+)$ ]]; then
+        jq -cn --argjson t "${BASH_REMATCH[1]}" --argjson r "${BASH_REMATCH[2]}" --argjson b "${BASH_REMATCH[3]}" --argjson l "${BASH_REMATCH[4]}" \
+          '{ top: $t, right: $r, bottom: $b, left: $l }'
+      fi ;;
+  esac
+}
+
+# Every display as it runs, with its saved settings. vrrDefault is the global
+# misc:vrr, which applies to displays without a vrr setting of their own.
+json() {
+  local vrr
+  vrr=$(hyprctl getoption misc:vrr -j 2> /dev/null | jq '.int // 0')
+  local until=0
+  [[ -f $trial ]] && until=$(jq '.until' "$trial")
+  hyprctl monitors all -j | jq -c --argjson saved "$(saved)" --argjson vrr "${vrr:-0}" --argjson until "${until:-0}" '
+    [.[] | {
+      name, description, focused,
+      enabled: (.disabled | not),
+      width, height, refreshRate, x, y, scale, transform,
+      modes: .availableModes,
+      mirrorOf, vrrActive: .vrr,
+      bitdepth: (if (.currentFormat | test("2101010")) then 10 else 8 end),
+      cm: .colorManagementPreset,
+      sdrBrightness, sdrSaturation,
+      vrrDefault: $vrr,
+      trialUntil: $until,
+      saved: ($saved[.name] // {})
+    }]'
+}
+
+set_settings() {
+  local trying=0
+  if [[ $1 == "--trial" ]]; then
+    trying=1
+    shift
+  fi
+  local output=$1
+  shift
+  # The name goes into Lua, so only a plain connector name may pass
+  if [[ ! $output =~ ^[A-Za-z0-9._-]+$ ]] || ! hyprctl monitors all -j | jq -e --arg name "$output" 'any(.[]; .name == $name)' > /dev/null; then
+    echo "No display named $output" >&2
+    exit 1
+  fi
+  (( $# > 0 )) || usage
+
+  local all entry disabled="" dropped=0 pair key value json_value
+  all=$(saved)
+  entry=$(jq -c --arg name "$output" '.[$name] // empty' <<< "$all")
+  [[ -n $entry ]] || entry=$(live_settings "$output")
+
+  for pair in "$@"; do
+    [[ $pair == *=* ]] || usage
+    key=${pair%%=*}
+    value=${pair#*=}
+    if [[ $key == "disabled" ]]; then
+      [[ $value == "true" || $value == "false" ]] || { echo "disabled takes true or false" >&2; exit 1; }
+      disabled=$value
+    elif [[ -z $value ]]; then
+      entry=$(jq -c --arg k "$key" 'del(.[$k])' <<< "$entry")
+      dropped=1
+    else
+      json_value=$(value_json "$key" "$value")
+      if [[ -z $json_value ]]; then
+        echo "Not a $key setting: $value" >&2
+        exit 1
+      fi
+      entry=$(jq -c --arg k "$key" --argjson v "$json_value" '.[$k] = $v' <<< "$entry")
+    fi
+  done
+
+  # A display that's off stays off unless this turns it on; turning one on
+  # without saved settings lets Hyprland pick its mode, place and scale
+  if [[ -z $disabled ]]; then
+    hyprctl monitors all -j | jq -e --arg name "$output" 'any(.[]; .name == $name and .disabled)' > /dev/null && disabled=true
+  fi
+  if [[ $disabled == "false" && $entry == "{}" ]]; then
+    entry='{"mode":"preferred","position":"auto","scale":"auto"}'
+  fi
+
+  # Hyprland keeps a setting a rule leaves out, so going back to a default
+  # takes a reload of the whole config
+  if (( dropped )); then
+    save "$output" "$entry"
+    hyprctl reload > /dev/null
+    [[ -z $disabled ]] || hyprctl eval "$(rule "$output" "$entry" "$disabled")" > /dev/null
+  else
+    local result
+    result=$(hyprctl eval "$(rule "$output" "$entry" "$disabled")")
+    if [[ $result != "ok" ]]; then
+      echo "$result" >&2
+      exit 1
+    fi
+    save "$output" "$entry"
+  fi
+  if (( trying )); then
+    start_trial "$all"
+  fi
+}
+
+# Remember the settings from before (an earlier trial's, if one is still
+# open) and undo to them unless kept in time. The deadline names the trial,
+# so an undo left over from an earlier one does nothing.
+start_trial() {
+  local before=$1 until
+  [[ -f $trial ]] && before=$(jq -c '.before' "$trial")
+  until=$(( ($(date +%s) + trial_seconds) * 1000 ))
+  jq -cn --argjson before "$before" --argjson until "$until" '{ until: $until, before: $before }' > "$trial"
+  setsid -f bash -c 'sleep "$1"; exec "$2" undo "$3"' _ "$trial_seconds" "$(realpath "$0")" "$until" > /dev/null 2>&1
+}
+
+keep() {
+  rm -f "$trial"
+}
+
+# Back to the settings from before the trial, through a reload so every
+# display gets its whole rule again
+undo() {
+  [[ -f $trial ]] || return 0
+  if [[ -n $1 && $(jq '.until' "$trial") != "$1" ]]; then
+    return 0
+  fi
+  jq '.before' "$trial" > "$config.tmp" && mv "$config.tmp" "$config"
+  rm -f "$trial"
+  write_lua
+  hyprctl reload > /dev/null
+}
+
+# The hl.monitor call for an output's settings, off for this session if asked
+rule() {
+  jq -c --arg name "$1" --argjson entry "$2" --argjson off "${3:-false}" \
+    '{ ($name): ($entry + (if $off then { disabled: true } else {} end)) }' <<< '{}' | lua_rules
+}
+
+save() {
+  mkdir -p "$(dirname "$config")"
+  saved | jq --arg name "$1" --argjson entry "$2" '.[$name] = $entry' > "$config.tmp" && mv "$config.tmp" "$config"
+  write_lua
+}
+
+reset() {
+  [[ -n $1 ]] || usage
+  saved | jq --arg name "$1" 'del(.[$name])' > "$config.tmp" && mv "$config.tmp" "$config"
+  write_lua
+  hyprctl reload > /dev/null
+}
+
+case $1 in
+  json) json ;;
+  set) shift; set_settings "$@" ;;
+  keep) keep ;;
+  undo) undo "$2" ;;
+  reset) reset "$2" ;;
+  *) usage ;;
+esac
