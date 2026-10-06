@@ -94,6 +94,7 @@
   "style.bar.position.left": {"icon":"󰁍","label":"Left","action":"neko-bar position left"},
   "style.bar.position.right": {"icon":"󰁔","label":"Right","action":"neko-bar position right"},
 
+  "settings.window": {"icon":"󰖷","label":"Open settings window","action":"neko-shell shell summon neko.settings '{}'"},
   "settings.colors": {"icon":"󰏘","label":"Colors"},
   "settings.colors.material": {"label":"From the wallpaper","checked":"neko-settings is colors material","action":"neko-settings set colors material"},
   "settings.colors.neko": {"label":"Neko (fixed)","checked":"neko-settings is colors neko","action":"neko-settings set colors neko"},
