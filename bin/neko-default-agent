@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# neko:summary=Show or set the default coding agent
+# neko:args=[claude|codex|opencode|pi|omp|ori|crush|grok|openclaw|agy|hermes|copilot|cursor-agent|muse]
+# neko:examples=neko-default-agent|neko-default-agent claude
+
+# The agent has to be installed already; neko doesn't install packages. Silent
+# when unset, so the agents panel shows no default until one is chosen.
+
+agent_file=$HOME/.config/neko/defaults/agent
+
+if (( $# == 0 )); then
+  if [[ -f $agent_file ]]; then
+    read -r agent < "$agent_file"
+    [[ -n $agent ]] && echo "$agent"
+  fi
+  exit 0
+fi
+
+case $1 in
+  claude | claude-code) agent=claude ;;
+  codex) agent=codex ;;
+  opencode | open-code) agent=opencode ;;
+  pi) agent=pi ;;
+  omp | oh-my-pi) agent=omp ;;
+  ori | openrouter) agent=ori ;;
+  crush) agent=crush ;;
+  grok) agent=grok ;;
+  openclaw) agent=openclaw ;;
+  agy | antigravity | gemini) agent=agy ;;
+  hermes) agent=hermes ;;
+  copilot | github-copilot) agent=copilot ;;
+  cursor | cursor-agent) agent=cursor-agent ;;
+  muse | muse-code) agent=muse ;;
+  *)
+    echo "Usage: neko-default-agent [claude|codex|opencode|pi|omp|ori|crush|grok|openclaw|agy|hermes|copilot|cursor-agent|muse]" >&2
+    exit 1
+    ;;
+esac
+
+if ! command -v "$agent" > /dev/null; then
+  echo "$agent isn't installed; install it first, then set it as the default" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$agent_file")"
+echo "$agent" > "$agent_file"
+echo "$agent"
