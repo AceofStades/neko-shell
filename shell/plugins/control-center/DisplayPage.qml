@@ -83,7 +83,12 @@ ColumnLayout {
   // The aspect ratio picked, else the one the display runs at; "all" lists
   // every mode the display offers and nothing else
   property string aspect: ""
-  onSelectedNameChanged: aspect = ""
+  onSelectedNameChanged: {
+    aspect = ""
+    customMode = false
+  }
+  // "Custom…" picked from the resolutions: the fields for any mode show
+  property bool customMode: false
   readonly property string shownAspect: aspect || (display ? ratioOf(display.width, display.height) : "") || "all"
 
   // The resolutions to offer: the display's own in the aspect ratio shown,
@@ -194,6 +199,7 @@ ColumnLayout {
     var rate = Number(customRate.text || display.refreshRate.toFixed(3))
     if (!(width > 0 && height > 0 && rate > 0)) return
     setRisky("mode", width + "x" + height + "@" + rate)
+    customMode = false
     customWidth.text = ""
     customHeight.text = ""
     customRate.text = ""
@@ -567,9 +573,11 @@ ColumnLayout {
       showLabel: false
       fontFamily: root.fontFamily
       options: root.resolutions.map(function(r) { return { value: r.value, label: r.label } })
-        .concat([{ value: "preferred", label: "Preferred" }, { value: "highres", label: "Highest resolution" }, { value: "highrr", label: "Highest refresh rate" }])
-      value: /^(preferred|highres|highrr)$/.test(root.current("mode")) ? root.current("mode") : root.resolution
+        .concat([{ value: "preferred", label: "Preferred" }, { value: "highres", label: "Highest resolution" }, { value: "highrr", label: "Highest refresh rate" }, { value: "custom", label: "Custom…" }])
+      value: root.customMode ? "custom" : /^(preferred|highres|highrr)$/.test(root.current("mode")) ? root.current("mode") : root.resolution
       onChanged: function(v) {
+        root.customMode = v === "custom"
+        if (root.customMode) return
         if (/^(preferred|highres|highrr)$/.test(v)) { root.setRisky("mode", v); return }
         // Keep the rate when the new resolution offers it, else take its
         // fastest; a custom one keeps the rate the display runs at
@@ -604,9 +612,10 @@ ColumnLayout {
 
     // Any mode at all; one the display can't show falls back to its
     // preferred, and the undo is there either way
-    Caption { text: "Custom mode: width × height @ refresh rate" }
+    Caption { text: "Custom mode: width × height @ refresh rate"; visible: root.customMode }
     RowLayout {
       Layout.fillWidth: true
+      visible: root.customMode
       spacing: Style.space(6)
       ModeField {
         id: customWidth
