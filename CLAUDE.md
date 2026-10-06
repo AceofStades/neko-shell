@@ -23,5 +23,5 @@ A Quickshell desktop for Hyprland (Lua config). `shell/` is the QML desktop (bar
 
 - Qt 6.12's QtQuick exports a `Color` type that shadows any QML singleton named `Color`, so the theme singleton is `NekoColor`. Don't add singletons named after Qt types (`Color`, `Palette`).
 - `hyprctl dispatch` takes Lua in this setup: `hyprctl dispatch 'hl.dsp.dpms({ action = "enable" })'`, not `dpms on`. `hyprctl eval '<lua>'` changes Hyprland at runtime; a config reload undoes it.
-- Bar widgets added while the shell runs can leave a panel's IPC handler duplicated until the next restart.
+- Adding a bar widget while the shell runs rebuilds the bar's widgets before the old ones are gone. Quickshell keeps only the first IpcHandler per target and never promotes a later one, so those panels drop out of `qs ipc` until the next restart; neko's own socket (what `neko-shell` uses when socat is installed) tracks handlers itself and keeps working. Don't try to fix it by toggling a handler's `enabled` on unregister: that crashes Quickshell (SIGSEGV in its handler registry).
 - Theme sections override whole `[section]`s via `themes/<name>/shell.<section>.toml`; `neko-theme-material` builds a theme from the wallpaper by recoloring `themes/neko`'s files, so new colors in those files need a mapping there.
