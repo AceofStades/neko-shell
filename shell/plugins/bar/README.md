@@ -58,7 +58,8 @@ Example `shell.json` (bar subtree only shown):
 | Name | What it does | Interactions |
 |---|---|---|
 | `neko.menu` | Neko menu launcher | left = menu · right = terminal |
-| `neko.workspaces` | Hyprland workspace switcher | left = focus workspace |
+| `neko.workspaces` | Workspaces 1 to 10 in kanji | left = focus workspace |
+| `neko.system-monitor` | CPU, CPU temperature and memory as rings around their icons; a popup with every core, the temperatures, memory and swap, disks, network, battery draw and the busiest processes | left = popup · middle = btop |
 | `neko.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping | left = popup · right = cycle label format · middle = timezone selector |
 | `neko.media` | MPRIS now-playing — scrolling track + artist, cover-art popup | left = play/pause · middle = next · scroll = prev/next · right = popup |
 | `neko.indicators` | Manual state indicators | left = indicator action |

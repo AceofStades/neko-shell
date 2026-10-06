@@ -4,16 +4,16 @@
   "name": "System monitor",
   "version": "1.0.0",
   "author": "Neko",
-  "description": "CPU use, CPU temperature and memory as small gauges",
+  "description": "CPU, temperature and memory rings, with every core, temperature, disk and the busiest processes on click",
   "kinds": [
     "bar-widget"
   ],
   "entryPoints": {
-    "barWidget": "SystemMonitor.qml"
+    "barWidget": "Panel.qml"
   },
   "barWidget": {
     "displayName": "System monitor",
-    "description": "CPU use, CPU temperature and memory as small gauges",
+    "description": "CPU, temperature and memory rings, with the details on click",
     "category": "System",
     "allowMultiple": false
   }
