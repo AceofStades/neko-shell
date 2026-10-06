@@ -188,7 +188,6 @@ Panel {
           }
           ColumnLayout {
             spacing: 0
-            Layout.fillWidth: true
             Text {
               text: Quickshell.env("USER") || "neko"
               color: root.foreground
@@ -203,6 +202,8 @@ Panel {
               font.pixelSize: Style.font.caption
             }
           }
+          // Takes the free space so the buttons sit at the right edge
+          Item { Layout.fillWidth: true }
           PanelActionButton {
             iconText: "󰒓"
             tooltipText: "Settings"
