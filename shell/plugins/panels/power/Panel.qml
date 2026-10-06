@@ -447,6 +447,12 @@ Panel {
             spacing: Style.spacing.labelGap
             InfoPair { label: "Battery size"; value: root.batteryInfo.size || "" }
             InfoPair { label: "Charge cycles"; value: root.batteryInfo.cycles || "—" }
+            // What it holds now against what it held new
+            InfoPair {
+              visible: !!root.batteryInfo.health
+              label: "Health"
+              value: (root.batteryInfo.health || "") + (root.batteryInfo.design ? " of " + root.batteryInfo.design : "")
+            }
           }
 
           Column {

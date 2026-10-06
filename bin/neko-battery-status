@@ -25,6 +25,9 @@ battery_info=$(upower -i "$battery")
 
 percentage=$(awk '/percentage/ { print int($2); exit }' <<<"$battery_info")
 capacity=$(awk '/energy-full:/ { printf "%d", $2; exit }' <<<"$battery_info")
+design_capacity=$(awk '/energy-full-design:/ { printf "%d", $2; exit }' <<<"$battery_info")
+# Health: how much the battery holds now against what it held new
+health=$(awk '/^ *capacity:/ { printf "%d", $2 + 0.5; exit }' <<<"$battery_info")
 time_remaining=$(awk '/time to (empty|full)/ {
   value = $4
   unit = $5
@@ -110,6 +113,8 @@ if [[ $shell_output == "true" ]]; then
   cycles=$(cat "$power_supply_path"/BAT*/cycle_count 2>/dev/null | head -1)
 
   [[ -n $cycles ]] && printf 'cycles\t%s\n' "$cycles"
+  [[ -n $health ]] && printf 'health\t%s%%\n' "$health"
+  [[ -n $design_capacity ]] && printf 'design\t%sWh\n' "$design_capacity"
 
   if [[ -n $threshold_end ]]; then
     if [[ -n $threshold_start && $threshold_start != $threshold_end ]]; then
