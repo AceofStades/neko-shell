@@ -93,7 +93,7 @@ BarWidget {
           text: root.kanji[cell.index]
           color: cell.focused ? root.accent : cell.foreground
           font.family: root.kanjiFamily || cell.fontFamily
-          font.pixelSize: Style.font.body
+          font.pixelSize: Style.bar.fontSize
           font.weight: cell.focused ? Font.Bold : Font.Normal
         }
       }

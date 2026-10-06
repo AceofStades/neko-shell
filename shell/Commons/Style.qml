@@ -354,6 +354,8 @@ QtObject {
     readonly property int iconSlot:       Math.round(root.barToken("icon-slot",       27) * paddingScale)
     readonly property int iconCanvas:     root.barToken("icon-canvas",     16)
     readonly property int iconFont:       root.barToken("icon-font",       13)
+    // Text on the bar: clock, labels, workspaces, the window title
+    readonly property int fontSize:       root.barToken("font-size",       12)
     readonly property int statusSlot:     Math.round(root.barToken("status-slot",     21) * paddingScale)
     readonly property int floatMargin:    root.barFloatToken("float-margin")
     readonly property int floatRadius:    root.barFloatToken("float-radius")
@@ -428,7 +430,8 @@ QtObject {
         if (key === "scale-with-font") {
           nextBarScaleWithFont = boolToken(raw, nextBarScaleWithFont)
         } else if (key === "size-horizontal" || key === "size-vertical" || key === "float-margin" || key === "float-radius"
-                   || key === "icon-slot" || key === "status-slot" || key === "widget-gap") {
+                   || key === "icon-slot" || key === "status-slot" || key === "widget-gap"
+                   || key === "font-size" || key === "icon-font" || key === "icon-canvas") {
           var b = parseInt(raw, 10)
           if (isFinite(b)) barOut[key] = b
         } else if (key === "padding-scale") {

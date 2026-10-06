@@ -7,7 +7,7 @@ Item {
   property var bar: null
   property string text: ""
   property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  property real fontSize: Style.font.body
+  property real fontSize: bar ? Style.bar.fontSize : Style.font.body
   property color foreground: bar ? bar.barForeground : NekoColor.foreground
   property color activeColor: bar ? bar.urgent : NekoColor.urgent
   property bool active: false

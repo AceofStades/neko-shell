@@ -56,7 +56,7 @@ BarWidget {
         text: root.appName
         color: root.bar ? root.bar.barForeground : NekoColor.foreground
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
-        font.pixelSize: Style.font.body
+        font.pixelSize: Style.bar.fontSize
         font.weight: Font.Bold
       }
 
@@ -68,7 +68,7 @@ BarWidget {
         text: root.detail
         color: root.bar ? root.bar.barForeground : NekoColor.foreground
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
-        font.pixelSize: Style.font.body
+        font.pixelSize: Style.bar.fontSize
         elide: Text.ElideRight
         opacity: 0.6
       }
