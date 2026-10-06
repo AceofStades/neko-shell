@@ -17,7 +17,7 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] One palette for every app: kitty, btop, tmux, GTK (`NEKO_THEME_APPS`)
 - [x] Laptop lid and external monitor handling (`neko-lid`)
 - [x] Panels: Wi-Fi QR code, speed test, AI agent usage, Tailscale
-- [ ] Agents panel: drop the launch and account actions that relied on installers
+- [x] Agents panel: launch and account actions work (`neko-default-agent`, Settings > Default agent)
 - [ ] Self-documenting `neko` commands and hooks
 - [ ] A Claude Code skill describing the setup
 
