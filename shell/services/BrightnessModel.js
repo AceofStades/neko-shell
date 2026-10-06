@@ -44,9 +44,14 @@ function tickLabel(tick) {
 
 // Where a brightness key lands from the current raw value: a full step, or a
 // fine one with `fine`
+// A full step lands on the next whole step that way (8.3 goes up to 9 and
+// down to 8); a fine step moves by one. Same as neko-brightness-step.
 function brightnessKeyTarget(action, raw, max, fine) {
-  var delta = fine ? 1 : ticksPerStep
-  var tick = tickForRaw(raw, max) + (action === "raise" ? delta : -delta)
+  var current = tickForRaw(raw, max)
+  var tick
+  if (fine) tick = current + (action === "raise" ? 1 : -1)
+  else if (action === "raise") tick = (Math.floor(current / ticksPerStep) + 1) * ticksPerStep
+  else tick = current % ticksPerStep ? Math.floor(current / ticksPerStep) * ticksPerStep : current - ticksPerStep
   return Math.max(0, Math.min(ticks, tick))
 }
 

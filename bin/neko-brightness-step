@@ -69,7 +69,12 @@ read -r step raw < <(awk -v current="$current" -v max="$max" -v delta="$delta" -
       if ((curve[i] - current) ^ 2 < (curve[nearest] - current) ^ 2) nearest = i
     }
 
-    target = tick != "" ? tick : nearest + delta
+    # A full step lands on the next whole step that way (8.3 goes up to 9
+    # and down to 8); a fine step moves by one
+    if (tick != "") target = tick
+    else if (delta == 4) target = (int(nearest / 4) + 1) * 4
+    else if (delta == -4) target = nearest % 4 ? int(nearest / 4) * 4 : nearest - 4
+    else target = nearest + delta
     if (target < 0) target = 0
     if (target > steps) target = steps
     print target, curve[target]
