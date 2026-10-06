@@ -58,8 +58,12 @@ Item {
   // the widgets take their color from what's under them rather than from
   // the theme. The capsule is all but clear: just enough to clear the 0.01
   // alpha below which neko.lua's layer rule leaves the bar's pixels unblurred.
+  // Its text is black, or white where the wallpaper under the bar is dark,
+  // picked by neko-bar-text-color as the transparent bar's is.
   property bool glass: false
   readonly property color glassCapsule: Qt.rgba(0.5, 0.5, 0.5, 0.03)
+  readonly property string glassDarkText: "#141414"
+  readonly property string glassLightText: "#f2f2f2"
   property bool centerSectionHovered: false
   // One bar surface exists per monitor and each reports into this count, so a
   // pointer crossing from one monitor's bar to another's stays counted however
@@ -1070,9 +1074,14 @@ Item {
     var nextTransparent = value === true
     requestedTransparent = nextTransparent
     if (!nextTransparent) {
+      transparent = false
+      // Glass keeps the text color it picked and checks it again
+      if (glass) {
+        scheduleTransparentForegroundRefresh()
+        return
+      }
       foregroundAnimationEnabled = false
       useTransparentForeground = false
-      transparent = false
       transparentForeground = themeForeground
       restoreForegroundAnimation()
       return
@@ -1087,7 +1096,7 @@ Item {
   }
 
   function scheduleTransparentForegroundRefresh() {
-    if (!requestedTransparent) {
+    if (!requestedTransparent && !glass) {
       transparentForeground = themeForeground
       return
     }
@@ -1095,19 +1104,29 @@ Item {
   }
 
   function refreshTransparentForeground() {
-    if (!requestedTransparent || transparentForegroundProc.running) return
+    if ((!requestedTransparent && !glass) || transparentForegroundProc.running) return
 
+    // Glass offers black first, then white; transparent, the theme's text
+    // and background colors
     transparentForegroundProc.command = [
       "neko-bar-text-color",
       root.position,
       String(root.barSize),
-      colorHex(root.themeForeground),
-      colorHex(root.themeContrastForeground)
+      glass ? glassDarkText : colorHex(root.themeForeground),
+      glass ? glassLightText : colorHex(root.themeContrastForeground)
     ]
     transparentForegroundProc.running = true
   }
 
   onRequestedTransparentChanged: scheduleTransparentForegroundRefresh()
+  onGlassChanged: {
+    if (glass || requestedTransparent) {
+      scheduleTransparentForegroundRefresh()
+    } else {
+      useTransparentForeground = false
+      transparentForeground = themeForeground
+    }
+  }
   onPositionChanged: scheduleTransparentForegroundRefresh()
   onThemeForegroundChanged: scheduleTransparentForegroundRefresh()
   onThemeContrastForegroundChanged: scheduleTransparentForegroundRefresh()
@@ -1131,6 +1150,8 @@ Item {
         if (root.requestedTransparent) {
           root.useTransparentForeground = true
           root.transparent = true
+        } else if (root.glass) {
+          root.useTransparentForeground = true
         }
         root.restoreForegroundAnimation()
       }
@@ -1227,6 +1248,11 @@ Item {
     // killing it here can swallow the result entirely.
     function syncHidden(): void {
       barHiddenProbe.running = true
+    }
+
+    // The wallpaper changed: pick the text color for it again
+    function refreshTextColor(): void {
+      root.scheduleTransparentForegroundRefresh()
     }
   }
 

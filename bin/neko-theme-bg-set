@@ -23,3 +23,5 @@ ln -nsf "$BACKGROUND" "$CURRENT_BACKGROUND_LINK"
 # Update the live shell background immediately when it is running. The
 # background plugin also polls this symlink, but IPC avoids the visible delay.
 neko-shell -q background set "$BACKGROUND"
+# A transparent or glass bar picks its text color from the wallpaper
+neko-shell -q neko.bar refreshTextColor
