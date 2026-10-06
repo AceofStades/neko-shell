@@ -47,7 +47,7 @@ Example `shell.json` (bar subtree only shown):
 }
 ```
 
-`glass` gives the bar a neutral see-through tint that the compositor blurs behind (dark under light text, light under dark text), so it takes its color from what's under it rather than from the theme; its capsules turn to glass too. `transparent` wins over it, so double-clicking the bar goes between the two.
+`glass` leaves the bar itself clear and puts each widget on frosted glass: a neutral tint the compositor blurs behind (dark under light text, light under dark text), so the widgets take their color from what's under them rather than from the theme. `transparent` wins over it, so double-clicking the bar goes between the two.
 
 `centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. Set to an empty string to disable anchoring (the center list is centered as a group).
 
