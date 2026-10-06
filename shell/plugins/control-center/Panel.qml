@@ -14,8 +14,8 @@ import "../../services/BrightnessModel.js" as BrightnessModel
 
 // The cat button and its control center: quick toggles, volume and
 // brightness, weather and wallpaper in one popup. Left click opens it,
-// right click opens the neko menu. The wallpaper tile opens a page of its own
-// with the wallpaper settings; Escape or the back button returns.
+// right click opens the neko menu. The wallpaper and display tiles open pages
+// of their own with their settings; Escape or the back button returns.
 Panel {
   id: root
   moduleName: "neko.control-center"
@@ -41,7 +41,7 @@ Panel {
   property string rotation: ""
   property string wallpaper: ""
   property string colors: ""
-  // "" for the main page, "wallpaper" for the wallpaper settings
+  // "" for the main page, or "wallpaper" or "display" for their settings
   property string page: ""
   // The wallpaper's file name, readable: "a_red_alien.png" reads "a red alien"
   readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
@@ -53,15 +53,10 @@ Panel {
   property int brightnessMax: 0
   property var displays: []
 
-  readonly property var scalePresets: ["1", "1.25", "1.5", "1.6", "2", "3", "4"]
   readonly property var focusedDisplay: {
     for (var i = 0; i < displays.length; i++) if (displays[i].focused) return displays[i]
     return displays.length > 0 ? displays[0] : null
   }
-  readonly property var scaleOptions: focusedDisplay
-    ? MonitorModel.availableScales(scalePresets, focusedDisplay.width, focusedDisplay.height)
-    : []
-  readonly property int enabledDisplays: displays.filter(function(d) { return !d.disabled }).length
 
   readonly property var sink: Pipewire.defaultAudioSink
   readonly property var adapter: Bluetooth.defaultAdapter
@@ -96,7 +91,7 @@ Panel {
     id: stateProc
     command: ["bash", "-c", [
       "echo uptime=$(uptime -p | sed 's/^up //')",
-      "echo ssid=$(nmcli -t -f ACTIVE,SSID dev wifi 2>/dev/null | awk -F: '$1==\"yes\"{print $2; exit}')",
+      "echo ssid=$(nmcli -t -f ACTIVE,SSID dev wifi list --rescan no 2>/dev/null | awk -F: '$1==\"yes\"{print $2; exit}')",
       "echo dnd=$(neko-shell notifications isDnd 2>/dev/null)",
       "echo awake=$(neko-toggle-idle status | jq -r .enabled)",
       "echo rotation=$(cat ~/.config/neko/wallpaper-rotation 2>/dev/null)",
@@ -106,7 +101,7 @@ Panel {
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
       "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
       "echo brightness=$(brightnessctl -m | awk -F, '{print $3","$5}')",
-      "echo displays=$(hyprctl monitors all -j | jq -c '[.[] | {name, width, height, scale, focused, disabled}]')"
+      "echo displays=$(neko-display json)"
     ].join("; ")]
     stdout: StdioCollector {
       waitForEnd: true
@@ -184,7 +179,8 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight : column.implicitHeight)
+    contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight
+      : root.page === "display" ? displayPage.implicitHeight : column.implicitHeight)
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -419,9 +415,16 @@ Panel {
               : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
           }
           QuickTile {
+            icon: root.displays.length > 1 ? "󰍺" : "󰍹"
+            label: "Display"
+            subtitle: root.displays.length > 1 ? root.displays.filter(function(d) { return d.enabled }).length + " of " + root.displays.length + " on"
+              : root.focusedDisplay ? MonitorModel.normalizeScale(root.focusedDisplay.scale) + "x, " + Math.round(root.focusedDisplay.refreshRate) + " Hz" : ""
+            opensPage: true
+            onClicked: root.page = "display"
+          }
+          QuickTile {
             icon: "󰸉"
             label: "Wallpaper"
-            Layout.columnSpan: 2
             subtitle: root.rotation ? "New one every " + root.rotationLabel(root.rotation) : root.wallpaperName
             active: root.rotation !== ""
             opensPage: true
@@ -458,52 +461,6 @@ Panel {
             tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
             value: root.brightnessTick
             onMoved: function(v) { root.brightnessTick = v; brightnessDebounce.restart() }
-          }
-        }
-
-        // Display: scale for the focused screen, and on/off once there are several
-        ColumnLayout {
-          Layout.fillWidth: true
-          spacing: Style.space(6)
-          visible: root.scaleOptions.length > 0
-
-          Text {
-            text: "Display scale" + (root.focusedDisplay && root.displays.length > 1 ? " · " + root.focusedDisplay.name : "")
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-          ButtonGroup {
-            Layout.fillWidth: true
-            fontSize: Style.font.bodySmall
-            options: root.scaleOptions.map(function(v) { return { value: String(v), label: v + "x" } })
-            value: root.focusedDisplay ? MonitorModel.normalizeScale(root.focusedDisplay.scale) : ""
-            onChanged: function(v) { root.act("neko-hyprland-monitor-scaling " + v) }
-          }
-        }
-        Repeater {
-          model: root.displays.length > 1 ? root.displays : []
-          delegate: RowLayout {
-            required property var modelData
-            Layout.fillWidth: true
-            Text {
-              Layout.fillWidth: true
-              text: modelData.name + "  " + modelData.width + "x" + modelData.height
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.body
-            }
-            ToggleSwitch {
-              checked: !modelData.disabled
-              // Never switch off the last screen that's on
-              interactive: modelData.disabled || root.enabledDisplays > 1
-              onToggled: {
-                var output = JSON.stringify(String(modelData.name))
-                root.act(modelData.disabled
-                  ? "hyprctl eval 'hl.monitor({ output = " + output + ", disabled = false, mode = \"preferred\", position = \"auto\", scale = \"auto\" })'"
-                  : "hyprctl eval 'hl.monitor({ output = " + output + ", disabled = true })'")
-              }
-            }
           }
         }
       }
@@ -605,6 +562,28 @@ Panel {
           options: [ { value: "material", label: "From wallpaper" }, { value: "neko", label: "Neko" } ]
           value: root.colors
           onChanged: function(v) { root.act("neko-settings set colors " + v) }
+        }
+      }
+
+      // The display page scrolls: it holds every setting Hyprland has
+      Flickable {
+        anchors.fill: parent
+        visible: root.page === "display"
+        contentHeight: displayPage.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        DisplayPage {
+          id: displayPage
+          width: parent.width
+          bar: root.bar
+          displays: root.displays
+          foreground: root.foreground
+          dim: root.dim
+          accent: root.accent
+          fontFamily: root.fontFamily
+          onBack: root.page = ""
+          onChanged: root.refresh()
         }
       }
     }
