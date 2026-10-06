@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# neko:summary=Run an app the way uwsm-app would, or plainly when uwsm isn't installed
+# neko:hidden=true
+
+# neko's launchers call `uwsm-app -- <command>` so apps land in their own
+# systemd scope under a uwsm session. Without uwsm that command doesn't
+# exist, so defer to the real one when it's installed and otherwise just run
+# the command.
+
+self=$(readlink -f "$0")
+real=$(type -ap uwsm-app | while read -r candidate; do
+  [[ $(readlink -f "$candidate") != "$self" ]] && echo "$candidate" && break
+done)
+
+if [[ -n $real ]]; then
+  exec "$real" "$@"
+fi
+
+# uwsm-app's own options (some take a value) come before the command and end
+# at --; without one, the arguments are the command itself
+for arg in "$@"; do
+  if [[ $arg == "--" ]]; then
+    while [[ $1 != "--" ]]; do
+      shift
+    done
+    shift
+    break
+  fi
+done
+
+if (( $# == 0 )); then
+  echo "Usage: uwsm-app [options] -- <command> [args...]" >&2
+  exit 1
+fi
+
+exec "$@"
