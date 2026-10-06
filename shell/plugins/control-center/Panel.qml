@@ -29,7 +29,6 @@ Panel {
   property string weatherIcon: ""
   property string weatherText: ""
   property string ssid: ""
-  property bool nightLight: false
   property bool dnd: false
   property bool stayAwake: false
   property string rotation: ""
@@ -65,7 +64,6 @@ Panel {
     command: ["bash", "-c", [
       "echo uptime=$(uptime -p | sed 's/^up //')",
       "echo ssid=$(nmcli -t -f ACTIVE,SSID dev wifi 2>/dev/null | awk -F: '$1==\"yes\"{print $2; exit}')",
-      "echo night=$(neko-shell nightlight status 2>/dev/null | jq -r .enabled)",
       "echo dnd=$(neko-shell notifications isDnd 2>/dev/null)",
       "echo awake=$(neko-toggle-idle status | jq -r .enabled)",
       "echo rotation=$(cat ~/.config/neko/wallpaper-rotation 2>/dev/null)",
@@ -82,7 +80,6 @@ Panel {
           var value = lines[i].slice(at + 1)
           if (key === "uptime") root.uptime = value
           else if (key === "ssid") root.ssid = value
-          else if (key === "night") root.nightLight = value === "true"
           else if (key === "dnd") root.dnd = value === "on"
           else if (key === "awake") root.stayAwake = value === "true"
           else if (key === "rotation") root.rotation = value
@@ -252,13 +249,6 @@ Panel {
             onClicked: if (root.adapter) root.adapter.enabled = !root.adapter.enabled
           }
           QuickTile {
-            icon: "󰖔"
-            label: "Night light"
-            subtitle: root.nightLight ? "On" : "Off"
-            active: root.nightLight
-            onClicked: root.act("neko-toggle-nightlight")
-          }
-          QuickTile {
             icon: root.dnd ? "󰂛" : "󰂚"
             label: "Do not disturb"
             subtitle: root.dnd ? "On" : "Off"
@@ -275,6 +265,7 @@ Panel {
           QuickTile {
             icon: "󰁪"
             label: "Wallpaper rotation"
+            Layout.columnSpan: 2
             subtitle: root.rotation ? "Every " + root.rotation + " min" : "Off"
             active: root.rotation !== ""
             onClicked: root.act(root.rotation ? "neko-wallpaper auto off" : "neko-wallpaper auto 30")

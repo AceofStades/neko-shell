@@ -70,7 +70,6 @@
   "trigger.share.receive": {"icon":"󰥦","label":"Receive","action":"uwsm-app -- localsend"},
   "trigger.toggle.idle-lock": {"icon":"󰅶","label":"Stay Awake","action":"neko-toggle-idle"},
   "trigger.toggle.notifications": {"icon":"󰂛","label":"Notifications","action":"neko-toggle-notification-silencing"},
-  "trigger.toggle.nightlight": {"icon":"󰔎","label":"Nightlight","action":"neko-toggle-nightlight"},
   "trigger.toggle.top-bar": {"icon":"󰍜","label":"Menu Bar","action":"neko-toggle-bar"},
   "trigger.toggle.battery-percentage": {"icon":"󰁹","label":"Battery Percentage","when":"neko-hw-laptop","action":"neko-shell neko.power togglePercentage"},
   "trigger.tests.network-speedtest": {"icon":"󰓅","label":"Network Speed Test","action":"neko-shell shell summon neko.speedtest"},
