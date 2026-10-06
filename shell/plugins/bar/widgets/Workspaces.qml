@@ -4,30 +4,25 @@ import Quickshell.Hyprland
 import qs.Commons
 import qs.Ui
 
+// Workspaces 1 to 10, always all ten, written in kanji (一 to 十). While
+// Super is held each one shows the number key that reaches it, and its kanji
+// steps aside to the top right corner. The focused one sits on an accent pill;
+// empty ones are dimmed.
 BarWidget {
   id: root
   moduleName: "neko.workspaces"
+
+  readonly property var kanji: ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十"]
+  readonly property bool showNumbers: SuperKey.held
+  readonly property color accent: NekoColor.accent
+  readonly property real cellSize: root.vertical ? root.barSize : Style.space(24)
 
   function workspaceById(id) {
     var values = Hyprland.workspaces.values
     for (var i = 0; i < values.length; i++) {
       if (values[i].id === id) return values[i]
     }
-
     return null
-  }
-
-  function workspaceIds() {
-    var ids = [1, 2, 3, 4, 5]
-    var values = Hyprland.workspaces.values
-
-    for (var i = 0; i < values.length; i++) {
-      var id = values[i].id
-      if (id > 0 && id <= 10 && ids.indexOf(id) === -1) ids.push(id)
-    }
-
-    ids.sort(function(left, right) { return left - right })
-    return ids
   }
 
   function focusWorkspace(id) {
@@ -35,37 +30,79 @@ BarWidget {
     root.bar.run("hyprctl dispatch " + Util.shellQuote("hl.dsp.focus({ workspace = \"" + id + "\" })"))
   }
 
-  readonly property real trailingGap: root.vertical ? 0 : Style.spaceReal(1.5)
-
-  implicitWidth: grid.implicitWidth + trailingGap
+  implicitWidth: grid.implicitWidth
   implicitHeight: grid.implicitHeight
 
   GridLayout {
     id: grid
     anchors.fill: parent
-    anchors.rightMargin: root.trailingGap
-    columns: root.vertical ? 1 : root.workspaceIds().length
-    columnSpacing: root.vertical ? 0 : Style.space(1)
-    rowSpacing: root.vertical ? Style.space(2) : 0
+    columns: root.vertical ? 1 : 10
+    columnSpacing: 0
+    rowSpacing: 0
 
     Repeater {
-      model: root.workspaceIds()
+      model: 10
 
       WidgetButton {
-        required property int modelData
-
-        readonly property var workspace: root.workspaceById(modelData)
+        id: cell
+        required property int index
+        readonly property int number: index + 1
+        readonly property var workspace: root.workspaceById(number)
         readonly property bool occupied: workspace !== null && workspace.toplevels.values.length > 0
-        readonly property bool focused: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === modelData
+        readonly property bool focused: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === number
+        readonly property real shown: focused || occupied ? 1 : 0.45
 
         bar: root.bar
-        text: focused ? "\uDB85\uDCFB" : (modelData === 10 ? "0" : String(modelData))
-        opacity: occupied || focused ? 1 : 0.5
-        horizontalMargin: 6
-        verticalPadding: 6
-        fixedWidth: root.vertical ? root.barSize : Style.space(20)
-        fixedHeight: root.barSize
-        onPressed: function() { root.focusWorkspace(modelData) }
+        hasVisualContent: true
+        tooltipText: "Workspace " + number
+        fixedWidth: root.cellSize
+        fixedHeight: root.vertical ? Style.space(24) : root.barSize
+        onPressed: function() { root.focusWorkspace(cell.number) }
+
+        Rectangle {
+          anchors.centerIn: parent
+          width: cell.width - Style.space(4)
+          height: Math.min(cell.height - Style.space(6), Style.space(22))
+          radius: height / 2
+          color: Util.alpha(root.accent, 0.22)
+          opacity: cell.focused ? 1 : 0
+          Behavior on opacity { NumberAnimation { duration: 140 } }
+        }
+
+        // The kanji: centered, or small in the top right corner while the
+        // number takes its place
+        Text {
+          anchors.centerIn: parent
+          anchors.horizontalCenterOffset: root.showNumbers ? cell.width * 0.3 : 0
+          anchors.verticalCenterOffset: root.showNumbers ? -cell.height * 0.22 : 0
+          scale: root.showNumbers ? 0.55 : 1
+          opacity: cell.shown * (root.showNumbers ? 0.8 : 1)
+          text: root.kanji[cell.index]
+          color: cell.focused ? root.accent : cell.foreground
+          font.family: cell.fontFamily
+          font.pixelSize: Style.font.body
+          font.weight: cell.focused ? Font.Bold : Font.Normal
+
+          Behavior on anchors.horizontalCenterOffset { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+          Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+          Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+          Behavior on opacity { NumberAnimation { duration: 160 } }
+        }
+
+        // The key that reaches it: 1 to 9, and 0 for the tenth
+        Text {
+          anchors.centerIn: parent
+          scale: root.showNumbers ? 1 : 0.6
+          opacity: root.showNumbers ? cell.shown : 0
+          text: cell.number === 10 ? "0" : String(cell.number)
+          color: cell.focused ? root.accent : cell.foreground
+          font.family: cell.fontFamily
+          font.pixelSize: Style.font.body
+          font.weight: Font.Bold
+
+          Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+          Behavior on opacity { NumberAnimation { duration: 160 } }
+        }
       }
     }
   }
