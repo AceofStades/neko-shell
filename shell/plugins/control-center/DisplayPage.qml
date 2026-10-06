@@ -144,7 +144,7 @@ ColumnLayout {
   // undoes it after 15 seconds unless it's kept, on its own, so a dark
   // screen can't stop that
   function setRisky(key, value) {
-    if (!display || current(key) === String(value)) return
+    if (!display || current(key) === String(value) || (key === "mode" && sameMode(current(key), String(value)))) return
     run(["neko-display", "set", "--trial", display.name, key + "=" + value])
   }
 
@@ -211,6 +211,12 @@ ColumnLayout {
     customWidth.text = ""
     customHeight.text = ""
     customRate.text = ""
+  }
+
+  // Two modes alike but for how their rates are rounded ("60.00", "60.001")
+  function sameMode(a, b) {
+    var x = /^(\d+x\d+)@([\d.]+)$/.exec(a), y = /^(\d+x\d+)@([\d.]+)$/.exec(b)
+    return !!x && !!y && x[1] === y[1] && Math.abs(Number(x[2]) - Number(y[2])) < 0.01
   }
 
   function keep() {
