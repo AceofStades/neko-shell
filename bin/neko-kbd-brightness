@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# neko:summary=Step the keyboard backlight a level up or down and show it in the OSD
+# neko:args=<up|down|get> [--no-osd]
+# neko:examples=neko-kbd-brightness up|neko-kbd-brightness down --no-osd|neko-kbd-brightness get
+
+# Works on whichever LED is the keyboard's backlight (asus::kbd_backlight,
+# tpacpi::kbd_backlight...), through brightnessctl, which needs no root for it.
+
+usage() {
+  echo "Usage: neko-kbd-brightness <up|down|get> [--no-osd]" >&2
+  exit 1
+}
+
+action=${1:-}
+osd=1
+[[ ${2:-} == "--no-osd" ]] && osd=0
+[[ $action == "get" ]] && osd=0
+
+device=$(brightnessctl --list -m 2> /dev/null | awk -F, '$2 == "leds" && $1 ~ /kbd_backlight/ { print $1; exit }')
+if [[ -z $device ]]; then
+  echo "No keyboard backlight found" >&2
+  exit 1
+fi
+
+case $action in
+  up) brightnessctl --quiet --device="$device" set 1+ ;;
+  down) brightnessctl --quiet --device="$device" set 1- ;;
+  get) ;;
+  *) usage ;;
+esac
+
+# device,class,current,percent,max
+IFS=, read -r _ _ level _ max < <(brightnessctl -m --device="$device")
+
+if [[ $action == "get" ]]; then
+  echo "$level/$max"
+fi
+
+if (( osd )); then
+  neko-osd -i keyboard -p "$level" --max "$max" --label "$level/$max"
+fi

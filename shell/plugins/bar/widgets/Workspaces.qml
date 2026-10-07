@@ -162,8 +162,9 @@ BarWidget {
         onHoveredChanged: Island.hovered = hovered
       }
 
-      // Volume, brightness and the rest: a large glyph with its meter below,
-      // brightness as its sixteen steps
+      // Volume, brightness and the rest: a large glyph with its meter below.
+      // Screen brightness shows its sixteen steps, and anything with only a
+      // few levels (the keyboard backlight) a segment per level.
       Column {
         anchors.centerIn: parent
         spacing: Style.space(8)
@@ -172,7 +173,8 @@ BarWidget {
         Behavior on opacity { NumberAnimation { duration: Style.duration(180) } }
 
         readonly property real fraction: Island.osd && Island.osd.maxValue > 0 ? Math.max(0, Math.min(1, Island.osd.value / Island.osd.maxValue)) : 0
-        readonly property bool stepped: !!Island.osd && Island.osd.maxValue === 64
+        readonly property int segments: !Island.osd ? 0 : Island.osd.maxValue === 64 ? 16 : Island.osd.maxValue <= 10 ? Island.osd.maxValue : 0
+        readonly property bool stepped: segments > 0
 
         Text {
           anchors.horizontalCenter: parent.horizontalCenter
@@ -200,19 +202,20 @@ BarWidget {
           }
         }
 
-        // Brightness: one segment per whole step, the fine steps filling it
+        // One segment per step, the fine steps (of brightness) filling it
         Row {
           id: steps
           anchors.horizontalCenter: parent.horizontalCenter
           visible: !!Island.osd && Island.osd.hasProgress && parent.stepped
           spacing: Style.space(2)
-          readonly property real filled: parent.fraction * 16
+          readonly property real filled: parent.fraction * parent.segments
 
           Repeater {
-            model: 16
+            model: steps.parent.segments
             Rectangle {
               required property int index
-              width: Style.space(5)
+              // Sixteen dots, or a few dashes across the same width
+              width: steps.parent.segments > 10 ? Style.space(5) : Math.round((Style.space(104) - steps.spacing * (steps.parent.segments - 1)) / steps.parent.segments)
               height: Style.space(5)
               radius: height / 2
               color: root.islandTrack

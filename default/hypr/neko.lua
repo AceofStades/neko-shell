@@ -72,6 +72,7 @@ if flag then
   local keys = {
     "XF86AudioRaiseVolume", "XF86AudioLowerVolume", "XF86AudioMute", "XF86AudioMicMute",
     "XF86MonBrightnessUp", "XF86MonBrightnessDown", "SUPER + XF86MonBrightnessUp", "SUPER + XF86MonBrightnessDown",
+    "XF86KbdBrightnessUp", "XF86KbdBrightnessDown",
     "XF86AudioPlay", "XF86AudioPause",
     "SUPER + ALT + SPACE", "SUPER + SLASH", "SUPER + W",
     "switch:on:Lid Switch", "switch:off:Lid Switch",
@@ -91,6 +92,8 @@ if flag then
   hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(run .. "neko-brightness-step down"), { locked = true, repeating = true })
   hl.bind("SUPER + XF86MonBrightnessUp", hl.dsp.exec_cmd(run .. "neko-brightness-step fine-up"), { locked = true, repeating = true })
   hl.bind("SUPER + XF86MonBrightnessDown", hl.dsp.exec_cmd(run .. "neko-brightness-step fine-down"), { locked = true, repeating = true })
+  hl.bind("XF86KbdBrightnessUp", hl.dsp.exec_cmd(run .. "neko-kbd-brightness up"), { locked = true, repeating = true })
+  hl.bind("XF86KbdBrightnessDown", hl.dsp.exec_cmd(run .. "neko-kbd-brightness down"), { locked = true, repeating = true })
   hl.bind("XF86AudioPlay", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
   hl.bind("XF86AudioPause", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
   hl.bind("SUPER + ALT + SPACE", hl.dsp.global("neko:menu.root"), { description = "Neko menu" })
