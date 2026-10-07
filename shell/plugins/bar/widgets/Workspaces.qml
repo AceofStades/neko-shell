@@ -80,8 +80,8 @@ BarWidget {
   readonly property real restHeight: root.height - 2 * root.restInset
 
   // Glass like the bar's capsules, blurred by the compositor (neko.lua's
-  // neko-island rule), with the bar's text color; tinted against that text
-  // (dark under light text, light under dark) so it reads over anything
+  // neko-island rule), with the bar's text color and the capsules' tint
+  // (Bar.qml's glassCapsule), so it grows out of its capsule unchanged
   readonly property color islandText: root.bar ? root.bar.barForeground : NekoColor.foreground
   readonly property color islandColor: root.islandText.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.3) : Qt.rgba(1, 1, 1, 0.4)
   readonly property color islandDim: Util.alpha(root.islandText, 0.65)
