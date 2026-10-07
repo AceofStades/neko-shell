@@ -45,7 +45,9 @@ BarWidget {
         readonly property bool focused: Hyprland.focusedWorkspace !== null && Hyprland.focusedWorkspace.id === number
 
         bar: root.bar
-        fixedWidth: Style.space(7)
+        // The mark stays hairline-thin, while its invisible lane remains
+        // comfortable to click on a scaled display.
+        fixedWidth: Style.space(9)
         fixedHeight: root.barSize
         hasVisualContent: true
         labelVisible: false
