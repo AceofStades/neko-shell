@@ -1972,6 +1972,8 @@ Item {
     readonly property string group: String(moduleSettings.group || "")
     readonly property real capsuleLeft: capsuleRect.x
     readonly property real capsuleRight: capsuleRect.x + capsuleRect.width
+    readonly property real capsuleTopRightRadius: capsuleRect.topRightRadius
+    readonly property real capsuleBottomRightRadius: capsuleRect.bottomRightRadius
     readonly property bool joinsPrevious: groupedWith(-1)
     readonly property bool joinsNext: groupedWith(1)
 
@@ -2128,12 +2130,37 @@ Item {
       bottomRightRadius: slot.joinsNext || slot.atScreenEnd || panelBelow && root.openCardFlushEnd ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
-      color: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
+      property color fill: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
         : root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion ? root.attachedPanelColor
         : !root.glass ? NekoColor.bar.capsule
         : slot.islandPart ? root.glassIslandCapsule : root.glassCapsule
       // The island's capsules clear at once as it takes over, back gently
-      Behavior on color { ColorAnimation { duration: Style.duration(!slot.islandPart ? 160 : Island.mode !== "" ? 50 : 90) } }
+      Behavior on fill { ColorAnimation { duration: Style.duration(!slot.islandPart ? 160 : Island.mode !== "" ? 50 : 90) } }
+      // In a group along the bar, the group's first capsule paints them all
+      color: !root.vertical && (slot.joinsPrevious || slot.joinsNext) ? "transparent" : fill
+    }
+
+    // A group's capsules painted as one, from its first to its last: edge to
+    // edge, the pieces leave a faint light seam where they meet between
+    // pixels, plain to see under a dark tint
+    Rectangle {
+      readonly property var tail: {
+        root.slotGeometrySerial
+        if (root.vertical || slot.joinsPrevious || !slot.joinsNext) return null
+        var last = slot
+        while (last.joinsNext && last.shownNeighbour(1)) last = last.shownNeighbour(1)
+        return last
+      }
+      visible: capsuleRect.visible && tail !== null
+      x: capsuleRect.x
+      y: capsuleRect.y
+      height: capsuleRect.height
+      width: tail ? tail.x + tail.capsuleRight - slot.x - capsuleRect.x : 0
+      color: capsuleRect.fill
+      topLeftRadius: capsuleRect.topLeftRadius
+      bottomLeftRadius: capsuleRect.bottomLeftRadius
+      topRightRadius: tail ? tail.capsuleTopRightRadius : 0
+      bottomRightRadius: tail ? tail.capsuleBottomRightRadius : 0
     }
 
     // Attached to the top edge, shoulders curve a capsule's ends into it,
@@ -2160,7 +2187,7 @@ Item {
       preferredRendererType: Shape.CurveRenderer
 
       ShapePath {
-        fillColor: capsuleShoulders.atStart ? capsuleRect.color : "transparent"
+        fillColor: capsuleShoulders.atStart ? capsuleRect.fill : "transparent"
         strokeWidth: 0
         strokeColor: "transparent"
         startX: capsuleShoulders.capsuleLeft - capsuleShoulders.size
@@ -2170,7 +2197,7 @@ Item {
         PathArc { x: capsuleShoulders.capsuleLeft - capsuleShoulders.size; y: 0; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size; direction: PathArc.Counterclockwise }
       }
       ShapePath {
-        fillColor: capsuleShoulders.atEnd ? capsuleRect.color : "transparent"
+        fillColor: capsuleShoulders.atEnd ? capsuleRect.fill : "transparent"
         strokeWidth: 0
         strokeColor: "transparent"
         startX: capsuleShoulders.capsuleRight + capsuleShoulders.size
@@ -2180,7 +2207,7 @@ Item {
         PathArc { x: capsuleShoulders.capsuleRight + capsuleShoulders.size; y: 0; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size }
       }
       ShapePath {
-        fillColor: capsuleShoulders.dropsStart ? capsuleRect.color : "transparent"
+        fillColor: capsuleShoulders.dropsStart ? capsuleRect.fill : "transparent"
         strokeWidth: 0
         strokeColor: "transparent"
         startX: capsuleShoulders.capsuleLeft
@@ -2189,7 +2216,7 @@ Item {
         PathArc { x: capsuleShoulders.capsuleLeft; y: capsuleShoulders.capsuleBottom + capsuleShoulders.size; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size; direction: PathArc.Counterclockwise }
       }
       ShapePath {
-        fillColor: capsuleShoulders.dropsEnd ? capsuleRect.color : "transparent"
+        fillColor: capsuleShoulders.dropsEnd ? capsuleRect.fill : "transparent"
         strokeWidth: 0
         strokeColor: "transparent"
         startX: capsuleShoulders.capsuleRight
