@@ -111,7 +111,8 @@ Singleton {
     } else if (event === "approved" || event === "failed") {
       faceAuthStale.stop()
       faceAuth = event
-      faceAuthClear.interval = event === "approved" ? 1100 : 1800
+      // Long enough for the check's pop or the shake and cross to play out
+      faceAuthClear.interval = event === "approved" ? 1200 : 1700
       faceAuthClear.restart()
     } else if (event === "done") {
       faceAuthStale.stop()

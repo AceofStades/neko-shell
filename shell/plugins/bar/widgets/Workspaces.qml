@@ -233,7 +233,7 @@ BarWidget {
         : root.islandMode === "pomodoro" ? Style.space(400)
         : root.islandMode === "notification" ? Style.space(410)
         : root.islandMode === "osd" ? Style.space(175)
-        : root.islandMode === "faceauth" ? Style.space(200) : root.restWidth
+        : root.islandMode === "faceauth" ? Style.space(120) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
@@ -401,9 +401,10 @@ BarWidget {
         }
       }
 
-      // Face unlock: the face in its frame, breathing while Howdy looks, then
-      // how it went
-      Column {
+      // Face unlock: the face in its frame, breathing while Howdy looks. Let
+      // in, it pops into a check with a ring rippling out; turned away, it
+      // shakes its head and becomes a cross.
+      Item {
         id: faceAuthView
         // In a beat after the shape starts to form, as the OSD does
         property bool shown: false
@@ -421,45 +422,114 @@ BarWidget {
         readonly property string state: Island.faceAuth
         // Kept while the pill closes, so it doesn't blank as it shrinks
         property string shownState: "scanning"
-        onStateChanged: if (state !== "") shownState = state
+        onStateChanged: {
+          if (state === "") return
+          shownState = state
+          approvedAnimation.stop()
+          failedAnimation.stop()
+          if (state === "scanning") {
+            faceGlyph.opacity = 1
+            faceGlyph.scale = 1
+            faceGlyph.color = root.islandText
+            resultGlyph.opacity = 0
+            ring.opacity = 0
+            shake.x = 0
+          } else if (state === "approved") {
+            approvedAnimation.restart()
+          } else if (state === "failed") {
+            failedAnimation.restart()
+          }
+        }
 
+        readonly property real glyphSize: Math.round(Style.font.display * 1.35)
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Style.space(14)
-        spacing: Style.space(2)
+        anchors.bottomMargin: Style.space(16)
+        width: glyphSize * 1.6
+        height: glyphSize * 1.25
         opacity: shown ? 1 : 0
         scale: shown ? 1 : 0.82
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Style.duration(faceAuthView.shown ? 220 : 90); easing.type: Easing.OutCubic } }
         Behavior on scale { NumberAnimation { duration: Style.duration(320); easing.type: Easing.OutBack; easing.overshoot: 1.3 } }
+        transform: Translate { id: shake }
+
+        // The ripple a check sends out
+        Rectangle {
+          id: ring
+          anchors.centerIn: parent
+          width: faceAuthView.glyphSize
+          height: width
+          radius: width / 2
+          color: "transparent"
+          border.width: Style.space(2)
+          border.color: root.accent
+          opacity: 0
+        }
 
         Text {
           id: faceGlyph
-          anchors.horizontalCenter: parent.horizontalCenter
+          anchors.centerIn: parent
           text: "\u{F0C7B}"
-          color: faceAuthView.shownState === "approved" ? root.accent
-            : faceAuthView.shownState === "failed" ? NekoColor.urgent : root.islandText
+          color: root.islandText
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Math.round(Style.font.display * 1.2)
-          Behavior on color { ColorAnimation { duration: Style.duration(160) } }
+          font.pixelSize: faceAuthView.glyphSize
 
-          // Breathes while it looks; still once it's done
+          // Breathes while it looks
           SequentialAnimation on opacity {
             running: faceAuthView.visible && faceAuthView.shownState === "scanning" && !Style.reduceMotion
             loops: Animation.Infinite
-            onRunningChanged: if (!running) faceGlyph.opacity = 1
+            onRunningChanged: if (!running && faceAuthView.shownState === "scanning") faceGlyph.opacity = 1
             NumberAnimation { to: 0.4; duration: Style.duration(650); easing.type: Easing.InOutSine }
             NumberAnimation { to: 1; duration: Style.duration(650); easing.type: Easing.InOutSine }
           }
         }
 
         Text {
-          anchors.horizontalCenter: parent.horizontalCenter
-          text: faceAuthView.shownState === "approved" ? "Welcome back"
-            : faceAuthView.shownState === "failed" ? "Not recognized" : "Looking for you"
-          color: Util.alpha(root.islandText, 0.75)
+          id: resultGlyph
+          anchors.centerIn: parent
+          text: faceAuthView.shownState === "failed" ? "\u{F0156}" : "\u{F012C}"
+          color: faceAuthView.shownState === "failed" ? NekoColor.urgent : root.accent
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Style.font.caption
+          font.pixelSize: faceAuthView.glyphSize
+          opacity: 0
+        }
+
+        SequentialAnimation {
+          id: approvedAnimation
+          // The face draws in a little, as if taking a breath...
+          ParallelAnimation {
+            NumberAnimation { target: faceGlyph; property: "opacity"; to: 0; duration: Style.duration(140); easing.type: Easing.InCubic }
+            NumberAnimation { target: faceGlyph; property: "scale"; to: 0.6; duration: Style.duration(140); easing.type: Easing.InCubic }
+          }
+          // ...and pops out as a check, a ring rippling away from it
+          ParallelAnimation {
+            NumberAnimation { target: resultGlyph; property: "opacity"; from: 0; to: 1; duration: Style.duration(120) }
+            NumberAnimation { target: resultGlyph; property: "scale"; from: 0.4; to: 1; duration: Style.duration(380); easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+            NumberAnimation { target: ring; property: "scale"; from: 0.7; to: 2.1; duration: Style.duration(560); easing.type: Easing.OutCubic }
+            NumberAnimation { target: ring; property: "opacity"; from: 0.9; to: 0; duration: Style.duration(560); easing.type: Easing.OutCubic }
+          }
+        }
+
+        SequentialAnimation {
+          id: failedAnimation
+          ColorAnimation { target: faceGlyph; property: "color"; to: NekoColor.urgent; duration: Style.duration(90) }
+          // A shake of the head
+          SequentialAnimation {
+            NumberAnimation { target: shake; property: "x"; to: -Style.space(9); duration: Style.duration(50); easing.type: Easing.OutSine }
+            NumberAnimation { target: shake; property: "x"; to: Style.space(8); duration: Style.duration(90); easing.type: Easing.InOutSine }
+            NumberAnimation { target: shake; property: "x"; to: -Style.space(6); duration: Style.duration(80); easing.type: Easing.InOutSine }
+            NumberAnimation { target: shake; property: "x"; to: Style.space(4); duration: Style.duration(70); easing.type: Easing.InOutSine }
+            NumberAnimation { target: shake; property: "x"; to: -Style.space(2); duration: Style.duration(60); easing.type: Easing.InOutSine }
+            NumberAnimation { target: shake; property: "x"; to: 0; duration: Style.duration(50); easing.type: Easing.OutSine }
+          }
+          // Then the face gives way to a cross
+          ParallelAnimation {
+            NumberAnimation { target: faceGlyph; property: "opacity"; to: 0; duration: Style.duration(140) }
+            NumberAnimation { target: faceGlyph; property: "scale"; to: 0.7; duration: Style.duration(140) }
+            NumberAnimation { target: resultGlyph; property: "opacity"; from: 0; to: 1; duration: Style.duration(160) }
+            NumberAnimation { target: resultGlyph; property: "scale"; from: 0.6; to: 1; duration: Style.duration(260); easing.type: Easing.OutBack }
+          }
         }
       }
 
