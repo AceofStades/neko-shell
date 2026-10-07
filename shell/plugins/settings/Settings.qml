@@ -135,11 +135,14 @@ Item {
           }
 
           SectionTitle { text: "Bar" }
+          // Docked along the edge, floating off it, or hanging from the top
+          // edge with the dynamic island
           SettingRow {
-            label: "Floating"
-            ToggleSwitch {
-              checked: root.settings.barFloat
-              onToggled: root.run("neko-settings toggle bar.float")
+            label: "Style"
+            ButtonGroup {
+              options: [ { value: "docked", label: "Docked" }, { value: "floating", label: "Floating" }, { value: "attached", label: "Attached" } ]
+              value: root.settings.barStyle || (root.settings.barFloat ? "floating" : "docked")
+              onChanged: function(v) { root.run("neko-settings set bar.style " + v) }
             }
           }
           SettingRow {

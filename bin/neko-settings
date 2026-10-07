@@ -2,19 +2,24 @@
 
 # neko:summary=Read and change neko's settings (what the Settings menu uses)
 # neko:args=<get|is|set|toggle> <key> [value] | json
-# neko:examples=neko-settings set colors material|neko-settings toggle bar.capsules|neko-settings is app.btop on
+# neko:examples=neko-settings set colors material|neko-settings set bar.style attached|neko-settings toggle bar.capsules|neko-settings is app.btop on
 
 # Keys:
 #   colors        material (from the wallpaper) | neko (the fixed palette)
-#   bar.float     on | off  (bar floats 6px off the screen edge; docked by default)
+#   bar.style     docked | floating | attached  (docked along the edge; floating
+#                 off it, every group a pill; or every group hanging from the
+#                 top edge, flat-topped)
+#   bar.float     on | off  (floating or attached, rather than docked)
 #   bar.capsules  on | off  (pill behind each bar widget)
 #   app.<name>    on | off  (kitty, btop, tmux or gtk follows the theme)
 #
 # Bar settings are overrides in ~/.config/neko/shell.toml, which the shell
 # watches live; turning a setting back to the theme's choice removes the override.
+# The bar's style also lives in shell.json's bar section (floating or attached).
 
 env_file=$HOME/.config/neko/env
 overrides=$HOME/.config/neko/shell.toml
+layout=$HOME/.config/neko/shell.json
 state=$HOME/.local/state/neko/current
 
 if [[ -f $env_file ]]; then
@@ -61,6 +66,21 @@ toml_unset() {
   ' "$overrides" > "$overrides.tmp" && mv "$overrides.tmp" "$overrides"
 }
 
+# The bar's style in shell.json, making the user's copy of it if there's none
+layout_style() {
+  local file=$layout
+  [[ -f $file ]] || file=$NEKO_PATH/config/neko/shell.json
+  jq -r '.bar.style // "floating"' "$file" 2> /dev/null
+}
+
+set_layout_style() {
+  if [[ ! -f $layout ]]; then
+    mkdir -p "$(dirname "$layout")"
+    cp "$NEKO_PATH/config/neko/shell.json" "$layout"
+  fi
+  jq --indent 2 --arg style "$1" '.bar.style = $style' "$layout" > "$layout.tmp" && mv "$layout.tmp" "$layout"
+}
+
 themed_apps() {
   echo "${NEKO_THEME_APPS:-}"
 }
@@ -84,6 +104,17 @@ get() {
       local margin
       margin=$(toml_get bar float-margin)
       (( ${margin:-0} > 0 )) && echo on || echo off
+      ;;
+    bar.style)
+      local margin
+      margin=$(toml_get bar float-margin)
+      if (( ${margin:-0} <= 0 )); then
+        echo docked
+      elif [[ $(layout_style) == "attached" ]]; then
+        echo attached
+      else
+        echo floating
+      fi
       ;;
     bar.capsules)
       [[ $(toml_get bar capsule-alpha) == "0" ]] && echo off || echo on
@@ -116,6 +147,32 @@ set_value() {
       else
         toml_unset bar float-margin
       fi
+      ;;
+    bar.style)
+      case $value in
+        docked)
+          # Remember the margin it floated on, for coming back to it
+          local margin
+          margin=$(toml_get bar float-margin)
+          (( ${margin:-0} > 0 )) && toml_set bar float-margin-saved "$margin"
+          toml_unset bar float-margin
+          set_layout_style floating
+          ;;
+        floating | attached)
+          # Keep the margin the bar floats on, or bring back the last one
+          local margin
+          margin=$(toml_get bar float-margin)
+          if (( ${margin:-0} <= 0 )); then
+            margin=$(toml_get bar float-margin-saved)
+            toml_set bar float-margin "${margin:-6}"
+          fi
+          set_layout_style "$value"
+          ;;
+        *)
+          echo "bar.style is docked, floating or attached" >&2
+          exit 1
+          ;;
+      esac
       ;;
     bar.capsules)
       # Capsules sit on a clear bar; without them the bar needs its own background
@@ -158,6 +215,7 @@ json() {
   jq -n \
     --arg colors "$(get colors)" \
     --arg float "$(get bar.float)" \
+    --arg style "$(get bar.style)" \
     --arg capsules "$(get bar.capsules)" \
     --arg position "$(jq -r '.bar.position // "top"' "$layout" 2> /dev/null)" \
     --arg rotation "$(cat "$HOME/.config/neko/wallpaper-rotation" 2> /dev/null)" \
@@ -167,6 +225,7 @@ json() {
     '{
       colors: $colors,
       barFloat: ($float == "on"),
+      barStyle: $style,
       barCapsules: ($capsules == "on"),
       barPosition: $position,
       rotation: (if $rotation == "" then "off" else $rotation end),
