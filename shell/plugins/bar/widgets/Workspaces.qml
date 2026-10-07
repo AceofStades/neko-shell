@@ -132,7 +132,7 @@ BarWidget {
     screen: root.QsWindow.window ? root.QsWindow.window.screen : null
     visible: root.islandUp
     color: "transparent"
-    implicitWidth: Style.space(480)
+    implicitWidth: Style.space(520)
     implicitHeight: Style.space(190)
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "neko-island"
@@ -143,6 +143,43 @@ BarWidget {
     margins.top: root.topAttached ? 0 : Style.bar.floatMargin
     margins.left: root.islandLeft
     mask: Region { item: root.islandMode !== "" ? pill : null }
+
+    // The shoulders of a card attached to the screen's top edge: beside its
+    // top corners, each fills the corner between the edge and the card's side
+    // with a curve turned away from the card, so the card flows out of the
+    // edge rather than hanging below it. Same tint as the card's own edges.
+    Shape {
+      id: shoulders
+      readonly property real size: Style.space(16)
+      readonly property real cardLeft: pill.x
+      readonly property real cardRight: pill.x + pill.width
+      readonly property real cardTop: pill.y
+      anchors.fill: parent
+      visible: pill.flush && pill.opacity > 0 && pill.height > size
+      opacity: pill.opacity
+      preferredRendererType: Shape.CurveRenderer
+
+      ShapePath {
+        fillColor: pill.card ? Qt.tint(pill.color, Util.alpha(root.accent, 0.14)) : pill.color
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: shoulders.cardLeft - shoulders.size
+        startY: shoulders.cardTop
+        PathLine { x: shoulders.cardLeft; y: shoulders.cardTop }
+        PathLine { x: shoulders.cardLeft; y: shoulders.cardTop + shoulders.size }
+        PathArc { x: shoulders.cardLeft - shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
+      }
+      ShapePath {
+        fillColor: pill.card ? Qt.tint(pill.color, Util.alpha(root.islandText, 0.025)) : pill.color
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: shoulders.cardRight + shoulders.size
+        startY: shoulders.cardTop
+        PathLine { x: shoulders.cardRight; y: shoulders.cardTop }
+        PathLine { x: shoulders.cardRight; y: shoulders.cardTop + shoulders.size }
+        PathArc { x: shoulders.cardRight + shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size }
+      }
+    }
 
     Rectangle {
       id: pill
@@ -162,10 +199,11 @@ BarWidget {
       width: targetWidth
       height: targetHeight
       radius: targetRadius
-      // Keep the middle of the top edge flush with the screen, then let both
-      // outer shoulders fall away in the same curve as the compact end caps.
-      topLeftRadius: targetRadius
-      topRightRadius: targetRadius
+      // Attached to the screen's top edge, the top is flat and flush, and the
+      // shoulders beside it (below) curve it into the edge, like a notch
+      readonly property bool flush: root.topAttached
+      topLeftRadius: flush ? 0 : targetRadius
+      topRightRadius: flush ? 0 : targetRadius
       bottomLeftRadius: targetRadius
       bottomRightRadius: targetRadius
       color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
@@ -194,9 +232,11 @@ BarWidget {
         }
       }
 
+      // An outline only on a floating card: against the screen's edge it
+      // would draw a seam where the shoulders join
       Rectangle {
         anchors.fill: parent
-        visible: pill.card
+        visible: pill.card && !pill.flush
         radius: parent.radius
         topLeftRadius: parent.topLeftRadius
         topRightRadius: parent.topRightRadius
