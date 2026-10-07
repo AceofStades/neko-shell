@@ -72,7 +72,8 @@
           "verticalFormat": "HH\n—\nmm"
         }
       ]
-    }
+    },
+    "style": "attached"
   },
   "plugins": []
 }

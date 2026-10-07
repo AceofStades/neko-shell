@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import qs.Commons
 import qs.Ui
 import "BarModel.js" as BarModel
@@ -61,6 +62,10 @@ Item {
   // deepens so the white text still stands out. The workspaces' capsule is
   // the island's, a little darker, so the island grows out of it unchanged.
   property bool glass: false
+  // "floating", every group a pill off the screen's edges, or "attached",
+  // every group hanging flat-topped from the top edge (shell.json's
+  // bar.style; only a top bar attaches)
+  property string barStyle: "floating"
   readonly property bool glassOverLight: glass && useTransparentForeground && transparentForeground.hslLightness < 0.5
   readonly property color glassCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.2 : 0.12)
   readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.3 : 0.2)
@@ -154,6 +159,7 @@ Item {
     api.transparent = Qt.binding(function() { return root.transparent })
     api.glass = Qt.binding(function() { return root.glass })
     api.glassIslandCapsule = Qt.binding(function() { return root.glassIslandCapsule })
+    api.centerTopAttached = Qt.binding(function() { return root.centerTopAttached })
     api.foregroundAnimationEnabled = Qt.binding(function() { return root.foregroundAnimationEnabled })
     api.centerSectionRevealHeld = Qt.binding(function() { return root.centerSectionRevealHeld })
     api._centerHoverRevealSuppressed = Qt.binding(function() { return root.centerHoverRevealSuppressed })
@@ -600,11 +606,10 @@ Item {
 
   readonly property bool vertical: position === "left" || position === "right"
   readonly property int barSize: vertical ? Style.bar.sizeVertical : Style.bar.sizeHorizontal
-  // The workspace anchor owns the dynamic island. On a floating top bar its
-  // three-part center group meets the screen edge while the side sections
-  // retain their normal floating gap.
-  readonly property bool centerTopAttached: !vertical && position === "top"
-    && Style.bar.floatMargin > 0 && centerAnchor === "neko.workspaces"
+  // Attached style: every group, the dynamic island with them, meets the
+  // screen's top edge, flat-topped, its ends curving into the edge. (Named
+  // for the center group, which attached first; it covers them all now.)
+  readonly property bool centerTopAttached: !vertical && position === "top" && barStyle === "attached"
 
   function normalizePosition(value) {
     return BarModel.normalizePosition(value)
@@ -635,6 +640,7 @@ Item {
     position = normalizePosition(config.position)
     // Transparent wins, so double-clicking the bar goes between it and glass
     glass = config.glass === true && config.transparent !== true
+    barStyle = config.style === "attached" ? "attached" : "floating"
     setRequestedTransparency(config.transparent === true)
     centerAnchor = Util.canonicalWidgetId(config.centerAnchor || "")
 
@@ -1330,8 +1336,8 @@ Item {
 
     function edgeMargin(side) {
       if (side === root.position) {
-        var surfaceSize = root.barSize + (centerAttached ? floatMargin : 0)
-        return root.barHidden ? -surfaceSize : (centerAttached ? 0 : floatMargin)
+        // Attached, the whole bar meets its edge; the float gap stays at its ends
+        return root.barHidden ? -root.barSize : (centerAttached ? 0 : floatMargin)
       }
       var alongBar = root.vertical ? (side === "top" || side === "bottom") : (side === "left" || side === "right")
       return alongBar ? floatMargin : 0
@@ -1352,7 +1358,7 @@ Item {
     }
 
     implicitWidth: root.vertical ? root.barSize : 0
-    implicitHeight: root.vertical ? 0 : root.barSize + (centerAttached ? floatMargin : 0)
+    implicitHeight: root.vertical ? 0 : root.barSize
     color: root.transparent || floating ? "transparent" : root.background
     surfaceFormat.opaque: false
     WlrLayershell.namespace: "neko-bar"
@@ -1361,7 +1367,6 @@ Item {
     // A floating bar draws its own rounded background instead of filling the window
     Rectangle {
       anchors.fill: parent
-      anchors.topMargin: barWindow.centerAttached ? barWindow.floatMargin : 0
       visible: barWindow.floating && !root.transparent
       color: root.background
       radius: Style.bar.floatRadius
@@ -1469,14 +1474,12 @@ Item {
           anchors.left: parent.left
           anchors.leftMargin: Style.space(8)
           anchors.top: parent.top
-          anchors.topMargin: barWindow.centerAttached ? barWindow.floatMargin : 0
         }
 
         RightModules {
           anchors.right: parent.right
           anchors.rightMargin: Style.space(8)
           anchors.top: parent.top
-          anchors.topMargin: barWindow.centerAttached ? barWindow.floatMargin : 0
         }
       }
     }
@@ -1988,7 +1991,20 @@ Item {
     readonly property bool ownCapsule: !!activeItem && activeItem.ownCapsule === true
     readonly property bool islandPart: moduleName === "neko.workspaces"
       || moduleName === "neko.media-players" || moduleName === "neko.pomodoro"
-    readonly property bool topAttachedIsland: root.centerTopAttached && region === "center" && islandPart
+    // Attached style: the capsule meets the screen's top edge
+    readonly property bool topAttached: root.centerTopAttached
+
+    // Whether the nearest shown neighbour that way draws its own capsule
+    // round this one (the music and Pomodoro crescents round the workspaces)
+    function neighbourWraps(step) {
+      root.slotGeometrySerial
+      if (!siblings || slotIndex < 0) return false
+      for (var i = slotIndex + step; i >= 0 && i < siblings.count; i += step) {
+        var other = siblings.itemAt(i)
+        if (other && other.contentShown) return other.ownCapsule === true
+      }
+      return false
+    }
     readonly property bool padded: capsuled && contentShown && !ownCapsule && !(activeItem && activeItem.capsulePadded === false)
     readonly property real padStart: padded && !joinsPrevious ? Style.bar.capsulePadding : 0
     readonly property real padEnd: padded && !joinsNext ? Style.bar.capsulePadding : 0
@@ -2008,6 +2024,7 @@ Item {
 
     // Capsule behind the widget, inset from the bar's edges
     Rectangle {
+      id: capsuleRect
       readonly property int inset: Style.bar.capsuleInset
 
       visible: (root.glass || NekoColor.bar.capsule.a > 0) && slot.width > 0 && !root.transparent && !slot.ownCapsule
@@ -2015,14 +2032,14 @@ Item {
       readonly property real end: 2 + slot.gap / 2
       readonly property real round: Math.min(root.vertical ? width : height, root.vertical ? height : width) / 2
 
-      anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 0 : end) : (slot.topAttachedIsland ? 0 : inset)
+      anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 0 : end) : (slot.topAttached ? 0 : inset)
       anchors.bottomMargin: root.vertical ? (slot.joinsNext ? 0 : end) : inset
       // A small gap between neighbouring capsules, none inside a group
       anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious ? 0 : end)
       anchors.rightMargin: root.vertical ? inset : (slot.joinsNext ? 0 : end)
       radius: round
-      topLeftRadius: slot.topAttachedIsland || slot.joinsPrevious ? 0 : round
-      topRightRadius: slot.topAttachedIsland || (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
+      topLeftRadius: slot.topAttached || slot.joinsPrevious ? 0 : round
+      topRightRadius: slot.topAttached || (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
       bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious) ? 0 : round
       bottomRightRadius: slot.joinsNext ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
@@ -2031,6 +2048,43 @@ Item {
         : !root.glass ? NekoColor.bar.capsule
         : slot.islandPart ? root.glassIslandCapsule : root.glassCapsule
       Behavior on color { ColorAnimation { duration: Style.duration(160) } }
+    }
+
+    // Attached to the top edge, shoulders curve a capsule's ends into it,
+    // as the island's cards do: none where a group's capsules join, nor
+    // beside a neighbour whose own capsule wraps round this one
+    Shape {
+      id: capsuleShoulders
+      readonly property real size: Style.space(8)
+      readonly property real capsuleLeft: capsuleRect.x
+      readonly property real capsuleRight: capsuleRect.x + capsuleRect.width
+      readonly property bool atStart: slot.topAttached && capsuleRect.visible && !slot.joinsPrevious && !slot.neighbourWraps(-1)
+      readonly property bool atEnd: slot.topAttached && capsuleRect.visible && !slot.joinsNext && !slot.neighbourWraps(1)
+
+      anchors.fill: parent
+      visible: !root.vertical && (atStart || atEnd)
+      preferredRendererType: Shape.CurveRenderer
+
+      ShapePath {
+        fillColor: capsuleShoulders.atStart ? capsuleRect.color : "transparent"
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: capsuleShoulders.capsuleLeft - capsuleShoulders.size
+        startY: 0
+        PathLine { x: capsuleShoulders.capsuleLeft; y: 0 }
+        PathLine { x: capsuleShoulders.capsuleLeft; y: capsuleShoulders.size }
+        PathArc { x: capsuleShoulders.capsuleLeft - capsuleShoulders.size; y: 0; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size; direction: PathArc.Counterclockwise }
+      }
+      ShapePath {
+        fillColor: capsuleShoulders.atEnd ? capsuleRect.color : "transparent"
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: capsuleShoulders.capsuleRight + capsuleShoulders.size
+        startY: 0
+        PathLine { x: capsuleShoulders.capsuleRight; y: 0 }
+        PathLine { x: capsuleShoulders.capsuleRight; y: capsuleShoulders.size }
+        PathArc { x: capsuleShoulders.capsuleRight + capsuleShoulders.size; y: 0; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size }
+      }
     }
 
     // Hovering a widget lights its own part of the capsule a little, and so

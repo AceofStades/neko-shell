@@ -47,6 +47,8 @@ Example `shell.json` (bar subtree only shown):
 }
 ```
 
+`style` is `floating` (the default: every group a pill, off the screen's edges by the theme's float margin) or `attached` (a top bar only: every group hangs from the screen's top edge, flat-topped, its ends curving into the edge, and the dynamic island's cards grow out of it the same way). The Settings window's Style row sets it, with Docked for a bar along the edge without the float margin (`neko-settings set bar.style docked|floating|attached`).
+
 `glass` leaves the bar itself clear and puts each widget on dark glass, blur with a dark tint and white text, so the widgets take their color from what's under them rather than from the theme. Where the top of the wallpaper is light (checked again whenever it changes) the tint deepens so the text still stands out. The workspaces' capsule alone is tinted dark, with white text, like the island that grows out of it. `transparent` wins over it, so double-clicking the bar goes between the two.
 
 Give neighbouring entries the same `"group"` (any name) to put them in one shared capsule instead of one each: the default config groups the status icons on the right, `{ "id": "neko.network", "group": "status" }`. Hidden widgets between them don't break the group.

@@ -194,8 +194,10 @@ PanelWindow {
   // A floating bar sits this far in from its screen edges, so its far edge
   // is that much further out and its content starts that much along
   readonly property real barInset: Style.bar.floatMargin
+  // Attached to the top edge, the bar keeps the gap only at its ends
+  readonly property real barInsetAcross: bar && bar.centerTopAttached === true ? 0 : barInset
   readonly property real barReachW: barW + barInset
-  readonly property real barReachH: barH + barInset
+  readonly property real barReachH: barH + barInsetAcross
   readonly property point cardOrigin: {
     if (!anchorItem || !bar) return Qt.point(margin, margin)
     var x = 0, y = 0
@@ -304,7 +306,7 @@ PanelWindow {
       var inset = root.barInset
       if (root.barPos === "bottom") return Qt.point(px - inset, py - (root.screenH - root.barH - inset))
       if (root.barPos === "right") return Qt.point(px - (root.screenW - root.barW - inset), py - inset)
-      return Qt.point(px - inset, py - inset)
+      return Qt.point(px - inset, py - root.barInsetAcross)
     }
 
     function pressTargetAt(px, py) {
