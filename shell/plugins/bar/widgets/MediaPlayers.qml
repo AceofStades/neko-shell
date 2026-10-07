@@ -66,10 +66,23 @@ BarWidget {
 
   visible: player !== null && !root.vertical
   enabled: Island.mode === "" || Island.mode === "media"
-  // Gone at once as the island takes over, and back as quickly once it has
-  // shrunk into the workspaces' capsule again
-  opacity: Island.mode === "" && !Island.settling ? 1 : 0
-  Behavior on opacity { NumberAnimation { duration: Style.duration(Island.mode === "" ? 90 : 50) } }
+  // Tucked behind the workspaces' capsule while the island is out: it slips
+  // in at once as the island takes over, and slides back out from behind
+  // the capsule once the island has shrunk into it again
+  readonly property bool shownBeside: Island.mode === "" && !Island.settling
+  property real reveal: 1
+  // Started by hand: a Behavior would read its duration before the change
+  // and slide out at the quick speed it slips in at
+  onShownBesideChanged: {
+    revealAnimation.stop()
+    revealAnimation.to = shownBeside ? 1 : 0
+    revealAnimation.duration = Style.duration(shownBeside ? 280 : 60)
+    revealAnimation.easing.type = shownBeside ? Easing.OutCubic : Easing.InCubic
+    revealAnimation.start()
+  }
+  NumberAnimation { id: revealAnimation; target: root; property: "reveal" }
+  opacity: reveal
+  transform: Translate { x: (1 - root.reveal) * Style.space(16) * 1 }
   implicitWidth: visible ? Style.space(root.playing ? 62 : 40) : 0
   implicitHeight: root.barSize
   Behavior on implicitWidth {
