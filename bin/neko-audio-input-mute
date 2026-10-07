@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# neko:summary=Mute or unmute the default microphone and show it in the OSD
+# neko:args=[--no-osd]
+# neko:examples=neko audio input mute
+
+# The mic mute key; ignores a repeat within 250ms, as keyboards that send the
+# key twice per press would otherwise mute and unmute at once.
+
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+debounce_file="$runtime_dir/neko-audio-input-mute.last"
+now=$(date +%s%3N)
+last=0
+[[ -r $debounce_file ]] && read -r last < "$debounce_file" || true
+if (( now - last < 250 )); then
+  exit 0
+fi
+printf '%s\n' "$now" > "$debounce_file"
+
+if ! pactl set-source-mute @DEFAULT_SOURCE@ toggle; then
+  echo "Could not reach the default microphone" >&2
+  exit 1
+fi
+
+[[ ${1:-} == "--no-osd" ]] && exit 0
+
+if [[ $(pactl get-source-mute @DEFAULT_SOURCE@ 2> /dev/null) == *yes ]]; then
+  neko-osd -i microphone-muted -m "Microphone muted"
+else
+  neko-osd -i microphone -m "Microphone on"
+fi
