@@ -75,7 +75,7 @@ BarWidget {
 
   // The capsule the bar draws behind this widget: inset from the bar's edges
   // and a little from the slot's ends. The island grows out of it.
-  readonly property real restInset: Style.space(3)
+  readonly property real restInset: Style.bar.capsuleInset
   readonly property real restWidth: root.width - 4
   readonly property real restHeight: root.height - 2 * root.restInset
 

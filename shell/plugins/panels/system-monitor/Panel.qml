@@ -472,8 +472,8 @@ Panel {
     property real value: 0
     property color tint: root.accent
     property real shown: Math.max(0, Math.min(1, value))
-    // Inside the capsule behind the widget (inset 3 from the bar's edges), with a pixel to spare
-    readonly property real size: root.bar ? root.bar.barSize - 2 * Style.space(3) - 2 : 22
+    // Inside the capsule behind the widget, with a little to spare
+    readonly property real size: root.bar ? root.bar.barSize - 2 * Style.bar.capsuleInset - 4 : 22
     readonly property real stroke: Math.max(2, size / 10)
 
     width: size

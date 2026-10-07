@@ -1967,7 +1967,7 @@ Item {
 
     // Capsule behind the widget, inset from the bar's edges
     Rectangle {
-      readonly property int inset: Style.space(3)
+      readonly property int inset: Style.bar.capsuleInset
 
       visible: (root.glass || NekoColor.bar.capsule.a > 0) && slot.width > 0 && !root.transparent
       anchors.fill: parent
