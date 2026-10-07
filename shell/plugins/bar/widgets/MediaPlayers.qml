@@ -66,9 +66,10 @@ BarWidget {
 
   visible: player !== null && !root.vertical
   enabled: Island.mode === "" || Island.mode === "media"
-  // Gone at once as the island takes over, back gently once it's done
-  opacity: Island.mode === "" ? 1 : 0
-  Behavior on opacity { NumberAnimation { duration: Style.duration(Island.mode === "" ? 220 : 50) } }
+  // Gone at once as the island takes over, and back as quickly once it has
+  // shrunk into the workspaces' capsule again
+  opacity: Island.mode === "" && !Island.settling ? 1 : 0
+  Behavior on opacity { NumberAnimation { duration: Style.duration(Island.mode === "" ? 90 : 50) } }
   implicitWidth: visible ? Style.space(root.playing ? 62 : 40) : 0
   implicitHeight: root.barSize
   Behavior on implicitWidth {

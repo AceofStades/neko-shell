@@ -106,7 +106,29 @@ BarWidget {
     root.islandLeft = Math.round((root.topAttached ? 0 : Style.bar.floatMargin) + point.x + (root.width - island.implicitWidth) / 2)
   }
 
-  onIslandModeChanged: if (root.islandMode !== "") placeIsland()
+  onIslandModeChanged: {
+    if (root.islandMode !== "") {
+      Island.settling = false
+      placeIsland()
+    } else {
+      // Back into the capsule's shape first, then the swap (checkSettled)
+      Island.settling = true
+      settleTimer.restart()
+      root.checkSettled()
+    }
+  }
+
+  function checkSettled() {
+    if (Island.settling && Math.abs(pill.width - root.restWidth) < 1.5 && Math.abs(pill.height - root.restHeight) < 1.5)
+      Island.settling = false
+  }
+
+  // However the spring goes, the center group is back soon after
+  Timer {
+    id: settleTimer
+    interval: 700
+    onTriggered: Island.settling = false
+  }
   onWidthChanged: placeIsland()
 
   // Once the bar has laid itself out, so the first show starts in place
@@ -231,7 +253,8 @@ BarWidget {
       bottomLeftRadius: targetRadius
       bottomRightRadius: targetRadius
       color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
-      opacity: root.islandMode !== "" ? 1 : 0
+      // Held while it shrinks back into the capsule, then swapped out
+      opacity: root.islandMode !== "" || Island.settling ? 1 : 0
       clip: true
 
       // A soft spring between shapes, so a change of width and height at
@@ -244,8 +267,11 @@ BarWidget {
         enabled: !Style.reduceMotion
         SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
       }
-      // In as fast as the center group goes, so one becomes the other
-      Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode !== "" ? 70 : 320) } }
+      // Swapped with the center group as fast both ways: in as it goes, and
+      // out as it comes back once the pill has its shape again
+      Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode !== "" ? 70 : 90) } }
+      onWidthChanged: root.checkSettled()
+      onHeightChanged: root.checkSettled()
 
       // A quiet tonal wash gives the two interactive cards some depth while
       // leaving the compositor blur visible underneath.
@@ -1042,9 +1068,10 @@ BarWidget {
     id: grid
     anchors.fill: parent
     // The workspace cells give way as the island becomes the player.
-    opacity: root.islandMode === "" ? 1 : 0
-    // Gone at once as the island takes over, back gently once it's done
-    Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode === "" ? 220 : 50) } }
+    // Gone at once as the island takes over, and back as quickly once it has
+    // shrunk into the capsule's shape again
+    opacity: root.islandMode === "" && !Island.settling ? 1 : 0
+    Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode === "" ? 90 : 50) } }
     columns: root.vertical ? 1 : 10
     columnSpacing: 0
     rowSpacing: 0

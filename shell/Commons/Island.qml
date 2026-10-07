@@ -15,6 +15,9 @@ Singleton {
 
   // Islands on the bars count themselves in while they're up
   property int islands: 0
+  // Closing, the island shrinks back into the workspaces' capsule before the
+  // center group comes back in its place; set while it does
+  property bool settling: false
   readonly property bool active: islands > 0
 
   // ---------- Notifications ----------

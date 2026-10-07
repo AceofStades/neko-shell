@@ -2068,11 +2068,11 @@ Item {
       bottomRightRadius: slot.joinsNext || slot.atScreenEnd ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
-      color: slot.islandPart && Island.mode !== "" ? "transparent"
+      color: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
         : !root.glass ? NekoColor.bar.capsule
         : slot.islandPart ? root.glassIslandCapsule : root.glassCapsule
       // The island's capsules clear at once as it takes over, back gently
-      Behavior on color { ColorAnimation { duration: Style.duration(!slot.islandPart ? 160 : Island.mode !== "" ? 50 : 220) } }
+      Behavior on color { ColorAnimation { duration: Style.duration(!slot.islandPart ? 160 : Island.mode !== "" ? 50 : 90) } }
     }
 
     // Attached to the top edge, shoulders curve a capsule's ends into it,
