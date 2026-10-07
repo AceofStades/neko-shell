@@ -129,6 +129,10 @@ Item {
   property bool tooltipShown: false
   property int tooltipRequest: 0
   property var activePopout: null
+  // A UniBar panel keeps its overlay surface alive while it grows out of,
+  // or settles back into, the complete island capsule.
+  property var islandMorphOwner: null
+  property var islandMorphWindow: null
   property var barDragSource: null
   property var barDragTarget: null
   property var barDragTargetGeometry: null
@@ -402,16 +406,42 @@ Item {
     moduleSlots = next
   }
 
-  // Where the capsule group holding `item` (a widget, or something inside
-  // one) starts and ends across its bar window: { left, right }, or null when
-  // it isn't in a bar slot. A panel growing out of the group stays inside it.
-  function groupSpan(item) {
+  function slotForItem(item) {
     var slot = null
     for (var it = item; it && !slot; it = it.parent) {
       for (var i = 0; i < moduleSlots.length; i++) {
         if (moduleSlots[i] && moduleSlots[i].activeItem === it) { slot = moduleSlots[i]; break }
       }
     }
+    return slot
+  }
+
+  function isIslandMorphItem(item) {
+    var slot = slotForItem(item)
+    return root.centerTopAttached && !!slot && slot.group === "unibar"
+  }
+
+  function beginIslandPanelMorph(owner, window) {
+    islandMorphOwner = owner
+    islandMorphWindow = window
+  }
+
+  function endIslandPanelMorph(owner) {
+    if (islandMorphOwner !== owner) return
+    islandMorphOwner = null
+    islandMorphWindow = null
+  }
+
+  function islandMorphsSlot(slot) {
+    return islandMorphOwner !== null && !!slot
+      && (!islandMorphWindow || slot.QsWindow.window === islandMorphWindow)
+  }
+
+  // Where the capsule group holding `item` (a widget, or something inside
+  // one) starts and ends across its bar window: { left, right }, or null when
+  // it isn't in a bar slot. A panel growing out of the group stays inside it.
+  function groupSpan(item) {
+    var slot = slotForItem(item)
     var window = slot ? slot.QsWindow.window : null
     if (!window) return null
     var first = slot, last = slot
@@ -2107,7 +2137,9 @@ Item {
     readonly property bool islandPart: moduleName === "neko.workspaces"
       || moduleName === "neko.media-players" || moduleName === "neko.pomodoro"
       || moduleName === "neko.unibar-center" || islandFollower
-    readonly property real islandContentOpacity: islandFollower && (Island.mode !== "" || Island.settling) ? 0 : 1
+    readonly property bool islandPanelPart: islandFollower && root.islandMorphsSlot(slot)
+    readonly property real islandContentOpacity: islandFollower
+      && (Island.mode !== "" || Island.settling || islandPanelPart) ? 0 : 1
     // Attached style: the capsule meets the screen's top edge
     readonly property bool topAttached: root.centerTopAttached
 
@@ -2180,7 +2212,7 @@ Item {
       bottomRightRadius: slot.continuesNext || slot.atScreenEnd || panelBelow && root.openCardFlushEnd ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
-      property color fill: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
+      property color fill: slot.islandPart && (Island.mode !== "" || Island.settling || slot.islandPanelPart) ? "transparent"
         : root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion ? root.attachedPanelColor
         : !root.glass ? NekoColor.bar.capsule
         : root.glassCapsule

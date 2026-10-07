@@ -52,6 +52,8 @@ PanelWindow {
   property bool popoutSwitching: false
   property bool popoutSwitchClosing: false
   property bool focusPrimed: false
+  property bool islandSurfaceShown: false
+  property bool islandExpanded: false
 
   // Item that should take keyboard focus once the panel maps. Typically a
   // PanelKeyCatcher inside the panel content. Layer-shell grants focus to the
@@ -79,11 +81,12 @@ PanelWindow {
   // --- screen + lifetime ---------------------------------------------------
 
   screen: anchorWindow ? anchorWindow.screen : null
-  visible: open || card.opacity > 0 || popoutSwitching || (attached && shownHeight > 0.5)
+  visible: open || card.opacity > 0 || popoutSwitching || islandSurfaceShown
+    || (attached && !islandMorph && shownHeight > 0.5)
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
-  WlrLayershell.namespace: "neko-keyboard-panel"
+  WlrLayershell.namespace: islandMorph ? "neko-island" : "neko-keyboard-panel"
   WlrLayershell.layer: WlrLayer.Overlay
   // Keyboard focus follows `open` (NOT `visible`). The window remains
   // mapped during the fade-out so the opacity animation has something to
@@ -206,6 +209,10 @@ PanelWindow {
   // screen's side when it comes near it. Floating, it's a card of its own.
   readonly property bool attached: !!bar && bar.centerTopAttached === true && barPos === "top" && !centerOnBar
   readonly property color attachedColor: bar && bar.attachedPanelColor !== undefined ? bar.attachedPanelColor : NekoColor.popups.background
+  readonly property bool islandMorph: attached && bar && typeof bar.isIslandMorphItem === "function"
+    && bar.isIslandMorphItem(anchorItem)
+  readonly property color surfaceColor: islandMorph && bar && bar.glassIslandCapsule !== undefined
+    ? bar.glassIslandCapsule : attachedColor
   readonly property real snapReach: Style.space(40)
   readonly property bool snappedLeft: attached && cardOrigin.x <= 0.5
   readonly property bool snappedRight: attached && cardOrigin.x + contentWidth >= screenW - 0.5
@@ -216,6 +223,22 @@ PanelWindow {
     return attached && typeof bar.groupSpan === "function" ? bar.groupSpan(anchorItem) : null
   }
   readonly property bool groupFits: !!groupSpan && groupSpan.right - groupSpan.left >= contentWidth
+  readonly property real islandRestX: groupSpan ? groupSpan.left : anchorScreenPos.x
+  readonly property real islandRestWidth: groupSpan
+    ? Math.max(1, groupSpan.right - groupSpan.left) : Math.max(1, anchorW)
+  readonly property real islandRestHeight: Math.max(1, barH - Style.bar.capsuleInset)
+  readonly property real islandTargetX: Math.round(Math.max(0, Math.min(screenW - contentWidth, screenW / 2 - contentWidth / 2)))
+  property real islandCardX: islandMorph ? (islandExpanded ? islandTargetX : islandRestX) : cardOrigin.x
+  property real islandCardWidth: islandMorph ? (islandExpanded ? contentWidth : islandRestWidth) : contentWidth
+
+  Behavior on islandCardX {
+    enabled: root.islandMorph && !Style.reduceMotion
+    SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+  }
+  Behavior on islandCardWidth {
+    enabled: root.islandMorph && !Style.reduceMotion
+    SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+  }
   // Flush with the group's inner end, it runs straight down from it: no
   // shoulder on that side, and the group squares its corner there
   readonly property bool flushStart: groupFits && !snappedLeft && Math.abs(cardOrigin.x - groupSpan.left) < 0.5
@@ -227,14 +250,14 @@ PanelWindow {
   readonly property bool overhangsEnd: attached && !!groupSpan && !snappedRight && cardOrigin.x + contentWidth > groupSpan.right + 0.5
   readonly property real freeCorner: Style.space(18)
   Binding {
-    when: root.attached && root.open && root.bar && root.bar.openCardFlushStart !== undefined
+    when: root.attached && !root.islandMorph && root.open && root.bar && root.bar.openCardFlushStart !== undefined
     target: root.bar
     property: "openCardFlushStart"
     value: root.flushStart || root.overhangsStart
     restoreMode: Binding.RestoreValue
   }
   Binding {
-    when: root.attached && root.open && root.bar && root.bar.openCardFlushEnd !== undefined
+    when: root.attached && !root.islandMorph && root.open && root.bar && root.bar.openCardFlushEnd !== undefined
     target: root.bar
     property: "openCardFlushEnd"
     value: root.flushEnd || root.overhangsEnd
@@ -243,7 +266,9 @@ PanelWindow {
 
   // How far it has grown: a spring to the card's height as it opens, back to
   // nothing as it closes; the contents, at their full size, are clipped to it
-  property real shownHeight: attached ? (open ? contentHeight : 0) : contentHeight
+  property real shownHeight: attached
+    ? (islandMorph ? (islandExpanded ? contentHeight : islandRestHeight) : open ? contentHeight : 0)
+    : contentHeight
   Behavior on shownHeight {
     enabled: root.attached && !Style.reduceMotion
     SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.5 }
@@ -261,6 +286,25 @@ PanelWindow {
     id: contentIn
     interval: Style.duration(110)
     onTriggered: root.contentShown = true
+  }
+
+  Timer {
+    id: islandMorphIn
+    // Give the layer surface one frame to map at the exact UniBar geometry;
+    // the following spring then visibly starts from the bar itself.
+    interval: Style.duration(45)
+    onTriggered: if (root.open) root.islandExpanded = true
+  }
+
+  Timer {
+    id: islandMorphOut
+    interval: Style.duration(700)
+    onTriggered: {
+      if (root.open) return
+      root.islandSurfaceShown = false
+      if (root.bar && typeof root.bar.endIslandPanelMorph === "function")
+        root.bar.endIslandPanelMorph(root.coordinatorKey)
+    }
   }
 
   readonly property point cardOrigin: {
@@ -308,6 +352,20 @@ PanelWindow {
   // Coordinate on `open`, not `visible`. `visible` lags into the fade-out
   // animation, which made ownership transfer to a sibling popup race.
   onOpenChanged: {
+    if (islandMorph) {
+      if (open) {
+        islandMorphOut.stop()
+        islandExpanded = false
+        islandSurfaceShown = true
+        if (bar && typeof bar.beginIslandPanelMorph === "function")
+          bar.beginIslandPanelMorph(coordinatorKey, anchorWindow)
+        islandMorphIn.restart()
+      } else if (islandSurfaceShown) {
+        islandMorphIn.stop()
+        islandExpanded = false
+        islandMorphOut.restart()
+      }
+    }
     syncAttachedContent()
     if (open) {
       focusPrimed = false
@@ -353,6 +411,11 @@ PanelWindow {
     id: closeSwitchTimer
     interval: 1
     onTriggered: root.popoutSwitchClosing = false
+  }
+
+  Component.onDestruction: {
+    if (bar && typeof bar.endIslandPanelMorph === "function")
+      bar.endIslandPanelMorph(coordinatorKey)
   }
 
   // --- outside-click dismissal --------------------------------------------
@@ -480,7 +543,8 @@ PanelWindow {
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
-      fillColor: root.snappedLeft || root.flushStart || root.overhangsStart ? "transparent" : root.attachedColor
+      fillColor: root.islandMorph ? root.surfaceColor
+        : root.snappedLeft || root.flushStart || root.overhangsStart ? "transparent" : root.attachedColor
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.cardLeft - shoulders.size
@@ -490,7 +554,8 @@ PanelWindow {
       PathArc { x: shoulders.cardLeft - shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
     }
     ShapePath {
-      fillColor: root.snappedRight || root.flushEnd || root.overhangsEnd ? "transparent" : root.attachedColor
+      fillColor: root.islandMorph ? root.surfaceColor
+        : root.snappedRight || root.flushEnd || root.overhangsEnd ? "transparent" : root.attachedColor
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.cardRight + shoulders.size
@@ -502,7 +567,7 @@ PanelWindow {
     // Reaching past the group: fillets in the corner between the group's
     // side and the card's top
     ShapePath {
-      fillColor: root.overhangsStart ? root.attachedColor : "transparent"
+      fillColor: !root.islandMorph && root.overhangsStart ? root.attachedColor : "transparent"
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.groupLeft
@@ -512,7 +577,7 @@ PanelWindow {
       PathArc { x: shoulders.groupLeft; y: shoulders.cardTop - shoulders.size; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
     }
     ShapePath {
-      fillColor: root.overhangsEnd ? root.attachedColor : "transparent"
+      fillColor: !root.islandMorph && root.overhangsEnd ? root.attachedColor : "transparent"
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.groupRight
@@ -525,27 +590,29 @@ PanelWindow {
 
   BorderSurface {
     id: card
-    x: root.cardOrigin.x
-    y: root.cardOrigin.y
-    width: root.contentWidth
+    x: root.islandMorph ? root.islandCardX : root.cardOrigin.x
+    y: root.islandMorph ? 0 : root.cardOrigin.y
+    width: root.islandMorph ? root.islandCardWidth : root.contentWidth
     height: root.attached ? root.shownHeight : root.contentHeight
     clip: root.attached
     color: root.attached ? "transparent" : NekoColor.popups.background
     borderSpec: root.attached ? Border.none() : root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
-    opacity: root.attached ? (root.open || root.shownHeight > 0.5 ? 1.0 : 0) : (root.open || root.popoutSwitching ? 1.0 : 0)
+    opacity: root.islandMorph ? (root.islandSurfaceShown ? 1.0 : 0)
+      : root.attached ? (root.open || root.shownHeight > 0.5 ? 1.0 : 0)
+      : (root.open || root.popoutSwitching ? 1.0 : 0)
 
     // Attached: flat on top, joined to the group; rounded below, square
     // where it meets the screen's side
     Rectangle {
       anchors.fill: parent
       visible: root.attached
-      color: root.attachedColor
-      topLeftRadius: root.overhangsStart ? root.freeCorner : 0
-      topRightRadius: root.overhangsEnd ? root.freeCorner : 0
-      bottomLeftRadius: root.snappedLeft ? 0 : Style.space(18)
-      bottomRightRadius: root.snappedRight ? 0 : Style.space(18)
+      color: root.surfaceColor
+      topLeftRadius: root.islandMorph ? 0 : root.overhangsStart ? root.freeCorner : 0
+      topRightRadius: root.islandMorph ? 0 : root.overhangsEnd ? root.freeCorner : 0
+      bottomLeftRadius: root.islandMorph ? Style.space(26) : root.snappedLeft ? 0 : Style.space(18)
+      bottomRightRadius: root.islandMorph ? Style.space(26) : root.snappedRight ? 0 : Style.space(18)
     }
 
     Behavior on opacity {
