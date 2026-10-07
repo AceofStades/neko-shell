@@ -68,8 +68,11 @@ BarWidget {
   enabled: Island.mode === "" || Island.mode === "media"
   opacity: Island.mode === "" ? 1 : 0
   Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
-  implicitWidth: visible ? Style.space(40) : 0
+  implicitWidth: visible ? Style.space(root.playing ? 62 : 40) : 0
   implicitHeight: root.barSize
+  Behavior on implicitWidth {
+    NumberAnimation { duration: Style.duration(280); easing.type: Easing.OutCubic }
+  }
 
   readonly property real capsuleInset: Style.bar.capsuleInset
   readonly property real capsuleHeight: root.barSize - 2 * capsuleInset
@@ -103,52 +106,96 @@ BarWidget {
     tooltipText: ""
     onPressed: function(b) { if (root.player && root.player.canTogglePlaying) root.player.togglePlaying() }
 
-    Rectangle {
+    Row {
       anchors.centerIn: parent
-      width: Style.space(27)
-      height: width
-      radius: width / 2
-      color: Util.alpha(NekoColor.accent, 0.15)
-      opacity: root.playing ? 1 : 0
-      scale: root.playing ? 1 : 0.72
-      Behavior on opacity { NumberAnimation { duration: Style.duration(180) } }
-      Behavior on scale { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutBack } }
-    }
+      spacing: Style.space(5)
 
-    Image {
-      id: appIcon
-      anchors.centerIn: parent
-      width: Style.bar.iconFont + 3
-      height: width
-      source: root.iconUrl
-      sourceSize.width: width * 2
-      sourceSize.height: height * 2
-      fillMode: Image.PreserveAspectFit
-      smooth: true
-      visible: !root.spotifyPlayer && status === Image.Ready
-      opacity: root.playing ? 1 : 0.55
-    }
+      Item {
+        id: compactAppMark
+        anchors.verticalCenter: parent.verticalCenter
+        width: Style.space(25)
+        height: width
 
-    Text {
-      anchors.centerIn: parent
-      visible: root.spotifyPlayer || appIcon.status !== Image.Ready
-      text: "󰝚"
-      color: root.playing ? NekoColor.accent : button.foreground
-      opacity: root.playing ? 1 : 0.6
-      font.family: button.fontFamily
-      font.pixelSize: Style.bar.iconFont + 1
-      Behavior on color { ColorAnimation { duration: Style.duration(200) } }
-    }
+        Rectangle {
+          anchors.fill: parent
+          radius: width / 2
+          color: Util.alpha(root.spotifyPlayer ? "#1ed760" : NekoColor.accent, 0.14)
+          opacity: root.playing ? 1 : 0
+          scale: root.playing ? 1 : 0.72
+          Behavior on opacity { NumberAnimation { duration: Style.duration(180) } }
+          Behavior on scale { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutBack } }
+        }
 
-    Rectangle {
-      anchors.horizontalCenter: parent.horizontalCenter
-      anchors.bottom: parent.bottom
-      anchors.bottomMargin: root.capsuleInset + Style.space(2)
-      width: Style.space(4)
-      height: width
-      radius: width / 2
-      color: NekoColor.accent
-      visible: root.playing
+        Image {
+          id: appIcon
+          anchors.centerIn: parent
+          width: Style.bar.iconFont + 2
+          height: width
+          source: root.iconUrl
+          sourceSize.width: width * 2
+          sourceSize.height: height * 2
+          fillMode: Image.PreserveAspectFit
+          smooth: true
+          visible: !root.spotifyPlayer && status === Image.Ready
+          opacity: root.playing ? 1 : 0.55
+        }
+
+        Text {
+          anchors.centerIn: parent
+          visible: root.spotifyPlayer || appIcon.status !== Image.Ready
+          text: root.spotifyPlayer ? "󰓇" : "󰝚"
+          color: root.playing ? (root.spotifyPlayer ? "#1ed760" : NekoColor.accent) : button.foreground
+          opacity: root.playing ? 1 : 0.6
+          font.family: button.fontFamily
+          font.pixelSize: Style.bar.iconFont
+          Behavior on color { ColorAnimation { duration: Style.duration(200) } }
+        }
+      }
+
+      Item {
+        id: compactSpectrum
+        anchors.verticalCenter: parent.verticalCenter
+        width: root.playing ? Style.space(22) : 0
+        height: Style.space(18)
+        opacity: root.playing ? 1 : 0
+        clip: true
+
+        Behavior on width { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: Style.duration(160) } }
+
+        Row {
+          anchors.centerIn: parent
+          spacing: Style.space(2)
+
+          Repeater {
+            model: [0.35, 0.78, 1.0, 0.58]
+
+            Item {
+              id: spectrumSlot
+              required property real modelData
+              required property int index
+              width: Style.space(3)
+              height: compactSpectrum.height
+              property real level: 0.24 + index * 0.07
+
+              Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: Math.max(width, parent.height * spectrumSlot.level)
+                radius: width / 2
+                color: root.spotifyPlayer && spectrumSlot.index % 2 === 0 ? "#1ed760" : NekoColor.accent
+              }
+
+              SequentialAnimation on level {
+                running: root.playing
+                loops: Animation.Infinite
+                NumberAnimation { to: spectrumSlot.modelData; duration: 230 + spectrumSlot.index * 65; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 0.2 + spectrumSlot.index * 0.09; duration: 310 + spectrumSlot.index * 45; easing.type: Easing.InOutSine }
+              }
+            }
+          }
+        }
+      }
     }
 
     HoverHandler {
