@@ -2217,7 +2217,9 @@ Item {
       readonly property real endMargin: slot.joinsNext ? slot.padEnd - grow : Math.max(slot.padEnd - grow, endInside)
 
       visible: opacity > 0
-      opacity: (slot.hovered || slot.panelOpen) && slot.capsuled && slot.contentShown && !slot.dragSource && !slot.ownCapsule && slot.moduleName !== "neko.workspaces" ? 1 : 0
+      // Attached, a side group takes its open panel's glass instead
+      readonly property bool panelLit: slot.panelOpen && !(root.centerTopAttached && slot.region !== "center")
+      opacity: (slot.hovered || panelLit) && slot.capsuled && slot.contentShown && !slot.dragSource && !slot.ownCapsule && slot.moduleName !== "neko.workspaces" ? 1 : 0
       anchors.fill: parent
       anchors.topMargin: root.vertical ? startMargin : inset
       anchors.bottomMargin: root.vertical ? endMargin : inset
