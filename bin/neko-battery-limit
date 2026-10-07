@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# neko:summary=Show or set the battery's charge limit, or charge it to full once
+# neko:args=get | set <20-100> | full-once
+# neko:examples=neko-battery-limit get|neko-battery-limit set 80|neko-battery-limit full-once
+
+# The limit is read from the kernel (charge_control_end_threshold) and set
+# through asusctl, which asusd lets a user do without root. full-once charges
+# to 100% one time, then the limit applies again.
+
+usage() {
+  echo "Usage: neko-battery-limit get | set <20-100> | full-once" >&2
+  exit 1
+}
+
+threshold=""
+for battery in /sys/class/power_supply/BAT*; do
+  if [[ -r $battery/charge_control_end_threshold ]]; then
+    threshold=$battery/charge_control_end_threshold
+    break
+  fi
+done
+
+need_asusctl() {
+  if ! command -v asusctl > /dev/null; then
+    echo "Changing the charge limit needs asusctl (asusd) on this machine" >&2
+    exit 1
+  fi
+}
+
+case ${1:-} in
+  get)
+    [[ -n $threshold ]] || exit 1
+    cat "$threshold"
+    ;;
+  set)
+    [[ ${2:-} =~ ^[0-9]+$ ]] && (( $2 >= 20 && $2 <= 100 )) || usage
+    need_asusctl
+    asusctl battery limit "$2" > /dev/null
+    ;;
+  full-once)
+    need_asusctl
+    asusctl battery oneshot > /dev/null
+    ;;
+  *) usage ;;
+esac

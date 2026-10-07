@@ -139,6 +139,39 @@ Panel {
     if (!batteryProc.running) batteryProc.running = true
     if (!profilesProc.running) profilesProc.running = true
     if (!systemProc.running) systemProc.running = true
+    if (!limitProc.running) limitProc.running = true
+  }
+
+  // The charge limit, through neko-battery-limit (asusctl); 0 until known,
+  // and only offered when it can be changed
+  property int chargeLimit: 0
+  property bool chargeLimitSettable: false
+
+  function setChargeLimit(argv) {
+    if (limitSetProc.running) return
+    limitSetProc.command = argv
+    limitSetProc.running = true
+  }
+
+  Process {
+    id: limitProc
+    command: ["bash", "-c", "neko-battery-limit get && command -v asusctl > /dev/null && echo settable"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var lines = String(text || "").trim().split("\n")
+        root.chargeLimit = Number(lines[0]) || 0
+        root.chargeLimitSettable = lines.indexOf("settable") >= 0
+      }
+    }
+  }
+
+  Process {
+    id: limitSetProc
+    onExited: {
+      limitProc.running = true
+      if (!batteryProc.running) batteryProc.running = true
+    }
   }
 
   function updateKeyValue(raw, targetName) {
@@ -474,6 +507,64 @@ Panel {
             InfoPair {
               label: root.chargeThresholdActive ? "Battery state" : (root.discharging ? "Discharging" : "Charging")
               value: root.chargeThresholdActive ? "Holding" : (root.batteryFull ? "-" : (root.batteryInfo.rate || ""))
+            }
+          }
+        }
+
+        // ---------- Charge limit ----------
+        PanelSeparator {
+          visible: root.chargeLimit > 0 && root.chargeLimitSettable
+          foreground: root.bar.foreground
+        }
+
+        Column {
+          visible: root.chargeLimit > 0 && root.chargeLimitSettable
+          width: parent.width
+          spacing: Style.space(10)
+
+          PanelSectionHeader {
+            text: "CHARGE LIMIT"
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+          }
+
+          // Stop charging at 60, 80 or 100%; once, all the way to full
+          Row {
+            id: limitRow
+            width: parent.width
+            spacing: Style.space(6)
+            readonly property var limits: [60, 80, 100]
+            readonly property bool offersFull: root.chargeLimit < 100
+            readonly property int cells: limits.length + (offersFull ? 1 : 0)
+            readonly property real cellWidth: (width - spacing * (cells - 1)) / cells
+
+            Repeater {
+              model: limitRow.limits
+              Button {
+                required property var modelData
+                width: limitRow.cellWidth
+                text: modelData + "%"
+                fontSize: Style.font.bodySmall
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                verticalPadding: Style.spacing.controlPaddingY + Style.space(2)
+                bordered: true
+                active: root.chargeLimit === modelData
+                onClicked: root.setChargeLimit(["neko-battery-limit", "set", String(modelData)])
+              }
+            }
+            Button {
+              visible: limitRow.offersFull
+              width: limitRow.cellWidth
+              iconText: "󰂅"
+              text: "Full once"
+              tooltipText: "Charge to 100% this once, then keep to the limit again"
+              fontSize: Style.font.bodySmall
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
+              verticalPadding: Style.spacing.controlPaddingY + Style.space(2)
+              bordered: true
+              onClicked: root.setChargeLimit(["neko-battery-limit", "full-once"])
             }
           }
         }
