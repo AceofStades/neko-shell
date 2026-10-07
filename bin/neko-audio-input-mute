@@ -24,8 +24,14 @@ fi
 
 [[ ${1:-} == "--no-osd" ]] && exit 0
 
+# The mic's level beside it, as the volume keys show the speakers'
+percent=$(pactl get-source-volume @DEFAULT_SOURCE@ 2> /dev/null |
+  awk 'NR == 1 { for (i = 1; i <= NF; i++) if ($i ~ /%$/) { sub("%", "", $i); print $i; exit } }')
+
 if [[ $(pactl get-source-mute @DEFAULT_SOURCE@ 2> /dev/null) == *yes ]]; then
-  neko-osd -i microphone-muted -m "Microphone muted"
+  icon=microphone-muted
 else
-  neko-osd -i microphone -m "Microphone on"
+  icon=microphone
 fi
+
+neko-osd -i "$icon" -p "${percent:-0}"
