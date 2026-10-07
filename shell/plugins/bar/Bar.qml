@@ -1925,7 +1925,12 @@ Item {
       anchors.leftMargin: root.vertical ? inset : 2 + slot.gap / 2
       anchors.rightMargin: root.vertical ? inset : 2 + slot.gap / 2
       radius: Math.min(width, height) / 2
-      color: !root.glass ? NekoColor.bar.capsule : slot.moduleName === "neko.workspaces" ? root.glassIslandCapsule : root.glassCapsule
+      // The workspaces' capsule clears while the island is out of it, so
+      // none of it shows around an island narrower than itself
+      color: !root.glass ? NekoColor.bar.capsule
+        : slot.moduleName !== "neko.workspaces" ? root.glassCapsule
+        : Island.mode !== "" ? "transparent" : root.glassIslandCapsule
+      Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
 
     BorderSurface {
