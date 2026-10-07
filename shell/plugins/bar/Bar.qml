@@ -1082,6 +1082,7 @@ Item {
   function moduleTargetClickable(target) {
     return target
       && target.visible !== false
+      && target.enabled !== false
       && target.opacity !== 0
       && target.interactive !== false
       && target.pressable !== false

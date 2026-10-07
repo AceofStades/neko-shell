@@ -94,6 +94,9 @@ BarWidget {
     width: Math.max(1, parent.width - 2 * Style.bar.capsulePadding + Style.space(4))
     height: parent.height
     bar: root.bar
+    // It hosts only the island window. Disabling its hidden workspace grid
+    // keeps those ten invisible buttons out of the clock's click routing.
+    enabled: false
     opacity: 0
     z: -10
   }
