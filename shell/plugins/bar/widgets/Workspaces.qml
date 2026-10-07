@@ -371,11 +371,14 @@ BarWidget {
         fixedHeight: root.vertical ? Style.space(24) : root.barSize
         onPressed: function() { root.focusWorkspace(cell.number) }
 
+        // The focused one's marker: a circle as wide as the cell and the
+        // capsule allow
         Rectangle {
+          readonly property real size: Math.min(cell.width - Style.space(2), cell.height - 2 * Style.bar.capsuleInset - Style.space(4))
           anchors.centerIn: parent
-          width: cell.width - Style.space(4)
-          height: Math.min(cell.height - Style.space(6), Style.space(22))
-          radius: height / 2
+          width: size
+          height: size
+          radius: size / 2
           color: Util.alpha(root.accent, 0.22)
           opacity: cell.focused ? 1 : 0
           Behavior on opacity { NumberAnimation { duration: 140 } }
