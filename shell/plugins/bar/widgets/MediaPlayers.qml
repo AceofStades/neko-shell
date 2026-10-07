@@ -95,7 +95,7 @@ BarWidget {
   readonly property real capsuleHeight: root.barSize - root.capsuleTop - root.capsuleInset
   readonly property real endRadius: capsuleHeight / 2
   readonly property real workspaceCenter: width + Style.space(2) + endRadius
-  readonly property real notchRadius: endRadius + Style.space(4)
+  readonly property real notchRadius: endRadius + Style.spaceReal(2.5)
   readonly property real tipX: workspaceCenter - Math.sqrt(Math.max(0, notchRadius * notchRadius - endRadius * endRadius))
 
   Shape {
@@ -122,7 +122,7 @@ BarWidget {
   // a few pixels off
   readonly property real shoulder: Style.space(8)
   readonly property real islandLeft: root.width + Style.space(2)
-  readonly property real notchGap: Style.space(4)
+  readonly property real notchGap: Style.spaceReal(2.5)
   readonly property real notchCurveCenterX: root.islandLeft + root.endRadius
   readonly property real notchCurveCenterY: root.capsuleTop + root.capsuleHeight - root.endRadius
   readonly property real notchBottomX: root.notchCurveCenterX - Math.sqrt(Math.max(0, (root.endRadius + root.notchGap) * (root.endRadius + root.notchGap) - root.endRadius * root.endRadius))
