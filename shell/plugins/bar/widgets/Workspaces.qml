@@ -137,7 +137,7 @@ BarWidget {
 
     Rectangle {
       id: pill
-      readonly property real targetWidth: root.islandMode === "notification" ? Style.space(420)
+      readonly property real targetWidth: root.islandMode === "notification" ? Style.space(360)
         : root.islandMode === "osd" ? Style.space(150) : root.restWidth
       readonly property real targetHeight: root.islandMode === "notification" ? notificationView.implicitHeight
         : root.islandMode === "osd" ? Style.space(66) : root.restHeight
@@ -233,7 +233,7 @@ BarWidget {
         readonly property string bodyText: n ? NotificationLogic.sanitizeBody(n.body, n.app, n.appIcon) : ""
 
         anchors.fill: parent
-        implicitHeight: Math.max(Style.space(40), texts.implicitHeight) + 2 * Style.space(12)
+        implicitHeight: Math.max(Style.space(32), texts.implicitHeight) + 2 * Style.space(9)
         opacity: root.islandMode === "notification" ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Style.duration(220) } }
@@ -250,14 +250,14 @@ BarWidget {
 
         RowLayout {
           anchors.fill: parent
-          anchors.margins: Style.space(12)
-          anchors.leftMargin: Style.space(24)
-          anchors.rightMargin: Style.space(26)
-          spacing: Style.space(12)
+          anchors.margins: Style.space(9)
+          anchors.leftMargin: Style.space(20)
+          anchors.rightMargin: Style.space(22)
+          spacing: Style.space(10)
 
           Item {
-            Layout.preferredWidth: Style.space(40)
-            Layout.preferredHeight: Style.space(40)
+            Layout.preferredWidth: Style.space(32)
+            Layout.preferredHeight: Style.space(32)
             Layout.alignment: Qt.AlignVCenter
 
             Image {

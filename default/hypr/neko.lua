@@ -19,10 +19,12 @@ hl.layer_rule({
   ignore_alpha = 0.2,
 })
 -- The bar and its island blur behind anything but clear, so their glass can
--- sit on plain blur with next to no tint. X-ray blurs only the wallpaper: the blur
--- reaches further than the bar is tall, and would otherwise pull the windows
--- below it in, darkening the widgets' lower half.
-hl.layer_rule({ match = { namespace = "^neko-(bar|island)$" }, blur = true, ignore_alpha = 0.01, xray = true })
+-- sit on plain blur with next to no tint. The bar blurs only the wallpaper
+-- (x-ray): the blur reaches further than the bar is tall, and would otherwise
+-- pull the windows below it in, darkening the widgets' lower half. The island
+-- hangs over the windows, so it blurs them, as glass over them would.
+hl.layer_rule({ match = { namespace = "^neko-bar$" }, blur = true, ignore_alpha = 0.01, xray = true })
+hl.layer_rule({ match = { namespace = "^neko-island$" }, blur = true, ignore_alpha = 0.01, xray = false })
 
 -- The bar's panels (audio, network, clock...) are popups of the bar surface
 hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } })
