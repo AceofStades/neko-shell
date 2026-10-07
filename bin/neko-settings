@@ -234,7 +234,7 @@ json() {
   done
 
   # The rest of the system the settings window drives, each through its own command
-  local text_size power_profile power_profiles charge_limit stay_awake dnd dns weather calendars font
+  local text_size power_profile power_profiles charge_limit stay_awake dnd dns weather calendars font bar_layout bar_layouts current_bar name candidate
   text_size=$(neko-display-text-size 2> /dev/null | sed -n 's/^text size: \([0-9.]*\).*/\1/p')
   power_profiles=$(neko-powerprofiles-list --active-state 2> /dev/null || true)
   power_profile=$(awk -F'\t' '$2 == 1 { print $1 }' <<< "$power_profiles")
@@ -245,6 +245,18 @@ json() {
   weather=$(jq -r '.name // ""' "$HOME/.local/state/neko/settings/weather.json" 2> /dev/null || true)
   calendars=$(neko-calendars list --json 2> /dev/null || echo '[]')
   font=$(neko-font-current 2> /dev/null || true)
+  bar_layouts=$(neko-bar layout list 2> /dev/null | cut -f1 | jq -Rsc 'split("\n") | map(select(. != ""))' 2> /dev/null || echo '[]')
+  bar_layout=""
+  current_bar=$(jq -S -c '.bar // {}' "$layout" 2> /dev/null)
+  while IFS= read -r name; do
+    candidate=$HOME/.config/neko/bar-layouts/$name.json
+    [[ -f $candidate ]] || candidate=$NEKO_PATH/config/neko/bar-layouts/$name.json
+    [[ -f $candidate ]] || continue
+    if [[ $(jq -S -c '.' "$candidate" 2> /dev/null) == "$current_bar" ]]; then
+      bar_layout=$name
+      break
+    fi
+  done < <(jq -r '.[]' <<< "$bar_layouts")
 
   jq -n \
     --arg colors "$(get colors)" \
@@ -257,6 +269,8 @@ json() {
     --arg agent "$(neko-default-agent 2> /dev/null)" \
     --arg agents "${agents[*]}" \
     --arg glass "$(get bar.glass)" \
+    --arg barLayout "$bar_layout" \
+    --argjson barLayouts "${bar_layouts:-[]}" \
     --arg font "$font" \
     --arg textSize "$text_size" \
     --arg powerProfile "$power_profile" \
@@ -278,6 +292,8 @@ json() {
       agent: $agent,
       agents: ($agents | split(" ") | map(select(. != ""))),
       barGlass: ($glass == "on"),
+      barLayout: $barLayout,
+      barLayouts: $barLayouts,
       font: $font,
       textSize: ($textSize | tonumber? // 0),
       powerProfile: $powerProfile,
