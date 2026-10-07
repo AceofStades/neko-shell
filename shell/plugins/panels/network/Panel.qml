@@ -910,7 +910,8 @@ Panel {
   readonly property string ssidLabel: !button.vertical && root.kind === "wifi" && root.connectedWifiNetwork
     ? (root.connectedWifiNetwork.name || "")
     : ""
-  implicitWidth: button.implicitWidth + (ssidLabel !== "" ? ssidText.width + Style.space(8) : 0)
+  readonly property bool showSsid: setting("showSsid", true) === true
+  implicitWidth: button.implicitWidth + (showSsid && ssidLabel !== "" ? ssidText.width + Style.space(8) : 0)
   implicitHeight: button.implicitHeight
 
   Component.onCompleted: refresh()
@@ -1106,7 +1107,7 @@ Panel {
 
   Text {
     id: ssidText
-    visible: root.ssidLabel !== ""
+    visible: root.showSsid && root.ssidLabel !== ""
     anchors.left: button.right
     anchors.leftMargin: -Style.space(2)
     anchors.verticalCenter: button.verticalCenter

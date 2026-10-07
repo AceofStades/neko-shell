@@ -47,7 +47,8 @@
       },
       {
         "id": "neko.network",
-        "group": "unibar"
+        "group": "unibar",
+        "showSsid": false
       },
       {
         "id": "neko.bluetooth",
