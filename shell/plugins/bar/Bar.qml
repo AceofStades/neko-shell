@@ -54,13 +54,14 @@ Item {
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
-  // Glass: the bar itself is clear, and each widget sits on blur with a
-  // light dark tint, so the widgets take their color from what's under them
-  // rather than from the theme, and their white text reads over a light
-  // wallpaper too. The workspaces' capsule is a little darker, the island's
-  // tint, so the island grows out of it unchanged.
+  // Glass: the bar itself is clear, and each widget sits on plain blur with
+  // white text, so the widgets take their color from what's under them
+  // rather than from the theme. The capsule is all but clear: just enough to
+  // clear the 0.01 alpha below which neko.lua's layer rule leaves the bar's
+  // pixels unblurred. The workspaces' capsule alone is tinted dark, the
+  // island's tint, so the island grows out of it unchanged.
   property bool glass: false
-  readonly property color glassCapsule: Qt.rgba(0, 0, 0, 0.22)
+  readonly property color glassCapsule: Qt.rgba(0.5, 0.5, 0.5, 0.03)
   readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, 0.32)
   readonly property color glassText: "#f2f2f2"
   property bool centerSectionHovered: false
