@@ -1340,7 +1340,8 @@ Item {
         return root.barHidden ? -root.barSize : (centerAttached ? 0 : floatMargin)
       }
       var alongBar = root.vertical ? (side === "top" || side === "bottom") : (side === "left" || side === "right")
-      return alongBar ? floatMargin : 0
+      // Attached, the side groups run into the screen's corners
+      return alongBar && !(centerAttached && !root.vertical) ? floatMargin : 0
     }
 
     margins {
@@ -1373,7 +1374,7 @@ Item {
     }
 
     Loader {
-      readonly property int endPadding: barWindow.floating ? Math.round(Style.bar.floatRadius / 2) : 0
+      readonly property int endPadding: barWindow.floating && !barWindow.centerAttached ? Math.round(Style.bar.floatRadius / 2) : 0
 
       anchors.fill: parent
       anchors.leftMargin: root.vertical ? 0 : endPadding
@@ -1472,13 +1473,13 @@ Item {
 
         LeftModules {
           anchors.left: parent.left
-          anchors.leftMargin: Style.space(8)
+          anchors.leftMargin: barWindow.centerAttached ? 0 : Style.space(8)
           anchors.top: parent.top
         }
 
         RightModules {
           anchors.right: parent.right
-          anchors.rightMargin: Style.space(8)
+          anchors.rightMargin: barWindow.centerAttached ? 0 : Style.space(8)
           anchors.top: parent.top
         }
       }
@@ -1925,13 +1926,19 @@ Item {
 
     function groupedWith(step) {
       root.slotGeometrySerial
-      if (!group || !siblings || slotIndex < 0) return false
+      // Attached, each side is one group, running into the screen's corner
+      var sideGroup = root.centerTopAttached && (region === "left" || region === "right")
+      if ((!group && !sideGroup) || !siblings || slotIndex < 0) return false
       for (var i = slotIndex + step; i >= 0 && i < siblings.count; i += step) {
         var other = siblings.itemAt(i)
-        if (other && other.contentShown) return other.group === group
+        if (other && other.contentShown) return sideGroup || other.group === group
       }
       return false
     }
+
+    // Attached, the side groups meet the screen's left and right edges
+    readonly property bool atScreenStart: root.centerTopAttached && region === "left" && contentShown && !joinsPrevious
+    readonly property bool atScreenEnd: root.centerTopAttached && region === "right" && contentShown && !joinsNext
 
     onContentShownChanged: root.slotGeometrySerial++
 
@@ -1998,12 +2005,29 @@ Item {
     // round this one (the music and Pomodoro crescents round the workspaces)
     function neighbourWraps(step) {
       root.slotGeometrySerial
-      if (!siblings || slotIndex < 0) return false
-      for (var i = slotIndex + step; i >= 0 && i < siblings.count; i += step) {
-        var other = siblings.itemAt(i)
-        if (other && other.contentShown) return other.ownCapsule === true
+      if (siblings && slotIndex >= 0) {
+        for (var i = slotIndex + step; i >= 0 && i < siblings.count; i += step) {
+          var other = siblings.itemAt(i)
+          if (other && other.contentShown) return other.ownCapsule === true
+        }
+        return false
       }
-      return false
+      // The center's anchor stands apart from the rows on either side of it:
+      // its neighbours are the nearest shown entries that way in its section
+      // of the layout, on this bar
+      var entries = root.layoutConfig && root.layoutConfig[region] ? root.layoutConfig[region] : []
+      var ids = entries.map(function(entry) { return root.entryId(entry) })
+      var mine = ids.indexOf(moduleName)
+      if (mine < 0) return false
+      var best = null, bestDistance = Infinity
+      for (var j = 0; j < root.moduleSlots.length; j++) {
+        var candidate = root.moduleSlots[j]
+        if (!candidate || candidate === slot || candidate.region !== region || !candidate.contentShown) continue
+        if (candidate.Window.window !== slot.Window.window) continue
+        var distance = (ids.indexOf(candidate.moduleName) - mine) * step
+        if (distance > 0 && distance < bestDistance) { best = candidate; bestDistance = distance }
+      }
+      return !!best && best.ownCapsule === true
     }
     readonly property bool padded: capsuled && contentShown && !ownCapsule && !(activeItem && activeItem.capsulePadded === false)
     readonly property real padStart: padded && !joinsPrevious ? Style.bar.capsulePadding : 0
@@ -2035,13 +2059,13 @@ Item {
       anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 0 : end) : (slot.topAttached ? 0 : inset)
       anchors.bottomMargin: root.vertical ? (slot.joinsNext ? 0 : end) : inset
       // A small gap between neighbouring capsules, none inside a group
-      anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious ? 0 : end)
-      anchors.rightMargin: root.vertical ? inset : (slot.joinsNext ? 0 : end)
+      anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious || slot.atScreenStart ? 0 : end)
+      anchors.rightMargin: root.vertical ? inset : (slot.joinsNext || slot.atScreenEnd ? 0 : end)
       radius: round
       topLeftRadius: slot.topAttached || slot.joinsPrevious ? 0 : round
       topRightRadius: slot.topAttached || (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
-      bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious) ? 0 : round
-      bottomRightRadius: slot.joinsNext ? 0 : round
+      bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious || slot.atScreenStart) ? 0 : round
+      bottomRightRadius: slot.joinsNext || slot.atScreenEnd ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
       color: slot.islandPart && Island.mode !== "" ? "transparent"
@@ -2058,8 +2082,8 @@ Item {
       readonly property real size: Style.space(8)
       readonly property real capsuleLeft: capsuleRect.x
       readonly property real capsuleRight: capsuleRect.x + capsuleRect.width
-      readonly property bool atStart: slot.topAttached && capsuleRect.visible && !slot.joinsPrevious && !slot.neighbourWraps(-1)
-      readonly property bool atEnd: slot.topAttached && capsuleRect.visible && !slot.joinsNext && !slot.neighbourWraps(1)
+      readonly property bool atStart: slot.topAttached && capsuleRect.visible && !slot.joinsPrevious && !slot.atScreenStart && !slot.neighbourWraps(-1)
+      readonly property bool atEnd: slot.topAttached && capsuleRect.visible && !slot.joinsNext && !slot.atScreenEnd && !slot.neighbourWraps(1)
 
       anchors.fill: parent
       visible: !root.vertical && (atStart || atEnd)

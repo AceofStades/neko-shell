@@ -193,9 +193,9 @@ PanelWindow {
   readonly property real barH: anchorWindow ? anchorWindow.height : 0
   // A floating bar sits this far in from its screen edges, so its far edge
   // is that much further out and its content starts that much along
-  readonly property real barInset: Style.bar.floatMargin
-  // Attached to the top edge, the bar keeps the gap only at its ends
-  readonly property real barInsetAcross: bar && bar.centerTopAttached === true ? 0 : barInset
+  // Attached to the top edge, the bar meets its edges and keeps no gap
+  readonly property real barInset: bar && bar.centerTopAttached === true ? 0 : Style.bar.floatMargin
+  readonly property real barInsetAcross: barInset
   readonly property real barReachW: barW + barInset
   readonly property real barReachH: barH + barInsetAcross
   readonly property point cardOrigin: {

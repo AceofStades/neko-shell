@@ -102,7 +102,8 @@ BarWidget {
 
   function placeIsland() {
     var point = root.mapToItem(null, 0, 0)
-    root.islandLeft = Math.round(Style.bar.floatMargin + point.x + (root.width - island.implicitWidth) / 2)
+    // Attached, the bar meets the screen's sides; floating, it's in by the margin
+    root.islandLeft = Math.round((root.topAttached ? 0 : Style.bar.floatMargin) + point.x + (root.width - island.implicitWidth) / 2)
   }
 
   onIslandModeChanged: if (root.islandMode !== "") placeIsland()
