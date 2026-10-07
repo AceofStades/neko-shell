@@ -54,20 +54,15 @@ Item {
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
-  // Glass: the bar itself is clear, and each widget sits on plain blur, so
-  // the widgets take their color from what's under them rather than from
-  // the theme. The capsule is all but clear: just enough to clear the 0.01
-  // alpha below which neko.lua's layer rule leaves the bar's pixels unblurred.
-  // Its text is black, or white where the wallpaper under the bar is dark,
-  // picked by neko-bar-text-color as the transparent bar's is.
-  // The workspaces' capsule takes the island's tint instead: dark under
-  // light text, clear like the rest under dark text, so the island grows out
-  // of it unchanged.
+  // Glass: the bar itself is clear, and each widget sits on blur with a
+  // light dark tint, so the widgets take their color from what's under them
+  // rather than from the theme, and their white text reads over a light
+  // wallpaper too. The workspaces' capsule is a little darker, the island's
+  // tint, so the island grows out of it unchanged.
   property bool glass: false
-  readonly property color glassCapsule: Qt.rgba(0.5, 0.5, 0.5, 0.03)
-  readonly property color glassIslandCapsule: barForeground.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.3) : glassCapsule
-  readonly property string glassDarkText: "#141414"
-  readonly property string glassLightText: "#f2f2f2"
+  readonly property color glassCapsule: Qt.rgba(0, 0, 0, 0.22)
+  readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, 0.32)
+  readonly property color glassText: "#f2f2f2"
   property bool centerSectionHovered: false
   // One bar surface exists per monitor and each reports into this count, so a
   // pointer crossing from one monitor's bar to another's stays counted however
@@ -90,7 +85,7 @@ Item {
   property color themeContrastForeground: NekoColor.background
   property color transparentForeground: NekoColor.bar.text
   property color foreground: themeForeground
-  property color barForeground: useTransparentForeground ? transparentForeground : themeForeground
+  property color barForeground: glass ? glassText : useTransparentForeground ? transparentForeground : themeForeground
   property bool foregroundAnimationEnabled: true
   property color background: glass ? "transparent" : NekoColor.bar.background
   property color urgent: NekoColor.bar.active
@@ -1078,14 +1073,9 @@ Item {
     var nextTransparent = value === true
     requestedTransparent = nextTransparent
     if (!nextTransparent) {
-      transparent = false
-      // Glass keeps the text color it picked and checks it again
-      if (glass) {
-        scheduleTransparentForegroundRefresh()
-        return
-      }
       foregroundAnimationEnabled = false
       useTransparentForeground = false
+      transparent = false
       transparentForeground = themeForeground
       restoreForegroundAnimation()
       return
@@ -1100,7 +1090,7 @@ Item {
   }
 
   function scheduleTransparentForegroundRefresh() {
-    if (!requestedTransparent && !glass) {
+    if (!requestedTransparent) {
       transparentForeground = themeForeground
       return
     }
@@ -1108,29 +1098,19 @@ Item {
   }
 
   function refreshTransparentForeground() {
-    if ((!requestedTransparent && !glass) || transparentForegroundProc.running) return
+    if (!requestedTransparent || transparentForegroundProc.running) return
 
-    // Glass offers black first, then white; transparent, the theme's text
-    // and background colors
     transparentForegroundProc.command = [
       "neko-bar-text-color",
       root.position,
       String(root.barSize),
-      glass ? glassDarkText : colorHex(root.themeForeground),
-      glass ? glassLightText : colorHex(root.themeContrastForeground)
+      colorHex(root.themeForeground),
+      colorHex(root.themeContrastForeground)
     ]
     transparentForegroundProc.running = true
   }
 
   onRequestedTransparentChanged: scheduleTransparentForegroundRefresh()
-  onGlassChanged: {
-    if (glass || requestedTransparent) {
-      scheduleTransparentForegroundRefresh()
-    } else {
-      useTransparentForeground = false
-      transparentForeground = themeForeground
-    }
-  }
   onPositionChanged: scheduleTransparentForegroundRefresh()
   onThemeForegroundChanged: scheduleTransparentForegroundRefresh()
   onThemeContrastForegroundChanged: scheduleTransparentForegroundRefresh()
@@ -1154,8 +1134,6 @@ Item {
         if (root.requestedTransparent) {
           root.useTransparentForeground = true
           root.transparent = true
-        } else if (root.glass) {
-          root.useTransparentForeground = true
         }
         root.restoreForegroundAnimation()
       }

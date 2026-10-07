@@ -83,7 +83,7 @@ BarWidget {
   // neko-island rule), with the bar's text color and the capsules' tint
   // (Bar.qml's glassIslandCapsule), so it grows out of its capsule unchanged
   readonly property color islandText: root.bar ? root.bar.barForeground : NekoColor.foreground
-  readonly property color islandColor: root.islandText.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.3) : Qt.rgba(0.5, 0.5, 0.5, 0.03)
+  readonly property color islandColor: Qt.rgba(0, 0, 0, 0.32)
   readonly property color islandDim: Util.alpha(root.islandText, 0.65)
   readonly property color islandTrack: Util.alpha(root.islandText, 0.2)
 
