@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# neko:summary=List, add and remove the calendar feeds the control center shows
+# neko:args=list [--json] | add <name> <url> | remove <number>
+# neko:examples=neko calendars list | neko calendars add Personal https://calendar.google.com/calendar/ical/.../basic.ics | neko calendars remove 1
+
+set -euo pipefail
+
+# ~/.config/neko/calendars holds one feed per line, a name and then its iCal
+# address or .ics file (see neko-calendar-events). The addresses are secret,
+# so the file stays readable only by you; removing a feed also drops its cache.
+file=$HOME/.config/neko/calendars
+cache=$HOME/.cache/neko/calendars
+
+feeds() {
+  [[ -f $file ]] || return 0
+  grep -v -e '^[[:space:]]*#' -e '^[[:space:]]*$' "$file" || true
+}
+
+usage() {
+  echo "Usage: neko-calendars list [--json] | add <name> <url> | remove <number>" >&2
+  exit 1
+}
+
+case ${1:-list} in
+  list)
+    if [[ ${2:-} == "--json" ]]; then
+      feeds | jq -R -s -c 'split("\n") | map(select(length > 0) | (split(" ") | map(select(. != ""))) as $parts
+        | { name: ($parts[:-1] | join(" ")), url: $parts[-1] })'
+    else
+      feeds | nl -w1 -s'. '
+    fi
+    ;;
+  add)
+    (( $# >= 3 )) || usage
+    url=${!#}
+    name=$(echo "${@:2:$#-2}" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+    [[ -n $name ]] || name=Calendar
+    if [[ ! $url =~ ^(https?|webcal):// && ! -f ${url/#\~/$HOME} ]]; then
+      echo "Not a calendar address or .ics file: $url" >&2
+      exit 1
+    fi
+    umask 077
+    mkdir -p "$(dirname "$file")"
+    [[ -f $file ]] || printf '# Calendars for the control center: a name, then its iCal address or .ics file\n' > "$file"
+    chmod 600 "$file"
+    printf '%s %s\n' "$name" "$url" >> "$file"
+    ;;
+  remove)
+    [[ ${2:-} =~ ^[0-9]+$ ]] || usage
+    url=$(feeds | sed -n "${2}p" | awk '{ print $NF }')
+    [[ -n $url ]] || { echo "No calendar number $2" >&2; exit 1; }
+    awk -v n="$2" '
+      /^[[:space:]]*#/ || /^[[:space:]]*$/ { print; next }
+      { if (++seen != n) print }
+    ' "$file" > "$file.tmp"
+    chmod 600 "$file.tmp"
+    mv "$file.tmp" "$file"
+    hash=$(printf '%s' "$url" | sha256sum | cut -c1-24)
+    rm -f "$cache/$hash.ics"
+    ;;
+  *)
+    usage
+    ;;
+esac
