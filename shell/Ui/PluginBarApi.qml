@@ -23,6 +23,7 @@ QtObject {
   property bool glass: false
   property color glassIslandCapsule: "transparent"
   property bool centerTopAttached: false
+  property color attachedPanelColor: "transparent"
   property bool foregroundAnimationEnabled: true
   property bool centerSectionRevealHeld: false
   property bool _centerHoverRevealSuppressed: false

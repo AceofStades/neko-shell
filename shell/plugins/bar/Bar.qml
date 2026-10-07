@@ -71,6 +71,17 @@ Item {
   readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.3 : 0.2)
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
+  // Attached, a side group's panel grows out of it, and the group takes the
+  // panel's glass while it's open so the two read as one
+  readonly property color attachedPanelColor: glass ? Qt.rgba(0.02, 0.02, 0.03, 0.55) : NekoColor.popups.background
+  readonly property string openPanelRegion: {
+    for (var i = 0; i < moduleSlots.length; i++) {
+      var slot = moduleSlots[i]
+      if (slot && slot.panelOpen) return slot.region
+    }
+    return ""
+  }
+
   // Bumped whenever a widget's slot changes size, so capsules grouped with
   // their neighbours notice one appearing or hiding between them
   property int slotGeometrySerial: 0
@@ -160,6 +171,7 @@ Item {
     api.glass = Qt.binding(function() { return root.glass })
     api.glassIslandCapsule = Qt.binding(function() { return root.glassIslandCapsule })
     api.centerTopAttached = Qt.binding(function() { return root.centerTopAttached })
+    api.attachedPanelColor = Qt.binding(function() { return root.attachedPanelColor })
     api.foregroundAnimationEnabled = Qt.binding(function() { return root.foregroundAnimationEnabled })
     api.centerSectionRevealHeld = Qt.binding(function() { return root.centerSectionRevealHeld })
     api._centerHoverRevealSuppressed = Qt.binding(function() { return root.centerHoverRevealSuppressed })
@@ -2069,6 +2081,7 @@ Item {
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
       color: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
+        : root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion ? root.attachedPanelColor
         : !root.glass ? NekoColor.bar.capsule
         : slot.islandPart ? root.glassIslandCapsule : root.glassCapsule
       // The island's capsules clear at once as it takes over, back gently

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import qs.Commons
@@ -78,7 +79,7 @@ PanelWindow {
   // --- screen + lifetime ---------------------------------------------------
 
   screen: anchorWindow ? anchorWindow.screen : null
-  visible: open || card.opacity > 0 || popoutSwitching
+  visible: open || card.opacity > 0 || popoutSwitching || (attached && shownHeight > 0.5)
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
@@ -198,6 +199,38 @@ PanelWindow {
   readonly property real barInsetAcross: barInset
   readonly property real barReachW: barW + barInset
   readonly property real barReachH: barH + barInsetAcross
+  // Attached style (a top bar hanging from the screen's edge): the card grows
+  // down out of the bottom of the widget's group, flat-topped and joined to
+  // it, its top corners curving into the group's edge, and snaps to the
+  // screen's side when it comes near it. Floating, it's a card of its own.
+  readonly property bool attached: !!bar && bar.centerTopAttached === true && barPos === "top" && !centerOnBar
+  readonly property color attachedColor: bar && bar.attachedPanelColor !== undefined ? bar.attachedPanelColor : NekoColor.popups.background
+  readonly property real snapReach: Style.space(40)
+  readonly property bool snappedLeft: attached && cardOrigin.x <= 0.5
+  readonly property bool snappedRight: attached && cardOrigin.x + contentWidth >= screenW - 0.5
+
+  // How far it has grown: a spring to the card's height as it opens, back to
+  // nothing as it closes; the contents, at their full size, are clipped to it
+  property real shownHeight: attached ? (open ? contentHeight : 0) : contentHeight
+  Behavior on shownHeight {
+    enabled: root.attached && !Style.reduceMotion
+    SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.5 }
+  }
+
+  // The contents come in once the card is mostly there, and go at once
+  property bool contentShown: !attached
+  function syncAttachedContent() {
+    if (!attached) return
+    if (open) contentIn.restart()
+    else { contentIn.stop(); contentShown = false }
+  }
+  onAttachedChanged: contentShown = !attached || open
+  Timer {
+    id: contentIn
+    interval: Style.duration(110)
+    onTriggered: root.contentShown = true
+  }
+
   readonly property point cardOrigin: {
     if (!anchorItem || !bar) return Qt.point(margin, margin)
     var x = 0, y = 0
@@ -220,6 +253,13 @@ PanelWindow {
       x = barInset + anchorScreenPos.x + anchorW / 2 - contentWidth / 2
       y = barReachH + gap
     }
+    if (attached) {
+      // Joined to the group's bottom edge, against the screen's side if near it
+      y = barH - Style.bar.capsuleInset
+      if (x < snapReach) x = 0
+      else if (x + contentWidth > screenW - snapReach) x = screenW - contentWidth
+      return Qt.point(Math.round(x), Math.round(y))
+    }
     x = Math.max(margin, Math.min(x, screenW - contentWidth - margin))
     y = Math.max(margin, Math.min(y, screenH - contentHeight - margin))
     return Qt.point(Math.round(x), Math.round(y))
@@ -231,6 +271,7 @@ PanelWindow {
   // Coordinate on `open`, not `visible`. `visible` lags into the fade-out
   // animation, which made ownership transfer to a sibling popup race.
   onOpenChanged: {
+    syncAttachedContent()
     if (open) {
       focusPrimed = false
       beginFocusPrime()
@@ -386,17 +427,65 @@ PanelWindow {
 
   // --- card ----------------------------------------------------------------
 
+  // Attached, the card's top corners curve into the group's bottom edge,
+  // except against the screen's side
+  Shape {
+    id: shoulders
+    readonly property real size: Style.space(14)
+    readonly property real cardLeft: card.x
+    readonly property real cardRight: card.x + card.width
+    readonly property real cardTop: card.y
+
+    anchors.fill: parent
+    visible: root.attached && root.shownHeight > size
+    preferredRendererType: Shape.CurveRenderer
+
+    ShapePath {
+      fillColor: root.snappedLeft ? "transparent" : root.attachedColor
+      strokeWidth: 0
+      strokeColor: "transparent"
+      startX: shoulders.cardLeft - shoulders.size
+      startY: shoulders.cardTop
+      PathLine { x: shoulders.cardLeft; y: shoulders.cardTop }
+      PathLine { x: shoulders.cardLeft; y: shoulders.cardTop + shoulders.size }
+      PathArc { x: shoulders.cardLeft - shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
+    }
+    ShapePath {
+      fillColor: root.snappedRight ? "transparent" : root.attachedColor
+      strokeWidth: 0
+      strokeColor: "transparent"
+      startX: shoulders.cardRight + shoulders.size
+      startY: shoulders.cardTop
+      PathLine { x: shoulders.cardRight; y: shoulders.cardTop }
+      PathLine { x: shoulders.cardRight; y: shoulders.cardTop + shoulders.size }
+      PathArc { x: shoulders.cardRight + shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size }
+    }
+  }
+
   BorderSurface {
     id: card
     x: root.cardOrigin.x
     y: root.cardOrigin.y
     width: root.contentWidth
-    height: root.contentHeight
-    color: NekoColor.popups.background
-    borderSpec: root.borderSpec
+    height: root.attached ? root.shownHeight : root.contentHeight
+    clip: root.attached
+    color: root.attached ? "transparent" : NekoColor.popups.background
+    borderSpec: root.attached ? Border.none() : root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
-    opacity: root.open || root.popoutSwitching ? 1.0 : 0
+    opacity: root.attached ? (root.open || root.shownHeight > 0.5 ? 1.0 : 0) : (root.open || root.popoutSwitching ? 1.0 : 0)
+
+    // Attached: flat on top, joined to the group; rounded below, square
+    // where it meets the screen's side
+    Rectangle {
+      anchors.fill: parent
+      visible: root.attached
+      color: root.attachedColor
+      topLeftRadius: 0
+      topRightRadius: 0
+      bottomLeftRadius: root.snappedLeft ? 0 : Style.space(18)
+      bottomRightRadius: root.snappedRight ? 0 : Style.space(18)
+    }
 
     Behavior on opacity {
       enabled: !root.popoutSwitching && !root.popoutSwitchClosing
@@ -410,18 +499,22 @@ PanelWindow {
       acceptedButtons: Qt.AllButtons
     }
 
+    // At the card's full size even while an attached card grows, so the
+    // contents never squeeze; the card clips them
     Item {
       id: contentHolder
-      anchors.fill: parent
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.top: parent.top
       anchors.topMargin: card.contentTopInset
       anchors.rightMargin: card.contentRightInset
-      anchors.bottomMargin: card.contentBottomInset
       anchors.leftMargin: card.contentLeftInset
-      opacity: root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
+      height: root.contentHeight - card.contentTopInset - card.contentBottomInset
+      opacity: root.attached ? (root.contentShown ? 1.0 : 0) : root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
 
       Behavior on opacity {
-        enabled: root.popoutSwitching
-        NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
+        enabled: root.popoutSwitching || root.attached
+        NumberAnimation { duration: Style.duration(root.attached && !root.contentShown ? 80 : 140); easing.type: Easing.OutCubic }
       }
     }
   }
