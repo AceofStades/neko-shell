@@ -47,7 +47,7 @@ Example `shell.json` (bar subtree only shown):
 }
 ```
 
-`glass` leaves the bar itself clear and puts each widget on blur, tinted only against its text (dark under light text, light under dark), so the widgets take their color from what's under them rather than from the theme. Its text is black, or white where the top of the wallpaper is dark, checked again whenever the wallpaper changes. `transparent` wins over it, so double-clicking the bar goes between the two.
+`glass` leaves the bar itself clear and puts each widget on plain blur, with next to no tint, so the widgets take their color from what's under them rather than from the theme. The workspaces' capsule alone is tinted against its text (dark under light text, light under dark), like the island that grows out of it. Its text is black, or white where the top of the wallpaper is dark, checked again whenever the wallpaper changes. `transparent` wins over it, so double-clicking the bar goes between the two.
 
 `centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. Set to an empty string to disable anchoring (the center list is centered as a group).
 

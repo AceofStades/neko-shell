@@ -54,14 +54,17 @@ Item {
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
-  // Glass: the bar itself is clear, and each widget sits on blur, so the
-  // widgets take their color from what's under them rather than from the
-  // theme. Its text is black, or white where the wallpaper under the bar is
-  // dark, picked by neko-bar-text-color as the transparent bar's is, and the
-  // capsule is tinted against that text so it reads: dark under light text,
-  // light under dark. The island (the workspaces widget) uses the same tint.
+  // Glass: the bar itself is clear, and each widget sits on plain blur, so
+  // the widgets take their color from what's under them rather than from
+  // the theme. The capsule is all but clear: just enough to clear the 0.01
+  // alpha below which neko.lua's layer rule leaves the bar's pixels unblurred.
+  // Its text is black, or white where the wallpaper under the bar is dark,
+  // picked by neko-bar-text-color as the transparent bar's is.
+  // The workspaces' capsule takes the island's tint instead (dark under light
+  // text, light under dark), so the island grows out of it unchanged.
   property bool glass: false
-  readonly property color glassCapsule: barForeground.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.3) : Qt.rgba(1, 1, 1, 0.4)
+  readonly property color glassCapsule: Qt.rgba(0.5, 0.5, 0.5, 0.03)
+  readonly property color glassIslandCapsule: barForeground.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.3) : Qt.rgba(1, 1, 1, 0.4)
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
   property bool centerSectionHovered: false
@@ -1942,7 +1945,7 @@ Item {
       anchors.leftMargin: root.vertical ? inset : 2 + slot.gap / 2
       anchors.rightMargin: root.vertical ? inset : 2 + slot.gap / 2
       radius: Math.min(width, height) / 2
-      color: root.glass ? root.glassCapsule : NekoColor.bar.capsule
+      color: !root.glass ? NekoColor.bar.capsule : slot.moduleName === "neko.workspaces" ? root.glassIslandCapsule : root.glassCapsule
     }
 
     BorderSurface {
