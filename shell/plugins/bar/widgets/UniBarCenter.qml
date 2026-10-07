@@ -52,16 +52,6 @@ BarWidget {
     return (islandGroupSpan.left + islandGroupSpan.right) / 2 - here.x
   }
 
-  function showContext() {
-    if (Island.pomodoroActive) Island.showPomodoro()
-    else if (root.player) Island.showMedia(root.player)
-  }
-
-  function leaveContext() {
-    Island.leavePomodoroIcon()
-    Island.leaveMediaIcon()
-  }
-
   implicitWidth: Style.space(72)
   implicitHeight: root.barSize
 
@@ -133,7 +123,7 @@ BarWidget {
     labelVisible: false
     tooltipText: Island.pomodoroActive
       ? "Pomodoro " + Island.pomodoroClock(Island.pomodoroRemaining) + " · Right-click: pause/resume"
-      : root.player ? "Hover: now playing · Middle-click: play/pause · Scroll: volume"
+      : root.player ? "Middle-click: play/pause · Scroll: volume"
       : "Click: control center · Right-click: start Pomodoro · Scroll: volume"
 
     onPressed: function(mouseButton) {
@@ -152,13 +142,6 @@ BarWidget {
       root.wheelAccumulator = wheel.remainder
       if (wheel.steps === 0 || !root.bar) return
       root.bar.run("neko-audio-output-volume " + (wheel.steps > 0 ? "raise" : "lower"))
-    }
-
-    HoverHandler {
-      onHoveredChanged: {
-        if (hovered) root.showContext()
-        else root.leaveContext()
-      }
     }
 
     Item {
