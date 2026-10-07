@@ -8,20 +8,6 @@
     "left": [],
     "center": [
       {
-        "id": "neko.menu",
-        "group": "unibar"
-      },
-      {
-        "id": "neko.indicators",
-        "group": "unibar",
-        "items": [
-          "ScreenRecording",
-          "NightLight",
-          "Dnd",
-          "StayAwake"
-        ]
-      },
-      {
         "id": "neko.system-monitor",
         "group": "unibar"
       },
@@ -33,7 +19,7 @@
       {
         "id": "neko.spacer",
         "group": "unibar",
-        "size": 28
+        "size": 69
       },
       {
         "id": "neko.unibar-center",
