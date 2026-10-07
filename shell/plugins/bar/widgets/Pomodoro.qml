@@ -9,7 +9,8 @@ import qs.Ui
 BarWidget {
   id: root
   moduleName: "neko.pomodoro"
-  readonly property bool ownCapsule: true
+  readonly property bool integrated: setting("integrated", false) === true
+  readonly property bool ownCapsule: !root.integrated
   readonly property bool sessionActive: Island.pomodoroActive
   readonly property bool sessionRunning: Island.pomodoroRunning
   readonly property string clock: Island.pomodoroClock(Island.pomodoroRemaining)
@@ -31,8 +32,8 @@ BarWidget {
     revealAnimation.start()
   }
   NumberAnimation { id: revealAnimation; target: root; property: "reveal" }
-  opacity: reveal
-  transform: Translate { x: (1 - root.reveal) * Style.space(16) * -1 }
+  opacity: root.integrated ? 1 : reveal
+  transform: Translate { x: root.integrated ? 0 : (1 - root.reveal) * Style.space(16) * -1 }
   implicitWidth: sessionActive ? Style.space(92) : Style.space(40)
   implicitHeight: root.barSize
   Behavior on implicitWidth {
@@ -52,7 +53,7 @@ BarWidget {
   // backwards so this edge cups the workspace capsule while keeping a gap.
   Shape {
     anchors.fill: parent
-    visible: !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
+    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
     preferredRendererType: Shape.CurveRenderer
     transform: Scale { origin.x: root.width / 2; xScale: -1; yScale: 1 }
 
@@ -82,7 +83,7 @@ BarWidget {
 
   Shape {
     anchors.fill: parent
-    visible: !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
+    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
     preferredRendererType: Shape.CurveRenderer
     transform: Scale { origin.x: root.width / 2; xScale: -1; yScale: 1 }
 

@@ -12,6 +12,11 @@
         "group": "unibar"
       },
       {
+        "id": "neko.pomodoro",
+        "group": "unibar",
+        "integrated": true
+      },
+      {
         "id": "neko.workspace-bars-left",
         "group": "unibar",
         "start": 1
@@ -25,6 +30,11 @@
         "id": "neko.workspace-bars-right",
         "group": "unibar",
         "start": 6
+      },
+      {
+        "id": "neko.media-players",
+        "group": "unibar",
+        "integrated": true
       },
       {
         "id": "neko.network",

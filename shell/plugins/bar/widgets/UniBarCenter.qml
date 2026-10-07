@@ -1,14 +1,11 @@
 import QtQuick
 import Quickshell
-import Quickshell.Services.Mpris
 import qs.Commons
 import qs.Ui
-import "../../services/media/MediaModel.js" as MediaModel
 import "../../control-center" as ControlCenterPlugin
 
 // The UniBar's exact center: a minute clock at rest and the anchor from which
-// notifications, OSDs, media, Pomodoro and settings grow. Its compact gestures
-// keep common controls available without adding more permanent icons.
+// notifications, OSDs, media, Pomodoro and settings grow.
 BarWidget {
   id: root
   moduleName: "neko.unibar-center"
@@ -19,27 +16,6 @@ BarWidget {
   readonly property string hours: timeText.slice(0, 2)
   readonly property string minutes: timeText.slice(-2)
 
-  readonly property var players: {
-    var all = Mpris.players ? Mpris.players.values : []
-    return all.filter(function(player) {
-      return player && !MediaModel.isProxyPlayer(player) && MediaModel.hasTrackMetadata(player)
-    })
-  }
-  readonly property var player: {
-    var playing = null
-    var spotify = null
-    for (var i = 0; i < players.length; i++) {
-      var candidate = players[i]
-      var name = (String(candidate.identity || "") + " " + String(candidate.desktopEntry || "") + " " + String(candidate.dbusName || "")).toLowerCase()
-      if (name.indexOf("spotify") >= 0) {
-        if (candidate.isPlaying) return candidate
-        spotify = candidate
-      }
-      if (candidate.isPlaying && !playing) playing = candidate
-    }
-    return playing || spotify || players[0] || null
-  }
-  readonly property bool playing: !!player && player.isPlaying
   // The whole UniBar is the island's compact shape. Bar.groupSpan crosses
   // the centered anchor, so this includes the monitor, both workspace banks
   // and every status control rather than just this clock slot.
@@ -60,33 +36,6 @@ BarWidget {
     id: clock
     precision: SystemClock.Minutes
     onDateChanged: root.now = date
-  }
-
-  // Keep the media island's IPC surface available in this layout even though
-  // its old dedicated bar icon is folded into the clock.
-  ShellIpc {
-    target: "media-island"
-    enabled: root.player !== null
-
-    function status(): string {
-      return JSON.stringify({
-        available: root.player !== null,
-        playing: root.playing,
-        identity: root.player ? String(root.player.identity || "") : ""
-      })
-    }
-
-    function show(): string {
-      if (!root.player) return "no-player"
-      Island.showMedia(root.player)
-      return "ok"
-    }
-
-    function hide(): string {
-      Island.mediaIconHovered = false
-      Island.mediaPlayer = null
-      return "ok"
-    }
   }
 
   // The existing island renderer is hosted invisibly across the entire
@@ -134,20 +83,10 @@ BarWidget {
     fixedHeight: root.barSize
     hasVisualContent: true
     labelVisible: false
-    tooltipText: Island.pomodoroActive
-      ? "Pomodoro " + Island.pomodoroClock(Island.pomodoroRemaining) + " · Right-click: pause/resume"
-      : root.player ? "Middle-click: play/pause · Scroll: volume"
-      : "Click: control center · Right-click: start Pomodoro · Scroll: volume"
+    tooltipText: "Open control center · Scroll: volume"
 
     onPressed: function(mouseButton) {
-      if (mouseButton === Qt.MiddleButton) {
-        if (root.player && root.player.canTogglePlaying) root.player.togglePlaying()
-      } else if (mouseButton === Qt.RightButton) {
-        Island.togglePomodoro()
-        Island.showPomodoro()
-      } else {
-        controlCenter.toggle()
-      }
+      if (mouseButton === Qt.LeftButton) controlCenter.toggle()
     }
 
     onWheelMoved: function(delta) {
@@ -173,51 +112,6 @@ BarWidget {
         font.letterSpacing: Style.spaceReal(0.7)
       }
 
-      // A tiny spectrum says music is active without spending another icon.
-      Row {
-        anchors.left: parent.left
-        anchors.leftMargin: Style.space(5)
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: Style.spaceReal(1.2)
-        visible: root.playing
-
-        Repeater {
-          model: [0.45, 0.9, 0.62]
-
-          Rectangle {
-            id: level
-            required property real modelData
-            required property int index
-            width: Style.spaceReal(1.6)
-            height: Style.space(3) + Style.space(6) * shown
-            radius: width / 2
-            color: NekoColor.accent
-            property real shown: 0.25 + index * 0.12
-
-            SequentialAnimation on shown {
-              running: root.playing
-              loops: Animation.Infinite
-              NumberAnimation { to: level.modelData; duration: 240 + level.index * 80; easing.type: Easing.InOutSine }
-              NumberAnimation { to: 0.2 + level.index * 0.1; duration: 320 + level.index * 55; easing.type: Easing.InOutSine }
-            }
-          }
-        }
-      }
-
-      // Pomodoro needs only a state light here; hovering the clock reveals
-      // the full timer and its circular progress in the island.
-      Rectangle {
-        anchors.right: parent.right
-        anchors.rightMargin: Style.space(6)
-        anchors.verticalCenter: parent.verticalCenter
-        visible: Island.pomodoroActive
-        width: Style.space(7)
-        height: width
-        radius: width / 2
-        color: Island.pomodoroRunning ? NekoColor.accent : "transparent"
-        border.width: Style.spaceReal(1.5)
-        border.color: NekoColor.accent
-      }
     }
   }
 }

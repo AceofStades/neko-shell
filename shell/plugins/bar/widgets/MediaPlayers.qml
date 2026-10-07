@@ -12,7 +12,8 @@ import "../../services/media/MediaModel.js" as MediaModel
 BarWidget {
   id: root
   moduleName: "neko.media-players"
-  readonly property bool ownCapsule: true
+  readonly property bool integrated: setting("integrated", false) === true
+  readonly property bool ownCapsule: !root.integrated
 
   readonly property var players: {
     var all = Mpris.players ? Mpris.players.values : []
@@ -81,8 +82,8 @@ BarWidget {
     revealAnimation.start()
   }
   NumberAnimation { id: revealAnimation; target: root; property: "reveal" }
-  opacity: reveal
-  transform: Translate { x: (1 - root.reveal) * Style.space(16) * 1 }
+  opacity: root.integrated ? 1 : reveal
+  transform: Translate { x: root.integrated ? 0 : (1 - root.reveal) * Style.space(16) * 1 }
   implicitWidth: visible ? Style.space(root.playing ? 62 : 40) : 0
   implicitHeight: root.barSize
   Behavior on implicitWidth {
@@ -100,7 +101,7 @@ BarWidget {
 
   Shape {
     anchors.fill: parent
-    visible: !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
+    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
@@ -129,7 +130,7 @@ BarWidget {
 
   Shape {
     anchors.fill: parent
-    visible: !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
+    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
