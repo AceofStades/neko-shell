@@ -208,12 +208,12 @@ BarWidget {
       id: pill
       readonly property real targetWidth: root.islandMode === "media" ? Style.space(460)
         : root.islandMode === "pomodoro" ? Style.space(400)
-        : root.islandMode === "notification" ? Style.space(360)
-        : root.islandMode === "osd" ? Style.space(150) : root.restWidth
+        : root.islandMode === "notification" ? Style.space(410)
+        : root.islandMode === "osd" ? Style.space(175) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
-        : root.islandMode === "osd" ? Style.space(66) : root.restHeight
+        : root.islandMode === "osd" ? Style.space(78) : root.restHeight
 
       readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
       readonly property real targetRadius: card ? Style.space(26) : height / 2
@@ -293,15 +293,15 @@ BarWidget {
           text: Island.osd ? Island.osd.icon : ""
           color: root.islandText
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Math.round(Style.font.display * 1.15)
+          font.pixelSize: Math.round(Style.font.display * 1.35)
         }
 
         // A continuous meter
         Rectangle {
           anchors.horizontalCenter: parent.horizontalCenter
           visible: !!Island.osd && Island.osd.hasProgress && !parent.stepped
-          width: Style.space(104)
-          height: Style.space(5)
+          width: Style.space(124)
+          height: Style.space(6)
           radius: height / 2
           color: root.islandTrack
 
@@ -327,8 +327,8 @@ BarWidget {
             Rectangle {
               required property int index
               // Sixteen dots, or a few dashes across the same width
-              width: steps.parent.segments > 10 ? Style.space(5) : Math.round((Style.space(104) - steps.spacing * (steps.parent.segments - 1)) / steps.parent.segments)
-              height: Style.space(5)
+              width: steps.parent.segments > 10 ? Style.space(6) : Math.round((Style.space(124) - steps.spacing * (steps.parent.segments - 1)) / steps.parent.segments)
+              height: Style.space(6)
               radius: height / 2
               color: root.islandTrack
 
@@ -908,7 +908,7 @@ BarWidget {
         readonly property string bodyText: n ? NotificationLogic.sanitizeBody(n.body, n.app, n.appIcon) : ""
 
         anchors.fill: parent
-        implicitHeight: Math.max(Style.space(32), texts.implicitHeight) + 2 * Style.space(9)
+        implicitHeight: Math.max(Style.space(38), texts.implicitHeight) + 2 * Style.space(11)
         opacity: root.islandMode === "notification" ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Style.duration(220) } }
@@ -925,14 +925,14 @@ BarWidget {
 
         RowLayout {
           anchors.fill: parent
-          anchors.margins: Style.space(9)
-          anchors.leftMargin: Style.space(20)
-          anchors.rightMargin: Style.space(22)
-          spacing: Style.space(10)
+          anchors.margins: Style.space(11)
+          anchors.leftMargin: Style.space(22)
+          anchors.rightMargin: Style.space(24)
+          spacing: Style.space(12)
 
           Item {
-            Layout.preferredWidth: Style.space(32)
-            Layout.preferredHeight: Style.space(32)
+            Layout.preferredWidth: Style.space(38)
+            Layout.preferredHeight: Style.space(38)
             Layout.alignment: Qt.AlignVCenter
 
             Image {
@@ -989,7 +989,7 @@ BarWidget {
               textFormat: Text.PlainText
               text: notificationView.n ? notificationView.n.summary : ""
               color: root.islandText
-              font.pixelSize: Style.font.body
+              font.pixelSize: Style.font.title
               font.bold: true
               elide: Text.ElideRight
               maximumLineCount: 1
@@ -1000,7 +1000,7 @@ BarWidget {
               textFormat: Text.PlainText
               text: notificationView.bodyText
               color: root.islandDim
-              font.pixelSize: Style.font.bodySmall
+              font.pixelSize: Style.font.body
               wrapMode: Text.WordWrap
               elide: Text.ElideRight
               maximumLineCount: 2
