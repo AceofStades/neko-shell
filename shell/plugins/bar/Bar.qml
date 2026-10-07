@@ -2012,14 +2012,19 @@ Item {
     Rectangle {
       readonly property real inset: Style.bar.capsuleInset + Style.space(2)
       readonly property real grow: slot.joinsPrevious || slot.joinsNext ? -1 : Style.bar.capsulePadding - Style.space(4)
+      // Never past the capsule's end: as far inside it as it is from the
+      // capsule's top and bottom (a widget without end padding would reach out)
+      readonly property real endInside: 2 + slot.gap / 2 + Style.space(2)
+      readonly property real startMargin: slot.joinsPrevious ? slot.padStart - grow : Math.max(slot.padStart - grow, endInside)
+      readonly property real endMargin: slot.joinsNext ? slot.padEnd - grow : Math.max(slot.padEnd - grow, endInside)
 
       visible: opacity > 0
       opacity: (slot.hovered || slot.panelOpen) && slot.capsuled && slot.contentShown && !slot.dragSource && slot.moduleName !== "neko.workspaces" ? 1 : 0
       anchors.fill: parent
-      anchors.topMargin: root.vertical ? slot.padStart - grow : inset
-      anchors.bottomMargin: root.vertical ? slot.padEnd - grow : inset
-      anchors.leftMargin: root.vertical ? inset : slot.padStart - grow
-      anchors.rightMargin: root.vertical ? inset : slot.padEnd - grow
+      anchors.topMargin: root.vertical ? startMargin : inset
+      anchors.bottomMargin: root.vertical ? endMargin : inset
+      anchors.leftMargin: root.vertical ? inset : startMargin
+      anchors.rightMargin: root.vertical ? inset : endMargin
       radius: Math.min(width, height) / 2
       color: Util.alpha(root.barForeground, 0.14)
 
