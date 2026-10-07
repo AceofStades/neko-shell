@@ -87,35 +87,47 @@ Item {
 
   function close() { opened = false }
 
-  // The keyboard backlight's own key, whose levels the firmware cycles
-  // without a key the compositor sees: UPower reports each change it makes
-  // with the source "internal" (changes made in software say "external")
+  // The keyboard backlight: its own key cycles the levels in firmware,
+  // without a key the compositor sees or a signal anyone sends, so its
+  // level is read a few times a second (a small sysfs read, no process) and
+  // shown whenever it moves
+  property string kbdLed: ""
   property int kbdMax: 0
+  property int kbdLevel: -1
 
   Process {
     running: true
-    command: ["busctl", "--system", "call", "org.freedesktop.UPower", "/org/freedesktop/UPower/KbdBacklight",
-      "org.freedesktop.UPower.KbdBacklight", "GetMaxBrightness"]
+    command: ["neko-kbd-brightness", "path"]
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: {
-        var match = /^i (\d+)/.exec(String(text || "").trim())
-        if (match) root.kbdMax = Number(match[1])
-      }
+      onStreamFinished: root.kbdLed = String(text || "").trim()
     }
   }
 
-  Process {
-    running: root.kbdMax > 0
-    // Ended by the kernel with the shell, which a killed shell can't do itself
-    command: ["setpriv", "--pdeathsig", "TERM", "gdbus", "monitor", "--system", "--dest", "org.freedesktop.UPower",
-      "--object-path", "/org/freedesktop/UPower/KbdBacklight"]
-    stdout: SplitParser {
-      onRead: function(line) {
-        var match = /BrightnessChangedWithSource \((\d+), 'internal'\)/.exec(line)
-        if (match) root.show("keyboard", "", match[1], String(root.kbdMax), match[1] + "/" + root.kbdMax, "1200")
-      }
+  FileView {
+    id: kbdMaxFile
+    path: root.kbdLed ? root.kbdLed + "/max_brightness" : ""
+    onLoaded: root.kbdMax = Number(String(text()).trim()) || 0
+  }
+
+  FileView {
+    id: kbdLevelFile
+    path: root.kbdLed ? root.kbdLed + "/brightness" : ""
+    onLoaded: {
+      var level = Number(String(text()).trim())
+      if (!isFinite(level)) return
+      // The first read only learns where it starts
+      if (root.kbdLevel >= 0 && level !== root.kbdLevel && root.kbdMax > 0)
+        root.show("keyboard", "", String(level), String(root.kbdMax), level + "/" + root.kbdMax, "1200")
+      root.kbdLevel = level
     }
+  }
+
+  Timer {
+    interval: 300
+    repeat: true
+    running: root.kbdLed !== "" && root.kbdMax > 0
+    onTriggered: kbdLevelFile.reload()
   }
 
   Timer {

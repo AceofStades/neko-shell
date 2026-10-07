@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # neko:summary=Step the keyboard backlight a level up or down and show it in the OSD
-# neko:args=<up|down|get> [--no-osd]
-# neko:examples=neko-kbd-brightness up|neko-kbd-brightness down --no-osd|neko-kbd-brightness get
+# neko:args=<up|down|get|path> [--no-osd]
+# neko:examples=neko-kbd-brightness up|neko-kbd-brightness down --no-osd|neko-kbd-brightness get|neko-kbd-brightness path
 
 # Works on whichever LED is the keyboard's backlight (asus::kbd_backlight,
 # tpacpi::kbd_backlight...), through brightnessctl, which needs no root for it.
 
 usage() {
-  echo "Usage: neko-kbd-brightness <up|down|get> [--no-osd]" >&2
+  echo "Usage: neko-kbd-brightness <up|down|get|path> [--no-osd]" >&2
   exit 1
 }
 
@@ -16,6 +16,15 @@ action=${1:-}
 osd=1
 [[ ${2:-} == "--no-osd" ]] && osd=0
 [[ $action == "get" ]] && osd=0
+
+# The LED's sysfs directory, which the shell watches for changes made by a
+# key the firmware handles itself
+if [[ $action == "path" ]]; then
+  for led in /sys/class/leds/*kbd_backlight*; do
+    [[ -r $led/brightness ]] && echo "$led" && exit 0
+  done
+  exit 1
+fi
 
 device=$(brightnessctl --list -m 2> /dev/null | awk -F, '$2 == "leds" && $1 ~ /kbd_backlight/ { print $1; exit }')
 if [[ -z $device ]]; then
