@@ -2,7 +2,7 @@
 
 # neko:summary=Configure the bar and its widget layout
 # neko:group=bar
-# neko:args=use <id> | reset | defaults | position <top|bottom|left|right> | transparent <true|false|toggle> | put <id> [placement] | move <id> [placement] | set <id> <key> <value> [--json] [placement]
+# neko:args=use <id> | reset | defaults | layout <list|save|use|delete> [name] | position <top|bottom|left|right> | transparent <true|false|toggle> | put <id> [placement] | move <id> [placement] | set <id> <key> <value> [--json] [placement]
 # neko:examples=neko bar use local.neon-bar | neko bar put neko.keyboard-layout --after neko.clock | neko bar move neko.clock --section center --index 0 | neko bar set neko.clock format HH:mm
 
 set -euo pipefail
@@ -16,6 +16,10 @@ Usage: neko bar <command> [args...]
   use <id>                             Use a bar option as the active bar
   reset                                Return to the built-in Neko bar
   defaults                             Restore the default bar and service widgets
+  layout list                          List bundled and saved bar layouts
+  layout save <name>                   Save the current bar as a named layout
+  layout use <name>                    Replace only the bar with a named layout
+  layout delete <name>                 Delete a saved layout
   position <top|bottom|left|right>     Bar position
   transparent <true|false|toggle>      Bar transparency
   put <id> [placement]                 Put a widget on the bar, leaving one
@@ -138,6 +142,92 @@ placement_json() {
 }
 
 # -------------------------------------------------------------------- commands
+
+layout_name() {
+  [[ $1 =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || fail "layout names may contain letters, numbers, dots, underscores and dashes"
+}
+
+layout_file() {
+  local name="$1"
+  local user_file="$HOME/.config/neko/bar-layouts/$name.json"
+  local bundled_file="$NEKO_PATH/config/neko/bar-layouts/$name.json"
+  if [[ -f $user_file ]]; then
+    printf '%s\n' "$user_file"
+  elif [[ -f $bundled_file ]]; then
+    printf '%s\n' "$bundled_file"
+  else
+    return 1
+  fi
+}
+
+cmd_layout_list() {
+  local dir file name source
+  declare -A seen=()
+  for dir in "$HOME/.config/neko/bar-layouts" "$NEKO_PATH/config/neko/bar-layouts"; do
+    [[ -d $dir ]] || continue
+    for file in "$dir"/*.json; do
+      [[ -f $file ]] || continue
+      name=${file##*/}
+      name=${name%.json}
+      [[ -z ${seen[$name]:-} ]] || continue
+      seen[$name]=1
+      source="bundled"
+      [[ $dir == "$HOME/.config/neko/bar-layouts" ]] && source="saved"
+      printf '%s\t%s\n' "$name" "$source"
+    done
+  done
+}
+
+cmd_layout() {
+  local action="${1:-}"
+  local name="${2:-}"
+  case "$action" in
+    list)
+      (( $# == 1 )) || fail "layout list does not take a name"
+      cmd_layout_list
+      ;;
+    save)
+      [[ -n $name ]] || fail "layout save requires a name"
+      (( $# == 2 )) || fail "layout save takes one name"
+      layout_name "$name"
+      local target="$HOME/.config/neko/bar-layouts/$name.json"
+      local temp
+      mkdir -p "${target%/*}"
+      temp=$(mktemp)
+      jq -S -e '.bar | if type == "object" then . else error("bar config is missing") end' "$(source_file)" >"$temp" || {
+        rm -f "$temp"
+        fail "could not save the current bar layout"
+      }
+      mv "$temp" "$target"
+      echo "Saved bar layout $name"
+      ;;
+    use)
+      [[ -n $name ]] || fail "layout use requires a name"
+      (( $# == 2 )) || fail "layout use takes one name"
+      layout_name "$name"
+      local source
+      source=$(layout_file "$name") || fail "unknown bar layout: $name"
+      jq -e 'type == "object" and (.layout | type == "object")' "$source" >/dev/null || fail "invalid bar layout: $source"
+      commit "$NORMALIZE | .bar = \$layout[0]" --slurpfile layout "$source"
+      echo "Using bar layout $name"
+      ;;
+    delete)
+      [[ -n $name ]] || fail "layout delete requires a name"
+      (( $# == 2 )) || fail "layout delete takes one name"
+      layout_name "$name"
+      local saved="$HOME/.config/neko/bar-layouts/$name.json"
+      [[ -f $saved ]] || fail "$name is not a saved bar layout"
+      rm -f "$saved"
+      echo "Deleted bar layout $name"
+      ;;
+    "" | -h | --help | help)
+      usage
+      ;;
+    *)
+      fail "layout must be list, save, use or delete"
+      ;;
+  esac
+}
 
 cmd_use() {
   local plugin="${1:-}"
@@ -378,6 +468,9 @@ case "$command" in
     ;;
   defaults)
     cmd_defaults "$@"
+    ;;
+  layout)
+    cmd_layout "$@"
     ;;
   position)
     cmd_position "$@"

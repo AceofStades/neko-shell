@@ -1,0 +1,68 @@
+{
+  "position": "top",
+  "style": "attached",
+  "transparent": false,
+  "glass": true,
+  "centerAnchor": "",
+  "layout": {
+    "left": [],
+    "center": [
+      {
+        "id": "neko.menu",
+        "group": "unibar"
+      },
+      {
+        "id": "neko.indicators",
+        "group": "unibar",
+        "items": [
+          "ScreenRecording",
+          "NightLight",
+          "Dnd",
+          "StayAwake"
+        ]
+      },
+      {
+        "id": "neko.system-monitor",
+        "group": "unibar"
+      },
+      {
+        "id": "neko.workspace-bars-left",
+        "group": "unibar",
+        "start": 1
+      },
+      {
+        "id": "neko.spacer",
+        "group": "unibar",
+        "size": 28
+      },
+      {
+        "id": "neko.unibar-center",
+        "group": "unibar",
+        "format": "HH:mm"
+      },
+      {
+        "id": "neko.workspace-bars-right",
+        "group": "unibar",
+        "start": 6
+      },
+      {
+        "id": "neko.network",
+        "group": "unibar"
+      },
+      {
+        "id": "neko.bluetooth",
+        "group": "unibar"
+      },
+      {
+        "id": "neko.power",
+        "group": "unibar",
+        "showPercentage": false
+      },
+      {
+        "id": "neko.audio",
+        "group": "unibar"
+      }
+    ],
+    "right": []
+  }
+}
