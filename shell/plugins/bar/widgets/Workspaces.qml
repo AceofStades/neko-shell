@@ -583,7 +583,8 @@ BarWidget {
         readonly property string headline: Island.pomodoroRunning
           ? (Island.pomodoroPhase === "focus" ? "Stay in the flow" : "Take a real pause")
           : Island.pomodoroActive ? "Session paused" : "Begin a focus block"
-        readonly property string nextPhase: pomodoroView.round === 4 ? "Long break up next" : "Short break up next"
+        readonly property string nextPhase: Island.pomodoroPhase !== "focus" ? "Focus up next"
+          : pomodoroView.round === 4 ? "Long break up next" : "Short break up next"
 
         anchors.fill: parent
         implicitHeight: Style.space(168)
