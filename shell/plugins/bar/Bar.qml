@@ -60,11 +60,12 @@ Item {
   // alpha below which neko.lua's layer rule leaves the bar's pixels unblurred.
   // Its text is black, or white where the wallpaper under the bar is dark,
   // picked by neko-bar-text-color as the transparent bar's is.
-  // The workspaces' capsule takes the island's tint instead (dark under light
-  // text, light under dark), so the island grows out of it unchanged.
+  // The workspaces' capsule takes the island's tint instead: dark under
+  // light text, clear like the rest under dark text, so the island grows out
+  // of it unchanged.
   property bool glass: false
   readonly property color glassCapsule: Qt.rgba(0.5, 0.5, 0.5, 0.03)
-  readonly property color glassIslandCapsule: barForeground.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.3) : Qt.rgba(1, 1, 1, 0.4)
+  readonly property color glassIslandCapsule: barForeground.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.3) : glassCapsule
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
   property bool centerSectionHovered: false
