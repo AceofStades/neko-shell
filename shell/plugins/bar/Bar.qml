@@ -1908,13 +1908,12 @@ Item {
       if (!group || !siblings || slotIndex < 0) return false
       for (var i = slotIndex + step; i >= 0 && i < siblings.count; i += step) {
         var other = siblings.itemAt(i)
-        if (other && (root.vertical ? other.height : other.width) > 0) return other.group === group
+        if (other && other.contentShown) return other.group === group
       }
       return false
     }
 
-    onWidthChanged: root.slotGeometrySerial++
-    onHeightChanged: root.slotGeometrySerial++
+    onContentShownChanged: root.slotGeometrySerial++
     readonly property var registryMetadata: root.barWidgetRegistry.metadataFor(root.canonicalWidgetId(moduleName))
     readonly property bool firstParty: registryMetadata && registryMetadata.firstParty === true
     readonly property string pluginApiId: registered ? root.canonicalWidgetId(moduleName) : "bar-entry:" + moduleName
@@ -1950,9 +1949,16 @@ Item {
     }
     // Widgets that take space get the theme's gap added to their slot; the
     // capsule is inset by half of it, so the gap shows between capsules
-    readonly property int gap: activeItem && activeItem.visible && (root.vertical ? activeItem.implicitHeight : activeItem.implicitWidth) > 0 ? Style.bar.widgetGap : 0
-    implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth + gap) : 0
-    implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight + (root.vertical ? gap : 0) : 0
+    // Whether the widget shows anything, from its own size rather than the
+    // slot's, which the gap and padding below add to
+    readonly property bool contentShown: !!activeItem && activeItem.visible && (root.vertical ? activeItem.implicitHeight : activeItem.implicitWidth) > 0
+    readonly property int gap: contentShown ? Style.bar.widgetGap : 0
+    // Padding inside the capsule's outer ends; none where grouped widgets meet
+    readonly property bool capsuled: (root.glass || NekoColor.bar.capsule.a > 0) && !root.transparent
+    readonly property real padStart: capsuled && contentShown && !joinsPrevious ? Style.bar.capsulePadding : 0
+    readonly property real padEnd: capsuled && contentShown && !joinsNext ? Style.bar.capsulePadding : 0
+    implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth + gap + padStart + padEnd) : 0
+    implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight + (root.vertical ? gap + padStart + padEnd : 0) : 0
     width: implicitWidth
     height: implicitHeight
     z: modulePointer.dragging ? 100 : 0
@@ -2007,6 +2013,10 @@ Item {
       active: !slot.qmlCustom && !slot.registered
       sourceComponent: slot.commandCustom ? customCommandModuleComponent : emptyModuleComponent
       anchors.fill: parent
+      anchors.leftMargin: root.vertical ? 0 : slot.padStart
+      anchors.rightMargin: root.vertical ? 0 : slot.padEnd
+      anchors.topMargin: root.vertical ? slot.padStart : 0
+      anchors.bottomMargin: root.vertical ? slot.padEnd : 0
       opacity: slot.dragSource ? 0.22 : 1.0
       onLoaded: {
         slot.injectProps()
@@ -2019,6 +2029,10 @@ Item {
       active: slot.registered
       sourceComponent: slot.registered ? slot.registryComponent : null
       anchors.fill: parent
+      anchors.leftMargin: root.vertical ? 0 : slot.padStart
+      anchors.rightMargin: root.vertical ? 0 : slot.padEnd
+      anchors.topMargin: root.vertical ? slot.padStart : 0
+      anchors.bottomMargin: root.vertical ? slot.padEnd : 0
       opacity: slot.dragSource ? 0.22 : 1.0
       onLoaded: {
         slot.injectProps()
@@ -2031,6 +2045,10 @@ Item {
       active: slot.qmlCustom
       source: slot.qmlCustom ? root.customModuleSource(slot.entry) : ""
       anchors.fill: parent
+      anchors.leftMargin: root.vertical ? 0 : slot.padStart
+      anchors.rightMargin: root.vertical ? 0 : slot.padEnd
+      anchors.topMargin: root.vertical ? slot.padStart : 0
+      anchors.bottomMargin: root.vertical ? slot.padEnd : 0
       opacity: slot.dragSource ? 0.22 : 1.0
       onLoaded: {
         slot.injectProps()

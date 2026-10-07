@@ -356,6 +356,9 @@ QtObject {
     readonly property int iconFont:       root.barToken("icon-font",       13)
     // How far each widget's capsule sits in from the bar's edges
     readonly property int capsuleInset:   Math.max(1, root.space(1))
+    // Room inside a capsule's outer ends, so its first and last items sit as
+    // far from its edges as items inside it sit from each other
+    readonly property int capsulePadding: root.space(6)
     // Text on the bar: clock, labels, workspaces, the window title
     readonly property int fontSize:       root.barToken("font-size",       12)
     readonly property int statusSlot:     Math.round(root.barToken("status-slot",     21) * paddingScale)
