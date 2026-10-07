@@ -8,7 +8,7 @@ BarWidget {
   id: root
   moduleName: "neko.indicators"
 
-  readonly property var defaultIndicatorEntries: [ "ScreenRecording", "Reminder", "NightLight", "Dnd", "StayAwake" ]
+  readonly property var defaultIndicatorEntries: [ "ScreenRecording", "NightLight", "Dnd", "StayAwake" ]
   readonly property var indicatorEntries: indicatorEntriesFromSettings(settings)
   property var activeIndicatorIds: []
   property var indicatorActiveStates: ({})

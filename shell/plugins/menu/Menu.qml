@@ -896,7 +896,7 @@ Item {
   // The menu is opened through the standard plugin lifecycle:
   // `neko-shell shell summon neko.menu '{"menu":"system"}'`.
   // Callers may pass a real id (`system`, `setup.power`) or an alias declared
-  // in JSONC (`power`, `reminder-set`). Unknown strings fall through to the
+  // in JSONC (`power`, `screenshot`). Unknown strings fall through to the
   // id-as-route behavior so misspellings still attempt to open the literal id.
   function resolveRoute(input) {
     return MenuModel.resolveRoute(root.items, root.itemOrder, input)

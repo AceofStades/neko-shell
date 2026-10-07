@@ -17,7 +17,6 @@ User-installed plugins live alongside these conceptually but on disk under
 | Image picker  | `neko.image-picker`    | `overlay`               | `image-picker/ImagePicker.qml`        |
 | Emojis        | `neko.emojis`          | `overlay`               | `emojis/Emojis.qml`                   |
 | Clipboard mgr | `neko.clipboard`       | `overlay`               | `clipboard/Clipboard.qml`             |
-| Reminders     | `neko.reminders`       | `overlay`               | `reminders/ReminderFlow.qml`          |
 | Neko menu  | `neko.menu`            | `menu`, `bar-widget`    | `menu/Menu.qml`, `menu/BarWidget.qml` |
 | Notifications | `neko.notifications`   | `service`               | `notifications/Service.qml`           |
 | Audio         | `neko.audio`           | `bar-widget`            | `panels/audio/Panel.qml`              |

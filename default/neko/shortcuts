@@ -16,7 +16,6 @@ menu system
 menu background
 menu theme
 menu share
-menu reminder-set
 panel neko.clipboard
 panel neko.emojis
 panel neko.audio

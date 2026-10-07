@@ -80,7 +80,7 @@ Give neighbouring entries the same `"group"` (any name) to put them in one share
 | `neko.bluetooth` | Bluetooth icon + popup with device list, connect/disconnect, battery | left = popup · right = toggle radio |
 | `neko.monitor` | Brightness and laptop display controls | left = popup |
 
-The `neko.indicators` widget loads individual bar indicators from `indicators/`. Omit `items` (or set it to an empty array) to show all indicators in the default order, or set `items` to a subset such as `["Dnd", "Reminder", "NightLight"]`. Set `alwaysShow` to `true` to keep inactive indicators visible instead of revealing them only on hover. Multiple `neko.indicators` instances are allowed, so different sections can show different subsets.
+The `neko.indicators` widget loads individual bar indicators from `indicators/`. Omit `items` (or set it to an empty array) to show all indicators in the default order, or set `items` to a subset such as `["Dnd", "NightLight"]`. Set `alwaysShow` to `true` to keep inactive indicators visible instead of revealing them only on hover. Multiple `neko.indicators` instances are allowed, so different sections can show different subsets.
 
 ## Orientation
 

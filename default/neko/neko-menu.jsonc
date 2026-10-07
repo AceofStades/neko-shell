@@ -43,7 +43,6 @@
   "learn.arch": {"icon":"󰣇","label":"Arch","action":"neko-launch-webapp 'https://wiki.archlinux.org/title/Main_page'"},
 
   "trigger.emoji": {"icon":"","label":"Emoji","aliases":["emoji","emojis"],"action":"neko-menu-emoji"},
-  "trigger.reminder": {"icon":"󰢌","label":"Reminder","aliases":["reminder"]},
   "trigger.capture": {"icon":"","label":"Capture","aliases":["capture","screenshot","screenrecord","screen-record","screenrecording"]},
   "trigger.capture.screenshot": {"icon":"","label":"Screenshot","action":"neko-capture-screenshot"},
   "trigger.capture.screenrecord.stop": {"icon":"","label":"Stop Screenrecording","when":"pgrep -f '^gpu-screen-recorder'","action":"neko-capture-screenrecording --stop-recording"},
@@ -61,9 +60,6 @@
   "trigger.tests": {"icon":"󰓅","label":"Speed Test"},
   "trigger.hardware.laptop-display": {"icon":"󰛧","label":"Laptop Display","when":"neko-hw-laptop","action":"neko-hyprland-monitor-internal toggle"},
   "trigger.hardware.mirror-display": {"icon":"󰍹","label":"Mirror Display","when":"neko-hw-laptop","action":"neko-hyprland-monitor-internal-mirror toggle"},
-  "trigger.reminder.set": {"icon":"󰢌","label":"Set one","aliases":["reminder-set","remind"],"action":"neko-reminder -i"},
-  "trigger.reminder.show": {"icon":"󰢌","label":"Show all","action":"neko-reminder show"},
-  "trigger.reminder.clear": {"icon":"󰢌","label":"Clear all","action":"neko-reminder clear"},
   "trigger.share.clipboard": {"icon":"","label":"Clipboard","action":"neko-menu-share clipboard"},
   "trigger.share.file": {"icon":"","label":"File","action":"neko-menu-share file"},
   "trigger.share.folder": {"icon":"","label":"Folder","action":"neko-menu-share folder"},

@@ -14,7 +14,7 @@ end
 -- Blur what shows through the translucent bar, menus and overlays.
 -- ignore_alpha keeps nearly clear pixels (shadows, rounded corners) sharp.
 hl.layer_rule({
-  match = { namespace = "^neko-(menu|notifications|osd|reminders|clipboard|emojis|image-selector|keyboard-panel|network-qr|polkit|settings)$" },
+  match = { namespace = "^neko-(menu|notifications|osd|clipboard|emojis|image-selector|keyboard-panel|network-qr|polkit|settings)$" },
   blur = true,
   ignore_alpha = 0.2,
 })
@@ -41,7 +41,7 @@ hl.config({ decoration = { rounding = 14 } })
 -- grow from a parked 1x1, which Hyprland would otherwise animate as a slide.
 hl.layer_rule({ match = { namespace = "^neko-bar$" }, no_anim = true, animation = "none" })
 hl.layer_rule({
-  match = { namespace = "^neko-(menu|image-selector|emojis|clipboard|keyboard-panel|osd|reminders|network-qr|settings|island)$" },
+  match = { namespace = "^neko-(menu|image-selector|emojis|clipboard|keyboard-panel|osd|network-qr|settings|island)$" },
   no_anim = true,
   animation = "none",
 })
