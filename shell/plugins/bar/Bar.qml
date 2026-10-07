@@ -2005,9 +2005,10 @@ Item {
       topRightRadius: (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
       bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious) ? 0 : round
       bottomRightRadius: slot.joinsNext ? 0 : round
-      // The media and workspace capsules share the island's tint. The
+      // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
-      readonly property bool islandPart: slot.moduleName === "neko.workspaces" || slot.moduleName === "neko.media-players"
+      readonly property bool islandPart: slot.moduleName === "neko.workspaces"
+        || slot.moduleName === "neko.media-players" || slot.moduleName === "neko.pomodoro"
       color: islandPart && Island.mode !== "" ? "transparent"
         : !root.glass ? NekoColor.bar.capsule
         : islandPart ? root.glassIslandCapsule : root.glassCapsule

@@ -143,13 +143,15 @@ BarWidget {
     Rectangle {
       id: pill
       readonly property real targetWidth: root.islandMode === "media" ? Style.space(440)
+        : root.islandMode === "pomodoro" ? Style.space(360)
         : root.islandMode === "notification" ? Style.space(360)
         : root.islandMode === "osd" ? Style.space(150) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
+        : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
         : root.islandMode === "osd" ? Style.space(66) : root.restHeight
 
-      readonly property bool card: root.islandMode === "media"
+      readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
       x: Math.round((island.width - width) / 2)
       y: root.restInset
       width: targetWidth
@@ -470,6 +472,113 @@ BarWidget {
         }
       }
 
+      // The Pomodoro card shares the island surface with media and the OSD.
+      // Its timer itself lives in Island so every bar sees one session.
+      Item {
+        id: pomodoroView
+        readonly property int round: Island.pomodoroCompleted % 4 + 1
+        readonly property string status: Island.pomodoroRunning
+          ? "Ends at " + Qt.formatTime(new Date(Island.pomodoroTargetAt), "HH:mm")
+          : Island.pomodoroActive ? "Paused" : "Ready when you are"
+        readonly property string nextPhase: pomodoroView.round === 4 ? "long break next" : "short break next"
+
+        anchors.fill: parent
+        implicitHeight: Style.space(154)
+        opacity: root.islandMode === "pomodoro" ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Style.duration(220) } }
+
+        Row {
+          x: Style.space(20)
+          y: Style.space(14)
+          spacing: Style.space(8)
+
+          Text {
+            text: Island.pomodoroPhase === "focus" ? "󰔛" : "󰒲"
+            color: root.accent
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.title + 1
+          }
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: Island.pomodoroTitle.toUpperCase()
+            color: root.islandText
+            font.pixelSize: Style.font.caption
+            font.weight: Font.Bold
+            font.letterSpacing: Style.spaceReal(0.8)
+          }
+        }
+
+        Text {
+          anchors.right: parent.right
+          anchors.rightMargin: Style.space(20)
+          y: Style.space(16)
+          text: "ROUND " + pomodoroView.round + "/4"
+          color: root.islandDim
+          font.pixelSize: Style.font.caption
+          font.weight: Font.DemiBold
+        }
+
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          y: Style.space(35)
+          text: Island.pomodoroClock(Island.pomodoroRemaining)
+          color: root.islandText
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.pixelSize: Style.font.displayLarge + Style.space(8)
+          font.weight: Font.Bold
+          font.features: { "tnum": 1 }
+        }
+
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          y: Style.space(78)
+          text: pomodoroView.status + "  ·  " + pomodoroView.nextPhase
+          color: root.islandDim
+          font.pixelSize: Style.font.bodySmall
+        }
+
+        Rectangle {
+          id: pomodoroTrack
+          x: Style.space(24)
+          y: Style.space(102)
+          width: parent.width - 2 * x
+          height: Style.space(5)
+          radius: height / 2
+          color: root.islandTrack
+
+          Rectangle {
+            width: Math.max(parent.height, parent.width * Island.pomodoroFraction)
+            height: parent.height
+            radius: height / 2
+            color: root.accent
+            Behavior on width { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
+          }
+        }
+
+        Row {
+          anchors.horizontalCenter: parent.horizontalCenter
+          y: Style.space(114)
+          spacing: Style.space(12)
+
+          PomodoroButton {
+            glyph: "󰑓"
+            enabled: Island.pomodoroActive
+            onClicked: Island.resetPomodoro()
+          }
+          PomodoroButton {
+            glyph: Island.pomodoroRunning ? "󰏤" : "󰐊"
+            big: true
+            onClicked: Island.togglePomodoro()
+          }
+          PomodoroButton {
+            glyph: "󰒭"
+            enabled: Island.pomodoroActive
+            onClicked: Island.skipPomodoro()
+          }
+        }
+      }
+
       // The newest notification: its icon, the app, the summary and the body
       Item {
         id: notificationView
@@ -670,6 +779,40 @@ BarWidget {
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
       onClicked: mediaButton.clicked()
+    }
+  }
+
+  component PomodoroButton: Item {
+    id: pomodoroButton
+    property string glyph: ""
+    property bool big: false
+    signal clicked()
+
+    width: big ? Style.space(34) : Style.space(30)
+    height: width
+    opacity: enabled ? 1 : 0.3
+
+    Rectangle {
+      anchors.fill: parent
+      radius: width / 2
+      color: pomodoroButton.big ? (pomodoroButtonArea.containsMouse ? Qt.lighter(root.accent, 1.15) : root.accent)
+        : Util.alpha(root.islandText, pomodoroButtonArea.containsMouse ? 0.16 : 0)
+      Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+    }
+    Text {
+      anchors.centerIn: parent
+      text: pomodoroButton.glyph
+      color: pomodoroButton.big ? "#101010" : root.islandText
+      font.family: root.bar ? root.bar.fontFamily : Style.font.family
+      font.pixelSize: pomodoroButton.big ? Style.font.title + 3 : Style.font.title
+    }
+    MouseArea {
+      id: pomodoroButtonArea
+      anchors.fill: parent
+      enabled: pomodoroButton.enabled
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: pomodoroButton.clicked()
     }
   }
 }

@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 // The bar's island: while one is up (the workspaces widget on a horizontal
 // bar), notifications and the OSD show there instead of in their own
@@ -110,16 +111,187 @@ Singleton {
     if (!hovered) mediaCloseTimer.restart()
   }
 
-  onHoveredChanged: if (!hovered && !mediaIconHovered && mediaPlayer) mediaCloseTimer.restart()
-
   Timer {
     id: mediaCloseTimer
     interval: 350
     onTriggered: if (!root.mediaIconHovered && !root.hovered) root.mediaPlayer = null
   }
 
-  // What the island shows: "osd", "media", "notification" or "" (the
+  // ---------- Pomodoro ----------
+  // The timer lives here rather than in the bar widget so every screen reads
+  // one session and the island can render the same card from any bar.
+  property string pomodoroPhase: "focus"
+  property bool pomodoroActive: false
+  property bool pomodoroRunning: false
+  property int pomodoroRemaining: pomodoroDuration("focus")
+  property real pomodoroTargetAt: 0
+  property int pomodoroCompleted: 0
+  property bool pomodoroLoaded: false
+  property bool pomodoroIconHovered: false
+  property bool pomodoroRequested: false
+  readonly property bool pomodoroShown: pomodoroRequested && (pomodoroIconHovered || hovered || pomodoroCloseTimer.running)
+  readonly property real pomodoroFraction: {
+    var duration = pomodoroDuration(pomodoroPhase)
+    return duration > 0 ? Math.max(0, Math.min(1, 1 - pomodoroRemaining / duration)) : 0
+  }
+  readonly property string pomodoroTitle: pomodoroPhase === "focus" ? "Focus"
+    : pomodoroPhase === "longBreak" ? "Long break" : "Short break"
+
+  function pomodoroDuration(phase) {
+    return phase === "focus" ? 25 * 60 : phase === "longBreak" ? 15 * 60 : 5 * 60
+  }
+
+  function pomodoroClock(seconds) {
+    var value = Math.max(0, Math.ceil(Number(seconds) || 0))
+    var minutes = Math.floor(value / 60)
+    var remainder = value % 60
+    return minutes + ":" + (remainder < 10 ? "0" : "") + remainder
+  }
+
+  function persistPomodoro() {
+    if (!pomodoroLoaded) return
+    pomodoroStateFile.setText(JSON.stringify({
+      version: 1,
+      phase: pomodoroPhase,
+      active: pomodoroActive,
+      running: pomodoroRunning,
+      remaining: pomodoroRemaining,
+      targetAt: pomodoroTargetAt,
+      completed: pomodoroCompleted
+    }, null, 2) + "\n")
+  }
+
+  function loadPomodoro(raw) {
+    if (pomodoroLoaded) return
+    var state = null
+    try { state = raw && String(raw).trim() ? JSON.parse(raw) : null } catch (e) {
+      console.warn("pomodoro state parse failed:", e)
+    }
+    if (state && state.version === 1) {
+      var phase = String(state.phase || "")
+      pomodoroPhase = ["focus", "shortBreak", "longBreak"].indexOf(phase) >= 0 ? phase : "focus"
+      pomodoroActive = state.active === true
+      pomodoroRunning = pomodoroActive && state.running === true
+      pomodoroRemaining = Math.max(0, Math.min(pomodoroDuration(pomodoroPhase), Math.round(Number(state.remaining) || 0)))
+      pomodoroTargetAt = pomodoroRunning ? Number(state.targetAt) || 0 : 0
+      pomodoroCompleted = Math.max(0, Math.round(Number(state.completed) || 0))
+      if (!pomodoroActive) pomodoroRemaining = pomodoroDuration("focus")
+    }
+    pomodoroLoaded = true
+    if (pomodoroRunning) syncPomodoro()
+  }
+
+  function startPomodoro() {
+    if (!pomodoroLoaded) return
+    if (!pomodoroActive) {
+      pomodoroPhase = "focus"
+      pomodoroRemaining = pomodoroDuration(pomodoroPhase)
+      pomodoroActive = true
+    }
+    if (pomodoroRemaining <= 0) pomodoroRemaining = pomodoroDuration(pomodoroPhase)
+    pomodoroRunning = true
+    pomodoroTargetAt = Date.now() + pomodoroRemaining * 1000
+    persistPomodoro()
+  }
+
+  function pausePomodoro() {
+    if (!pomodoroActive || !pomodoroRunning) return
+    syncPomodoro()
+    pomodoroRunning = false
+    pomodoroTargetAt = 0
+    persistPomodoro()
+  }
+
+  function togglePomodoro() {
+    if (pomodoroRunning) pausePomodoro()
+    else startPomodoro()
+  }
+
+  function resetPomodoro() {
+    pomodoroPhase = "focus"
+    pomodoroActive = false
+    pomodoroRunning = false
+    pomodoroRemaining = pomodoroDuration(pomodoroPhase)
+    pomodoroTargetAt = 0
+    persistPomodoro()
+  }
+
+  function advancePomodoro(finished) {
+    var oldPhase = pomodoroPhase
+    if (oldPhase === "focus") {
+      if (finished) pomodoroCompleted += 1
+      pomodoroPhase = pomodoroCompleted > 0 && pomodoroCompleted % 4 === 0 ? "longBreak" : "shortBreak"
+    } else {
+      pomodoroPhase = "focus"
+    }
+    pomodoroActive = true
+    pomodoroRemaining = pomodoroDuration(pomodoroPhase)
+    // A completed phase flows into the next one; a manual skip preserves
+    // whether the user had paused the clock.
+    if (pomodoroRunning) pomodoroTargetAt = Date.now() + pomodoroRemaining * 1000
+    else pomodoroTargetAt = 0
+    persistPomodoro()
+    if (finished) {
+      var summary = oldPhase === "focus" ? "Focus complete" : "Break complete"
+      var body = oldPhase === "focus" ? pomodoroTitle + " is ready" : "Time for another focus session"
+      Quickshell.execDetached(["notify-send", "-a", "Neko Pomodoro", "-i", "alarm-symbolic", summary, body])
+    }
+  }
+
+  function skipPomodoro() {
+    if (!pomodoroActive) return
+    advancePomodoro(false)
+  }
+
+  function syncPomodoro() {
+    if (!pomodoroRunning) return
+    pomodoroRemaining = Math.max(0, Math.ceil((pomodoroTargetAt - Date.now()) / 1000))
+    if (pomodoroRemaining <= 0) advancePomodoro(true)
+  }
+
+  function showPomodoro() {
+    pomodoroRequested = true
+    pomodoroIconHovered = true
+    pomodoroCloseTimer.stop()
+  }
+
+  function leavePomodoroIcon() {
+    pomodoroIconHovered = false
+    if (!hovered) pomodoroCloseTimer.restart()
+  }
+
+  onHoveredChanged: {
+    if (!hovered && !mediaIconHovered && mediaPlayer) mediaCloseTimer.restart()
+    if (!hovered && !pomodoroIconHovered && pomodoroRequested) pomodoroCloseTimer.restart()
+  }
+
+  FileView {
+    id: pomodoroStateFile
+    path: Quickshell.env("HOME") + "/.local/state/neko/pomodoro.json"
+    watchChanges: false
+    atomicWrites: true
+    printErrors: false
+    onLoaded: root.loadPomodoro(text())
+    onLoadFailed: root.loadPomodoro("")
+  }
+
+  Timer {
+    interval: 250
+    repeat: true
+    running: root.pomodoroLoaded && root.pomodoroRunning
+    onTriggered: root.syncPomodoro()
+  }
+
+  Timer {
+    id: pomodoroCloseTimer
+    interval: 350
+    onTriggered: if (!root.pomodoroIconHovered && !root.hovered) root.pomodoroRequested = false
+  }
+
+  Component.onCompleted: Qt.callLater(function() { pomodoroStateFile.reload() })
+
+  // What the island shows: "osd", "pomodoro", "media", "notification" or "" (the
   // workspaces). A passing OSD outranks the card the pointer asked for,
   // which outranks a notification.
-  readonly property string mode: !active ? "" : osdShown ? "osd" : mediaShown ? "media" : current ? "notification" : ""
+  readonly property string mode: !active ? "" : osdShown ? "osd" : pomodoroShown ? "pomodoro" : mediaShown ? "media" : current ? "notification" : ""
 }

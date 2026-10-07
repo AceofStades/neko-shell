@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.pomodoro",
+  "name": "Pomodoro",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "A Pomodoro timer attached to the workspace island",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Pomodoro.qml"
+  },
+  "barWidget": {
+    "displayName": "Pomodoro",
+    "description": "A Pomodoro timer attached to the workspace island",
+    "category": "Productivity",
+    "allowMultiple": false
+  }
+}

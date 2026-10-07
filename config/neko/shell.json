@@ -24,6 +24,9 @@
         },
         {
           "id": "neko.workspaces"
+        },
+        {
+          "id": "neko.pomodoro"
         }
       ],
       "right": [
