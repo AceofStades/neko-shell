@@ -159,8 +159,11 @@ BarWidget {
       opacity: pill.opacity
       preferredRendererType: Shape.CurveRenderer
 
+      // Each shoulder stacks like the card's edge beside it: the card's tint,
+      // then the same wash the card lays over it (accent on the left, a hint
+      // of the text color on the right), so the two read as one surface
       ShapePath {
-        fillColor: pill.card ? Qt.tint(pill.color, Util.alpha(root.accent, 0.14)) : pill.color
+        fillColor: pill.color
         strokeWidth: 0
         strokeColor: "transparent"
         startX: shoulders.cardLeft - shoulders.size
@@ -170,7 +173,27 @@ BarWidget {
         PathArc { x: shoulders.cardLeft - shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
       }
       ShapePath {
-        fillColor: pill.card ? Qt.tint(pill.color, Util.alpha(root.islandText, 0.025)) : pill.color
+        fillColor: pill.card ? Util.alpha(root.accent, 0.14) : "transparent"
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: shoulders.cardLeft - shoulders.size
+        startY: shoulders.cardTop
+        PathLine { x: shoulders.cardLeft; y: shoulders.cardTop }
+        PathLine { x: shoulders.cardLeft; y: shoulders.cardTop + shoulders.size }
+        PathArc { x: shoulders.cardLeft - shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
+      }
+      ShapePath {
+        fillColor: pill.color
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: shoulders.cardRight + shoulders.size
+        startY: shoulders.cardTop
+        PathLine { x: shoulders.cardRight; y: shoulders.cardTop }
+        PathLine { x: shoulders.cardRight; y: shoulders.cardTop + shoulders.size }
+        PathArc { x: shoulders.cardRight + shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size }
+      }
+      ShapePath {
+        fillColor: pill.card ? Util.alpha(root.islandText, 0.025) : "transparent"
         strokeWidth: 0
         strokeColor: "transparent"
         startX: shoulders.cardRight + shoulders.size
