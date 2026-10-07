@@ -197,7 +197,7 @@ BarWidget {
             height: parent.height
             radius: height / 2
             width: parent.parent.fraction > 0 ? Math.max(height, parent.width * parent.parent.fraction) : 0
-            color: root.islandText
+            color: root.accent
             Behavior on width { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
           }
         }
@@ -224,7 +224,7 @@ BarWidget {
                 height: parent.height
                 radius: height / 2
                 width: parent.width * Math.max(0, Math.min(1, steps.filled - parent.index))
-                color: root.islandText
+                color: root.accent
               }
             }
           }
@@ -299,7 +299,7 @@ BarWidget {
                 Layout.fillWidth: true
                 textFormat: Text.PlainText
                 text: notificationView.n ? notificationView.n.app : ""
-                color: root.islandDim
+                color: root.accent
                 font.family: root.bar ? root.bar.fontFamily : Style.font.family
                 font.pixelSize: Style.font.caption
                 elide: Text.ElideRight
