@@ -87,9 +87,10 @@ Panel {
     return d && d.isPresent && !UPower.onBattery && !root.batteryFlowIdle
   }
 
-  readonly property color batteryFillColor: {
-    return root.bar ? root.bar.foreground : NekoColor.foreground
-  }
+  // Green on power, amber and red when low, else the text color
+  readonly property string batteryStateColor: Model.batteryStateColor(root.batteryFraction, root.discharging)
+  readonly property color batteryFillColor: batteryStateColor !== "" ? batteryStateColor
+    : (root.bar ? root.bar.foreground : NekoColor.foreground)
 
   // Cute agent-flavored phrases shown in the hero status line, rotated on a
   // timer so the panel feels alive when current is flowing (either direction).
@@ -300,6 +301,7 @@ Panel {
       fraction: root.batteryFraction
       charging: !root.discharging && !root.batteryFlowIdle
       low: root.discharging && root.batteryFraction <= 0.15
+      stateColor: root.batteryStateColor
       showNumber: root.showPercentage
       foreground: button.foreground
       fontFamily: button.fontFamily
@@ -344,7 +346,7 @@ Panel {
             id: heroIcon
             textFormat: Text.PlainText
             text: root.batteryIcon()
-            color: root.bar.foreground
+            color: root.batteryFillColor
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.display
             anchors.left: parent.left
@@ -511,7 +513,11 @@ Panel {
                 iconSize: Style.font.title
                 text: String(modelData).charAt(0).toUpperCase() + String(modelData).slice(1)
                 fontSize: Style.font.bodySmall
-                foreground: root.bar.foreground
+                // Each profile in its own color (Model.profileColor), shown
+                // while it's the one in use
+                readonly property string profileColor: Model.profileColor(String(modelData))
+                foreground: active && profileColor ? profileColor : root.bar.foreground
+                accent: profileColor || NekoColor.accent
                 fontFamily: root.bar.fontFamily
                 horizontalPadding: Style.spacing.controlPaddingX
                 verticalPadding: Style.spacing.controlPaddingY + Style.space(2)

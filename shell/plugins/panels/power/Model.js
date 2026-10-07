@@ -38,6 +38,28 @@ function parseProfiles(raw, previousIndex) {
   }
 }
 
+// What the battery is doing, as a color: green charging or full on power,
+// amber at 20% and below, red at 10% and below, and "" (the text color) on
+// battery otherwise, so the states that matter stand out
+var batteryGreen = "#4ade80"
+var batteryAmber = "#fbbf24"
+var batteryRed = "#f87171"
+
+function batteryStateColor(fraction, onBattery) {
+  if (!onBattery) return batteryGreen
+  if (fraction <= 0.1) return batteryRed
+  if (fraction <= 0.2) return batteryAmber
+  return ""
+}
+
+// Each power profile's color: green saving, blue balanced, orange performance
+function profileColor(name) {
+  if (name === "power-saver") return "#4ade80"
+  if (name === "balanced") return "#60a5fa"
+  if (name === "performance") return "#fb923c"
+  return ""
+}
+
 function profileIcon(name) {
   if (name === "power-saver") return "󰌪"
   if (name === "balanced") return "󰊚"
@@ -96,6 +118,8 @@ if (typeof module !== "undefined") {
     parseKeyValue: parseKeyValue,
     parseProfiles: parseProfiles,
     profileIcon: profileIcon,
+    profileColor: profileColor,
+    batteryStateColor: batteryStateColor,
     batteryFraction: batteryFraction,
     chargeThresholdActive: chargeThresholdActive,
     batteryIcon: batteryIcon,

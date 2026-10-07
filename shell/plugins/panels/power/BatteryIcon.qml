@@ -2,13 +2,18 @@ import QtQuick
 import qs.Commons
 
 // A battery drawn to scale: rounded body, terminal nub, a fill for the charge
-// and the percentage inside it, with a bolt beside it while charging.
+// and the percentage inside it, with a bolt beside it while charging. The
+// fill and bolt take stateColor (green on power, amber and red when low),
+// else the text color.
 Item {
   id: root
 
   property real fraction: 0
   property bool charging: false
   property bool low: false
+  // The battery's state as a color, "" for none (see Model.batteryStateColor)
+  property string stateColor: ""
+  readonly property color fillColor: stateColor !== "" ? stateColor : foreground
   property bool showNumber: true
   property color foreground: NekoColor.bar.text
   property string fontFamily: Style.font.family
@@ -27,7 +32,7 @@ Item {
     anchors.right: body.left
     anchors.rightMargin: 2
     text: "󱐋"
-    color: NekoColor.accent
+    color: root.fillColor
     font.family: root.fontFamily
     font.pixelSize: 11
   }
@@ -50,7 +55,8 @@ Item {
       anchors.margins: 2
       width: Math.max(0, (parent.width - 4) * Math.min(1, Math.max(0, root.fraction)))
       radius: 1.5
-      color: Util.alpha(root.low ? NekoColor.urgent : NekoColor.accent, 0.6)
+      color: Util.alpha(root.fillColor, root.stateColor !== "" ? 0.75 : 0.5)
+      Behavior on color { ColorAnimation { duration: Style.duration(200) } }
 
       Behavior on width { NumberAnimation { duration: Style.duration(200); easing.type: Easing.OutCubic } }
     }
