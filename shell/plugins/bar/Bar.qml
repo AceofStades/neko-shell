@@ -62,8 +62,8 @@ Item {
   // the island's, a little darker, so the island grows out of it unchanged.
   property bool glass: false
   readonly property bool glassOverLight: glass && useTransparentForeground && transparentForeground.hslLightness < 0.5
-  readonly property color glassCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.45 : 0.25)
-  readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.5 : 0.32)
+  readonly property color glassCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.2 : 0.12)
+  readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.3 : 0.2)
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
   // Bumped whenever a widget's slot changes size, so capsules grouped with
