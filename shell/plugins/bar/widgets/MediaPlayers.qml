@@ -103,6 +103,18 @@ BarWidget {
     tooltipText: ""
     onPressed: function(b) { if (root.player && root.player.canTogglePlaying) root.player.togglePlaying() }
 
+    Rectangle {
+      anchors.centerIn: parent
+      width: Style.space(27)
+      height: width
+      radius: width / 2
+      color: Util.alpha(NekoColor.accent, 0.15)
+      opacity: root.playing ? 1 : 0
+      scale: root.playing ? 1 : 0.72
+      Behavior on opacity { NumberAnimation { duration: Style.duration(180) } }
+      Behavior on scale { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutBack } }
+    }
+
     Image {
       id: appIcon
       anchors.centerIn: parent
@@ -128,11 +140,47 @@ BarWidget {
       Behavior on color { ColorAnimation { duration: Style.duration(200) } }
     }
 
+    Rectangle {
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.bottom: parent.bottom
+      anchors.bottomMargin: root.capsuleInset + Style.space(2)
+      width: Style.space(4)
+      height: width
+      radius: width / 2
+      color: NekoColor.accent
+      visible: root.playing
+    }
+
     HoverHandler {
       onHoveredChanged: {
         if (hovered && root.player) Island.showMedia(root.player)
         else if (!hovered) Island.leaveMediaIcon()
       }
+    }
+  }
+
+  ShellIpc {
+    target: "media-island"
+    enabled: root.player !== null
+
+    function status(): string {
+      return JSON.stringify({
+        available: root.player !== null,
+        playing: root.playing,
+        identity: root.player ? String(root.player.identity || "") : ""
+      })
+    }
+
+    function show(): string {
+      if (!root.player) return "no-player"
+      Island.showMedia(root.player)
+      return "ok"
+    }
+
+    function hide(): string {
+      Island.mediaIconHovered = false
+      Island.mediaPlayer = null
+      return "ok"
     }
   }
 }

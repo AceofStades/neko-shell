@@ -91,6 +91,27 @@ BarWidget {
       }
     }
 
+    Rectangle {
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.bottom: parent.bottom
+      anchors.leftMargin: Style.space(18)
+      anchors.rightMargin: Style.space(14)
+      anchors.bottomMargin: root.capsuleInset + Style.space(2)
+      height: Style.space(2)
+      radius: height / 2
+      visible: root.sessionActive
+      color: Util.alpha(button.foreground, 0.16)
+
+      Rectangle {
+        width: parent.width * Island.pomodoroFraction
+        height: parent.height
+        radius: height / 2
+        color: NekoColor.accent
+        Behavior on width { NumberAnimation { duration: Style.duration(200); easing.type: Easing.OutCubic } }
+      }
+    }
+
     HoverHandler {
       onHoveredChanged: {
         if (hovered) Island.showPomodoro()

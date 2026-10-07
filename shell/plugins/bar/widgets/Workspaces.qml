@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
@@ -128,8 +129,8 @@ BarWidget {
     screen: root.QsWindow.window ? root.QsWindow.window.screen : null
     visible: root.islandUp
     color: "transparent"
-    implicitWidth: Style.space(460)
-    implicitHeight: Style.space(170)
+    implicitWidth: Style.space(480)
+    implicitHeight: Style.space(190)
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "neko-island"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -142,8 +143,8 @@ BarWidget {
 
     Rectangle {
       id: pill
-      readonly property real targetWidth: root.islandMode === "media" ? Style.space(440)
-        : root.islandMode === "pomodoro" ? Style.space(360)
+      readonly property real targetWidth: root.islandMode === "media" ? Style.space(460)
+        : root.islandMode === "pomodoro" ? Style.space(400)
         : root.islandMode === "notification" ? Style.space(360)
         : root.islandMode === "osd" ? Style.space(150) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
@@ -156,7 +157,7 @@ BarWidget {
       y: root.restInset
       width: targetWidth
       height: targetHeight
-      radius: card ? Style.space(24) : height / 2
+      radius: card ? Style.space(26) : height / 2
       color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
       opacity: root.islandMode !== "" ? 1 : 0
       clip: true
@@ -164,6 +165,29 @@ BarWidget {
       Behavior on width { NumberAnimation { duration: Style.duration(420); easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
       Behavior on height { NumberAnimation { duration: Style.duration(420); easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
       Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode !== "" ? 120 : 320) } }
+
+      // A quiet tonal wash gives the two interactive cards some depth while
+      // leaving the compositor blur visible underneath.
+      Rectangle {
+        anchors.fill: parent
+        visible: pill.card
+        radius: parent.radius
+        gradient: Gradient {
+          orientation: Gradient.Horizontal
+          GradientStop { position: 0; color: Util.alpha(root.accent, 0.14) }
+          GradientStop { position: 0.42; color: Util.alpha(root.accent, 0.035) }
+          GradientStop { position: 1; color: Util.alpha(root.islandText, 0.025) }
+        }
+      }
+
+      Rectangle {
+        anchors.fill: parent
+        visible: pill.card
+        radius: parent.radius
+        color: "transparent"
+        border.width: 1
+        border.color: Util.alpha(root.islandText, 0.11)
+      }
 
       HoverHandler {
         onHoveredChanged: Island.hovered = hovered
@@ -238,8 +262,8 @@ BarWidget {
         }
       }
 
-      // A player's card: art, track, controls and a seek bar, with an
-      // equalizer that moves while it plays.
+      // Now playing: artwork gets its own framed stage, while metadata,
+      // transport and the seek line form a quieter control deck beside it.
       Item {
         id: mediaView
         // Kept while the card closes, so it doesn't blank as it shrinks
@@ -252,8 +276,9 @@ BarWidget {
         property real dragFraction: -1
         readonly property real fraction: dragFraction >= 0 ? dragFraction : length > 0 ? Math.min(1, position / length) : 0
         readonly property real pad: Style.space(16)
-        readonly property real art: Style.space(80)
+        readonly property real art: Style.space(104)
         readonly property bool spotify: !!player && (String(player.identity || "") + String(player.desktopEntry || "")).toLowerCase().indexOf("spotify") >= 0
+        readonly property string sourceName: !player ? "PLAYER" : spotify ? "SPOTIFY" : String(player.identity || "PLAYER").toUpperCase()
 
         function clock(seconds) {
           var s = Math.max(0, Math.floor(seconds))
@@ -262,7 +287,7 @@ BarWidget {
         }
 
         anchors.fill: parent
-        implicitHeight: pad + art + Style.space(14) + Style.space(16) + pad
+        implicitHeight: Style.space(168)
         opacity: root.islandMode === "media" ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Style.duration(220) } }
@@ -275,14 +300,25 @@ BarWidget {
           onTriggered: mediaView.player.positionChanged()
         }
 
+        Rectangle {
+          x: mediaView.pad - Style.space(2)
+          y: mediaView.pad - Style.space(2)
+          width: mediaView.art + Style.space(4)
+          height: width
+          radius: Style.space(18)
+          color: Util.alpha(root.accent, 0.13)
+          border.width: 1
+          border.color: Util.alpha(root.islandText, 0.12)
+        }
+
         ClippingRectangle {
           id: mediaArtBox
           x: mediaView.pad
           y: mediaView.pad
           width: mediaView.art
           height: mediaView.art
-          radius: Style.space(14)
-          color: Util.alpha(root.islandText, 0.08)
+          radius: Style.space(16)
+          color: Util.alpha(root.islandText, 0.07)
 
           Image {
             id: mediaArt
@@ -294,6 +330,39 @@ BarWidget {
             asynchronous: true
             visible: status === Image.Ready
           }
+
+          Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: Style.space(42)
+            visible: mediaArt.status === Image.Ready
+            gradient: Gradient {
+              GradientStop { position: 0; color: "transparent" }
+              GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.72) }
+            }
+          }
+
+          Rectangle {
+            anchors.left: parent.left
+            anchors.bottom: parent.bottom
+            anchors.margins: Style.space(8)
+            width: artState.implicitWidth + Style.space(14)
+            height: Style.space(22)
+            radius: height / 2
+            color: Qt.rgba(0, 0, 0, 0.56)
+
+            Text {
+              id: artState
+              anchors.centerIn: parent
+              text: mediaView.player && mediaView.player.isPlaying ? "PLAYING" : "PAUSED"
+              color: "#f5f5f5"
+              font.pixelSize: Style.font.caption - 1
+              font.weight: Font.Bold
+              font.letterSpacing: Style.spaceReal(0.7)
+            }
+          }
+
           Text {
             anchors.centerIn: parent
             visible: mediaArt.status !== Image.Ready
@@ -304,77 +373,105 @@ BarWidget {
           }
         }
 
-        // The app's mark, with an equalizer that dances while it plays
-        Row {
-          id: mediaMark
+        Text {
+          x: mediaView.pad + mediaView.art + Style.space(18)
+          y: mediaView.pad + Style.space(1)
+          text: mediaView.player && mediaView.player.isPlaying ? "NOW PLAYING" : "PLAYBACK PAUSED"
+          color: root.accent
+          font.pixelSize: Style.font.caption
+          font.weight: Font.Bold
+          font.letterSpacing: Style.spaceReal(0.8)
+        }
+
+        // Source badge and a tiny live equalizer make playback state legible
+        // without competing with the title.
+        Rectangle {
+          id: mediaSourceBadge
           anchors.right: parent.right
-          anchors.rightMargin: mediaView.pad + Style.space(2)
-          y: mediaView.pad
-          spacing: Style.space(8)
+          anchors.rightMargin: mediaView.pad
+          y: mediaView.pad - Style.space(3)
+          width: sourceBadgeRow.implicitWidth + Style.space(14)
+          height: Style.space(25)
+          radius: height / 2
+          color: Util.alpha(root.islandText, 0.075)
+          border.width: 1
+          border.color: Util.alpha(root.islandText, 0.09)
 
           Row {
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
-            Repeater {
-              model: [0.55, 1, 0.7, 0.85]
-              Rectangle {
-                id: eqBar
-                required property real modelData
-                required property int index
-                anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(3)
-                radius: width / 2
-                color: root.accent
-                property real level: 0.35
-                height: Math.max(width, Style.space(13) * level)
-                SequentialAnimation on level {
-                  running: mediaView.visible && !!mediaView.player && mediaView.player.isPlaying
-                  loops: Animation.Infinite
-                  NumberAnimation { to: eqBar.modelData; duration: 260 + eqBar.index * 70; easing.type: Easing.InOutSine }
-                  NumberAnimation { to: 0.25 + eqBar.index * 0.08; duration: 300 + eqBar.index * 50; easing.type: Easing.InOutSine }
+            id: sourceBadgeRow
+            anchors.centerIn: parent
+            spacing: Style.space(7)
+
+            Row {
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(2)
+              Repeater {
+                model: [0.55, 1, 0.72]
+                Rectangle {
+                  id: eqBar
+                  required property real modelData
+                  required property int index
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(2)
+                  radius: width / 2
+                  color: mediaView.spotify ? "#1ed760" : root.accent
+                  property real level: 0.3
+                  height: Math.max(width, Style.space(11) * level)
+                  SequentialAnimation on level {
+                    running: mediaView.visible && !!mediaView.player && mediaView.player.isPlaying
+                    loops: Animation.Infinite
+                    NumberAnimation { to: eqBar.modelData; duration: 250 + eqBar.index * 80; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 0.25 + eqBar.index * 0.1; duration: 330 + eqBar.index * 60; easing.type: Easing.InOutSine }
+                  }
                 }
               }
             }
-          }
-          Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: mediaView.spotify ? "󰓇" : "󰝚"
-            color: mediaView.spotify ? "#1ed760" : root.accent
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Style.bar.iconFont + 2
+
+            Text {
+              anchors.verticalCenter: parent.verticalCenter
+              text: mediaView.sourceName
+              color: mediaView.spotify ? "#1ed760" : root.islandDim
+              font.pixelSize: Style.font.caption - 1
+              font.weight: Font.Bold
+              font.letterSpacing: Style.spaceReal(0.5)
+              elide: Text.ElideRight
+              maximumLineCount: 1
+            }
           }
         }
 
-        Column {
-          x: mediaView.pad + mediaView.art + Style.space(16)
-          y: mediaView.pad
+        Text {
+          x: mediaView.pad + mediaView.art + Style.space(18)
+          y: mediaView.pad + Style.space(28)
           width: parent.width - x - mediaView.pad
-          height: mediaView.art
-          spacing: Style.space(2)
+          textFormat: Text.PlainText
+          text: mediaView.player ? (mediaView.player.trackTitle || mediaView.player.identity || "Nothing playing") : "Nothing playing"
+          color: root.islandText
+          font.pixelSize: Style.font.title + 2
+          font.weight: Font.Bold
+          elide: Text.ElideRight
+        }
 
-          Text {
-            width: parent.width - mediaMark.width - Style.space(10)
-            textFormat: Text.PlainText
-            text: mediaView.player ? (mediaView.player.trackTitle || mediaView.player.identity || "") : ""
-            color: root.islandText
-            font.pixelSize: Style.font.title
-            font.bold: true
-            elide: Text.ElideRight
-          }
-          Text {
-            width: parent.width
-            textFormat: Text.PlainText
-            text: mediaView.player ? [mediaView.player.trackArtist, mediaView.player.trackAlbum].filter(function(t) { return !!t }).join("  ·  ") : ""
-            color: root.islandDim
-            font.pixelSize: Style.font.bodySmall
-            elide: Text.ElideRight
-          }
+        Text {
+          x: mediaView.pad + mediaView.art + Style.space(18)
+          y: mediaView.pad + Style.space(55)
+          width: parent.width - x - mediaView.pad
+          textFormat: Text.PlainText
+          text: mediaView.player ? [mediaView.player.trackArtist, mediaView.player.trackAlbum].filter(function(t) { return !!t }).join("  •  ") : ""
+          color: root.islandDim
+          font.pixelSize: Style.font.bodySmall
+          elide: Text.ElideRight
+        }
 
-          Item { width: 1; height: Style.space(6) }
+        Item {
+          x: mediaView.pad + mediaView.art + Style.space(12)
+          y: mediaView.pad + Style.space(74)
+          width: parent.width - x - mediaView.pad + Style.space(6)
+          height: Style.space(44)
 
-          // Shuffle, back, play, forward, repeat
           Row {
-            spacing: Style.space(6)
+            anchors.centerIn: parent
+            spacing: Style.space(2)
             MediaButton {
               visible: !!mediaView.player && mediaView.player.shuffleSupported
               glyph: "󰒝"
@@ -399,13 +496,12 @@ BarWidget {
           }
         }
 
-        // Where the track is, with a bar to drag or click to move it
-        Row {
+        // Time and seek sit on their own baseline across the whole card.
+        Item {
           x: mediaView.pad
-          y: mediaView.pad + mediaView.art + Style.space(14)
+          y: Style.space(134)
           width: parent.width - 2 * mediaView.pad
-          height: Style.space(16)
-          spacing: Style.space(10)
+          height: Style.space(22)
 
           Text {
             id: elapsed
@@ -417,8 +513,9 @@ BarWidget {
           }
           Item {
             id: seek
+            x: Style.space(43)
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - elapsed.width - total.width - 2 * parent.spacing
+            width: parent.width - Style.space(86)
             height: parent.height
             readonly property bool seekable: !!mediaView.player && mediaView.player.canSeek && mediaView.length > 0
 
@@ -432,8 +529,9 @@ BarWidget {
               Rectangle {
                 height: parent.height
                 radius: height / 2
-                width: Math.max(height, parent.width * mediaView.fraction)
+                width: mediaView.fraction > 0 ? Math.max(height, parent.width * mediaView.fraction) : 0
                 color: root.accent
+                Behavior on width { NumberAnimation { duration: Style.duration(180); easing.type: Easing.OutCubic } }
               }
             }
             Rectangle {
@@ -443,8 +541,9 @@ BarWidget {
               height: width
               radius: width / 2
               color: root.islandText
-              visible: seek.seekable
+              visible: seek.seekable && (seekArea.containsMouse || seekArea.pressed)
               Behavior on width { NumberAnimation { duration: Style.duration(120) } }
+              Behavior on opacity { NumberAnimation { duration: Style.duration(120) } }
             }
             MouseArea {
               id: seekArea
@@ -463,6 +562,7 @@ BarWidget {
           }
           Text {
             id: total
+            anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: mediaView.clock(mediaView.length)
             color: root.islandDim
@@ -472,109 +572,248 @@ BarWidget {
         }
       }
 
-      // The Pomodoro card shares the island surface with media and the OSD.
-      // Its timer itself lives in Island so every bar sees one session.
+      // Pomodoro reads as a focused instrument: the remaining time lives in
+      // a progress dial, while phase context and controls stay grouped.
       Item {
         id: pomodoroView
         readonly property int round: Island.pomodoroCompleted % 4 + 1
         readonly property string status: Island.pomodoroRunning
           ? "Ends at " + Qt.formatTime(new Date(Island.pomodoroTargetAt), "HH:mm")
           : Island.pomodoroActive ? "Paused" : "Ready when you are"
-        readonly property string nextPhase: pomodoroView.round === 4 ? "long break next" : "short break next"
+        readonly property string headline: Island.pomodoroRunning
+          ? (Island.pomodoroPhase === "focus" ? "Stay in the flow" : "Take a real pause")
+          : Island.pomodoroActive ? "Session paused" : "Begin a focus block"
+        readonly property string nextPhase: pomodoroView.round === 4 ? "Long break up next" : "Short break up next"
 
         anchors.fill: parent
-        implicitHeight: Style.space(154)
+        implicitHeight: Style.space(168)
         opacity: root.islandMode === "pomodoro" ? 1 : 0
         visible: opacity > 0
         Behavior on opacity { NumberAnimation { duration: Style.duration(220) } }
 
-        Row {
-          x: Style.space(20)
-          y: Style.space(14)
-          spacing: Style.space(8)
-
-          Text {
-            text: Island.pomodoroPhase === "focus" ? "󰔛" : "󰒲"
-            color: root.accent
-            font.family: root.bar ? root.bar.fontFamily : Style.font.family
-            font.pixelSize: Style.font.title + 1
-          }
-          Text {
-            anchors.verticalCenter: parent.verticalCenter
-            text: Island.pomodoroTitle.toUpperCase()
-            color: root.islandText
-            font.pixelSize: Style.font.caption
-            font.weight: Font.Bold
-            font.letterSpacing: Style.spaceReal(0.8)
-          }
-        }
-
-        Text {
-          anchors.right: parent.right
-          anchors.rightMargin: Style.space(20)
+        Item {
+          id: pomodoroDial
+          x: Style.space(16)
           y: Style.space(16)
-          text: "ROUND " + pomodoroView.round + "/4"
-          color: root.islandDim
-          font.pixelSize: Style.font.caption
-          font.weight: Font.DemiBold
-        }
-
-        Text {
-          anchors.horizontalCenter: parent.horizontalCenter
-          y: Style.space(35)
-          text: Island.pomodoroClock(Island.pomodoroRemaining)
-          color: root.islandText
-          font.family: root.bar ? root.bar.fontFamily : Style.font.family
-          font.pixelSize: Style.font.displayLarge + Style.space(8)
-          font.weight: Font.Bold
-          font.features: { "tnum": 1 }
-        }
-
-        Text {
-          anchors.horizontalCenter: parent.horizontalCenter
-          y: Style.space(78)
-          text: pomodoroView.status + "  ·  " + pomodoroView.nextPhase
-          color: root.islandDim
-          font.pixelSize: Style.font.bodySmall
-        }
-
-        Rectangle {
-          id: pomodoroTrack
-          x: Style.space(24)
-          y: Style.space(102)
-          width: parent.width - 2 * x
-          height: Style.space(5)
-          radius: height / 2
-          color: root.islandTrack
+          width: Style.space(136)
+          height: width
+          readonly property real arcRadius: width / 2 - Style.space(10)
+          readonly property bool hasProgress: Island.pomodoroFraction > 0.002
 
           Rectangle {
-            width: Math.max(parent.height, parent.width * Island.pomodoroFraction)
-            height: parent.height
-            radius: height / 2
-            color: root.accent
-            Behavior on width { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }
+            anchors.centerIn: parent
+            width: parent.width - Style.space(28)
+            height: width
+            radius: width / 2
+            color: Util.alpha(root.islandText, 0.035)
+            border.width: 1
+            border.color: Util.alpha(root.islandText, 0.055)
+          }
+
+          Shape {
+            anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+              strokeWidth: Style.space(6)
+              strokeColor: Util.alpha(root.islandText, 0.13)
+              fillColor: "transparent"
+              capStyle: ShapePath.RoundCap
+              PathAngleArc {
+                centerX: pomodoroDial.width / 2
+                centerY: pomodoroDial.height / 2
+                radiusX: pomodoroDial.arcRadius
+                radiusY: pomodoroDial.arcRadius
+                startAngle: -90
+                sweepAngle: 360
+              }
+            }
+
+            ShapePath {
+              strokeWidth: Style.space(14)
+              strokeColor: pomodoroDial.hasProgress ? Util.alpha(root.accent, 0.14) : "transparent"
+              fillColor: "transparent"
+              capStyle: ShapePath.RoundCap
+              PathAngleArc {
+                centerX: pomodoroDial.width / 2
+                centerY: pomodoroDial.height / 2
+                radiusX: pomodoroDial.arcRadius
+                radiusY: pomodoroDial.arcRadius
+                startAngle: -90
+                sweepAngle: 360 * Island.pomodoroFraction
+              }
+            }
+
+            ShapePath {
+              strokeWidth: Style.space(6)
+              strokeColor: pomodoroDial.hasProgress ? root.accent : "transparent"
+              fillColor: "transparent"
+              capStyle: ShapePath.RoundCap
+              PathAngleArc {
+                centerX: pomodoroDial.width / 2
+                centerY: pomodoroDial.height / 2
+                radiusX: pomodoroDial.arcRadius
+                radiusY: pomodoroDial.arcRadius
+                startAngle: -90
+                sweepAngle: 360 * Island.pomodoroFraction
+              }
+            }
+          }
+
+          Column {
+            anchors.centerIn: parent
+            spacing: Style.space(1)
+
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: Island.pomodoroClock(Island.pomodoroRemaining)
+              color: root.islandText
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.displayLarge
+              font.weight: Font.Bold
+              font.features: { "tnum": 1 }
+            }
+            Text {
+              anchors.horizontalCenter: parent.horizontalCenter
+              text: "REMAINING"
+              color: root.islandDim
+              font.pixelSize: Style.font.caption - 1
+              font.weight: Font.DemiBold
+              font.letterSpacing: Style.spaceReal(0.7)
+            }
+          }
+
+          Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: Style.space(8)
+            width: Style.space(7)
+            height: width
+            radius: width / 2
+            color: Island.pomodoroRunning ? root.accent : root.islandDim
+            opacity: Island.pomodoroActive ? 1 : 0.45
+
+            SequentialAnimation on opacity {
+              running: pomodoroView.visible && Island.pomodoroRunning
+              loops: Animation.Infinite
+              NumberAnimation { to: 0.35; duration: 850; easing.type: Easing.InOutSine }
+              NumberAnimation { to: 1; duration: 850; easing.type: Easing.InOutSine }
+            }
           }
         }
 
-        Row {
-          anchors.horizontalCenter: parent.horizontalCenter
-          y: Style.space(114)
-          spacing: Style.space(12)
+        Item {
+          x: Style.space(170)
+          y: Style.space(17)
+          width: parent.width - x - Style.space(18)
+          height: parent.height - Style.space(32)
 
-          PomodoroButton {
-            glyph: "󰑓"
-            enabled: Island.pomodoroActive
-            onClicked: Island.resetPomodoro()
+          Row {
+            id: phaseMark
+            spacing: Style.space(7)
+
+            Text {
+              anchors.verticalCenter: parent.verticalCenter
+              text: Island.pomodoroPhase === "focus" ? "󰔛" : "󰒲"
+              color: root.accent
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.title
+            }
+            Text {
+              anchors.verticalCenter: parent.verticalCenter
+              text: Island.pomodoroTitle.toUpperCase()
+              color: root.accent
+              font.pixelSize: Style.font.caption
+              font.weight: Font.Bold
+              font.letterSpacing: Style.spaceReal(0.8)
+            }
           }
-          PomodoroButton {
-            glyph: Island.pomodoroRunning ? "󰏤" : "󰐊"
-            big: true
-            onClicked: Island.togglePomodoro()
+
+          Rectangle {
+            anchors.right: parent.right
+            y: -Style.space(2)
+            width: roundLabel.implicitWidth + Style.space(14)
+            height: Style.space(24)
+            radius: height / 2
+            color: Util.alpha(root.islandText, 0.065)
+            border.width: 1
+            border.color: Util.alpha(root.islandText, 0.08)
+
+            Text {
+              id: roundLabel
+              anchors.centerIn: parent
+              text: "ROUND " + pomodoroView.round + "/4"
+              color: root.islandDim
+              font.pixelSize: Style.font.caption - 1
+              font.weight: Font.Bold
+              font.letterSpacing: Style.spaceReal(0.4)
+            }
           }
-          PomodoroButton {
-            glyph: "󰒭"
-            enabled: Island.pomodoroActive
-            onClicked: Island.skipPomodoro()
+
+          Text {
+            y: Style.space(34)
+            width: parent.width
+            text: pomodoroView.headline
+            color: root.islandText
+            font.pixelSize: Style.font.title + 2
+            font.weight: Font.Bold
+            elide: Text.ElideRight
+          }
+
+          Text {
+            y: Style.space(59)
+            width: parent.width
+            text: pomodoroView.status + "  •  " + pomodoroView.nextPhase
+            color: root.islandDim
+            font.pixelSize: Style.font.bodySmall
+            elide: Text.ElideRight
+          }
+
+          Row {
+            y: Style.space(82)
+            spacing: Style.space(6)
+
+            Repeater {
+              model: 4
+              Rectangle {
+                required property int index
+                width: index === pomodoroView.round - 1 ? Style.space(25) : Style.space(10)
+                height: Style.space(6)
+                radius: height / 2
+                color: index < pomodoroView.round ? root.accent : root.islandTrack
+                opacity: index === pomodoroView.round - 1 ? 1 : index < pomodoroView.round ? 0.5 : 1
+                Behavior on width { NumberAnimation { duration: Style.duration(180); easing.type: Easing.OutCubic } }
+              }
+            }
+
+            Text {
+              anchors.verticalCenter: parent.verticalCenter
+              text: Island.pomodoroCompleted + " completed"
+              color: root.islandDim
+              font.pixelSize: Style.font.caption - 1
+            }
+          }
+
+          Row {
+            y: Style.space(105)
+            spacing: Style.space(8)
+
+            PomodoroButton {
+              glyph: "󰑓"
+              enabled: Island.pomodoroActive
+              onClicked: Island.resetPomodoro()
+            }
+            PomodoroButton {
+              glyph: Island.pomodoroRunning ? "󰏤" : "󰐊"
+              label: Island.pomodoroRunning ? "Pause" : Island.pomodoroActive ? "Resume" : "Start"
+              primary: true
+              onClicked: Island.togglePomodoro()
+            }
+            PomodoroButton {
+              glyph: "󰒭"
+              enabled: Island.pomodoroActive
+              onClicked: Island.skipPomodoro()
+            }
           }
         }
       }
@@ -754,16 +993,21 @@ BarWidget {
     property bool lit: false
     signal clicked()
 
-    width: big ? Style.space(36) : Style.space(30)
+    width: big ? Style.space(42) : Style.space(34)
     height: width
     opacity: enabled ? 1 : 0.35
+    scale: buttonArea.containsMouse && enabled ? 1.07 : 1
 
-    // The big one (play) is filled with the accent; the rest light on hover
+    Behavior on scale { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
+
     Rectangle {
       anchors.fill: parent
       radius: width / 2
       color: mediaButton.big ? (buttonArea.containsMouse ? Qt.lighter(root.accent, 1.15) : root.accent)
-        : Util.alpha(root.islandText, buttonArea.containsMouse ? 0.16 : 0)
+        : mediaButton.lit ? Util.alpha(root.accent, 0.18)
+        : Util.alpha(root.islandText, buttonArea.containsMouse ? 0.11 : 0.045)
+      border.width: mediaButton.big || mediaButton.lit ? 1 : 0
+      border.color: mediaButton.big ? Util.alpha(root.islandText, 0.22) : Util.alpha(root.accent, 0.34)
       Behavior on color { ColorAnimation { duration: Style.duration(120) } }
     }
     Text {
@@ -771,7 +1015,7 @@ BarWidget {
       text: mediaButton.glyph
       color: mediaButton.big ? "#101010" : mediaButton.lit ? root.accent : root.islandText
       font.family: root.bar ? root.bar.fontFamily : Style.font.family
-      font.pixelSize: mediaButton.big ? Style.font.title + 4 : Style.font.title
+      font.pixelSize: mediaButton.big ? Style.font.title + 5 : Style.font.title
     }
     MouseArea {
       id: buttonArea
@@ -785,26 +1029,46 @@ BarWidget {
   component PomodoroButton: Item {
     id: pomodoroButton
     property string glyph: ""
-    property bool big: false
+    property string label: ""
+    property bool primary: false
     signal clicked()
 
-    width: big ? Style.space(34) : Style.space(30)
-    height: width
+    width: primary ? Style.space(92) : Style.space(38)
+    height: Style.space(38)
     opacity: enabled ? 1 : 0.3
+    scale: pomodoroButtonArea.containsMouse && enabled ? 1.05 : 1
+
+    Behavior on scale { NumberAnimation { duration: Style.duration(120); easing.type: Easing.OutCubic } }
 
     Rectangle {
       anchors.fill: parent
-      radius: width / 2
-      color: pomodoroButton.big ? (pomodoroButtonArea.containsMouse ? Qt.lighter(root.accent, 1.15) : root.accent)
-        : Util.alpha(root.islandText, pomodoroButtonArea.containsMouse ? 0.16 : 0)
+      radius: height / 2
+      color: pomodoroButton.primary ? (pomodoroButtonArea.containsMouse ? Qt.lighter(root.accent, 1.15) : root.accent)
+        : Util.alpha(root.islandText, pomodoroButtonArea.containsMouse ? 0.12 : 0.05)
+      border.width: 1
+      border.color: pomodoroButton.primary ? Util.alpha(root.islandText, 0.2) : Util.alpha(root.islandText, 0.08)
       Behavior on color { ColorAnimation { duration: Style.duration(120) } }
     }
-    Text {
+
+    Row {
       anchors.centerIn: parent
-      text: pomodoroButton.glyph
-      color: pomodoroButton.big ? "#101010" : root.islandText
-      font.family: root.bar ? root.bar.fontFamily : Style.font.family
-      font.pixelSize: pomodoroButton.big ? Style.font.title + 3 : Style.font.title
+      spacing: Style.space(7)
+
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        text: pomodoroButton.glyph
+        color: pomodoroButton.primary ? "#101010" : root.islandText
+        font.family: root.bar ? root.bar.fontFamily : Style.font.family
+        font.pixelSize: pomodoroButton.primary ? Style.font.title + 2 : Style.font.title
+      }
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        visible: pomodoroButton.primary && pomodoroButton.label !== ""
+        text: pomodoroButton.label
+        color: "#101010"
+        font.pixelSize: Style.font.bodySmall
+        font.weight: Font.Bold
+      }
     }
     MouseArea {
       id: pomodoroButtonArea
