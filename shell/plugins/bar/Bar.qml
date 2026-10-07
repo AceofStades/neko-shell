@@ -1968,7 +1968,8 @@ Item {
     // meet, nor for a widget that sizes its own ends (capsulePadded: false,
     // like the system monitor's rings, which follow the capsule's curve)
     readonly property bool capsuled: (root.glass || NekoColor.bar.capsule.a > 0) && !root.transparent
-    readonly property bool padded: capsuled && contentShown && !(activeItem && activeItem.capsulePadded === false)
+    readonly property bool ownCapsule: !!activeItem && activeItem.ownCapsule === true
+    readonly property bool padded: capsuled && contentShown && !ownCapsule && !(activeItem && activeItem.capsulePadded === false)
     readonly property real padStart: padded && !joinsPrevious ? Style.bar.capsulePadding : 0
     readonly property real padEnd: padded && !joinsNext ? Style.bar.capsulePadding : 0
     implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth + gap + padStart + padEnd) : 0
@@ -1989,7 +1990,7 @@ Item {
     Rectangle {
       readonly property int inset: Style.bar.capsuleInset
 
-      visible: (root.glass || NekoColor.bar.capsule.a > 0) && slot.width > 0 && !root.transparent
+      visible: (root.glass || NekoColor.bar.capsule.a > 0) && slot.width > 0 && !root.transparent && !slot.ownCapsule
       anchors.fill: parent
       readonly property real end: 2 + slot.gap / 2
       readonly property real round: Math.min(root.vertical ? width : height, root.vertical ? height : width) / 2
@@ -2031,7 +2032,7 @@ Item {
       readonly property real endMargin: slot.joinsNext ? slot.padEnd - grow : Math.max(slot.padEnd - grow, endInside)
 
       visible: opacity > 0
-      opacity: (slot.hovered || slot.panelOpen) && slot.capsuled && slot.contentShown && !slot.dragSource && slot.moduleName !== "neko.workspaces" ? 1 : 0
+      opacity: (slot.hovered || slot.panelOpen) && slot.capsuled && slot.contentShown && !slot.dragSource && !slot.ownCapsule && slot.moduleName !== "neko.workspaces" ? 1 : 0
       anchors.fill: parent
       anchors.topMargin: root.vertical ? startMargin : inset
       anchors.bottomMargin: root.vertical ? endMargin : inset
