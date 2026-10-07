@@ -415,8 +415,16 @@ Item {
     var window = slot ? slot.QsWindow.window : null
     if (!window) return null
     var first = slot, last = slot
-    while (first.joinsPrevious && first.shownNeighbour(-1)) first = first.shownNeighbour(-1)
-    while (last.joinsNext && last.shownNeighbour(1)) last = last.shownNeighbour(1)
+    while (first.continuesPrevious) {
+      var previous = first.shownNeighbour(-1) || first.sectionNeighbour(-1)
+      if (!previous) break
+      first = previous
+    }
+    while (last.continuesNext) {
+      var next = last.shownNeighbour(1) || last.sectionNeighbour(1)
+      if (!next) break
+      last = next
+    }
     // Read for the binding's sake: mapToItem alone doesn't notice them move
     var serial = first.x + first.width + last.x + last.width + first.capsuleLeft + last.capsuleRight
     var start = first.mapToItem(window.contentItem, first.capsuleLeft, 0)

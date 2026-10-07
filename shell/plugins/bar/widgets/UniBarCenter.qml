@@ -39,6 +39,18 @@ BarWidget {
     return playing || spotify || players[0] || null
   }
   readonly property bool playing: !!player && player.isPlaying
+  // The whole UniBar is the island's compact shape. Bar.groupSpan crosses
+  // the centered anchor, so this includes the monitor, both workspace banks
+  // and every status control rather than just this clock slot.
+  readonly property var islandGroupSpan: root.bar && typeof root.bar.groupSpan === "function"
+    ? root.bar.groupSpan(root) : null
+  readonly property real islandSurfaceWidth: islandGroupSpan
+    ? Math.max(1, islandGroupSpan.right - islandGroupSpan.left) : root.width
+  readonly property real islandCenterOffset: {
+    if (!islandGroupSpan || !root.QsWindow.window) return 0
+    var here = root.mapToItem(root.QsWindow.window.contentItem, root.width / 2, 0)
+    return (islandGroupSpan.left + islandGroupSpan.right) / 2 - here.x
+  }
 
   function showContext() {
     if (Island.pomodoroActive) Island.showPomodoro()
@@ -86,19 +98,28 @@ BarWidget {
     }
   }
 
-  // The existing island renderer is hosted invisibly at the clock's position.
-  // Its own native overlay window remains visible when it expands.
+  // The existing island renderer is hosted invisibly across the entire
+  // UniBar. At rest its pill exactly covers the shared surface. While it is
+  // open, its center glides to the screen-centered clock as it changes shape.
   Workspaces {
     id: islandHost
-    anchors.centerIn: parent
-    width: Math.max(1, parent.width - 2 * Style.bar.capsulePadding + Style.space(4))
+    width: Math.max(1, root.islandSurfaceWidth - 2 * Style.bar.capsulePadding + Style.space(4))
     height: parent.height
+    x: Math.round((parent.width - width) / 2 + (Island.mode === "" ? root.islandCenterOffset : 0))
+    y: 0
     bar: root.bar
     // It hosts only the island window. Disabling its hidden workspace grid
     // keeps those ten invisible buttons out of the clock's click routing.
     enabled: false
     opacity: 0
     z: -10
+
+    onXChanged: placeIsland()
+
+    Behavior on x {
+      enabled: !Style.reduceMotion
+      SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+    }
   }
 
   WidgetButton {
