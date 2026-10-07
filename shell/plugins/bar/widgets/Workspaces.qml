@@ -162,8 +162,10 @@ BarWidget {
       width: targetWidth
       height: targetHeight
       radius: targetRadius
-      topLeftRadius: root.topAttached ? 0 : targetRadius
-      topRightRadius: root.topAttached ? 0 : targetRadius
+      // Keep the middle of the top edge flush with the screen, then let both
+      // outer shoulders fall away in the same curve as the compact end caps.
+      topLeftRadius: targetRadius
+      topRightRadius: targetRadius
       bottomLeftRadius: targetRadius
       bottomRightRadius: targetRadius
       color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
