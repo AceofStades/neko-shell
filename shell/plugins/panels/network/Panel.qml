@@ -1722,7 +1722,9 @@ Panel {
               text: sectionTitle
               foreground: root.bar.foreground
               fontFamily: root.bar.fontFamily
-              height: visible ? implicitHeight : 0
+              // From the title, not from visible, which also turns off
+              // while the panel's window is hidden (the rows are read ahead)
+              height: sectionTitle !== "" ? implicitHeight : 0
             }
 
             NetworkRow {
@@ -2016,7 +2018,7 @@ Panel {
           // so rows without status keep a tight one-line look.
           text: row.statusText
           visible: row.statusText !== ""
-          height: visible ? implicitHeight : 0
+          height: row.statusText !== "" ? implicitHeight : 0
           color: row.statusColor
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.caption
