@@ -191,7 +191,8 @@ PanelWindow {
   // still consistent with the bar content origin, so it's accurate for
   // centering the card under the icon.
   readonly property real barW: anchorWindow ? anchorWindow.width : screenW
-  readonly property real barH: anchorWindow ? anchorWindow.height : 0
+  // Attached, the bar window reaches past the bar for its groups' shoulders
+  readonly property real barH: !anchorWindow ? 0 : anchorWindow.barHeight !== undefined ? anchorWindow.barHeight : anchorWindow.height
   // A floating bar sits this far in from its screen edges, so its far edge
   // is that much further out and its content starts that much along
   // Attached to the top edge, the bar meets its edges and keeps no gap

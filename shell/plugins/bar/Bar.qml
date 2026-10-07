@@ -1351,6 +1351,9 @@ Item {
     readonly property bool floating: floatMargin > 0
     readonly property bool centerAttached: root.centerTopAttached
     readonly property int dropRoom: centerAttached ? Math.ceil(root.barSize / 2) : 0
+    // The bar's own height across the window, without that room: what popups
+    // opening from the bar measure from
+    readonly property real barHeight: height - dropRoom
 
     function edgeMargin(side) {
       if (side === root.position) {

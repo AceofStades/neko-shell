@@ -28,7 +28,8 @@ PopupWindow {
   readonly property real screenW: popupScreen ? popupScreen.width : 0
   readonly property real screenH: popupScreen ? popupScreen.height : 0
   readonly property real barW: anchorWindow ? anchorWindow.width : 0
-  readonly property real barH: anchorWindow ? anchorWindow.height : 0
+  // Attached, the bar window reaches past the bar for its groups' shoulders
+  readonly property real barH: !anchorWindow ? 0 : anchorWindow.barHeight !== undefined ? anchorWindow.barHeight : anchorWindow.height
   readonly property real availableCardWidth: screenW > 0
     ? Math.max(120, screenW - ((bar && (bar.position === "left" || bar.position === "right")) ? barW : 0) - root.margin * 2)
     : 0
@@ -121,7 +122,7 @@ PopupWindow {
         var cy = 0;
         if (root.bar.position === "top" || root.bar.position === "bottom") {
           cx = window.width / 2 - popupWidth / 2
-          cy = root.bar.position === "bottom" ? -popupHeight - root.margin : window.height + root.margin
+          cy = root.bar.position === "bottom" ? -popupHeight - root.margin : root.barH + root.margin
           cx = Math.max(root.margin, Math.min(cx, window.width - popupWidth - root.margin))
         } else {
           cx = root.bar.position === "left" ? window.width + root.margin : -popupWidth - root.margin
