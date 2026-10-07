@@ -2004,11 +2004,12 @@ Item {
       topRightRadius: (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
       bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious) ? 0 : round
       bottomRightRadius: slot.joinsNext ? 0 : round
-      // The workspaces' capsule clears while the island is out of it, so
-      // none of it shows around an island narrower than itself
-      color: !root.glass ? NekoColor.bar.capsule
-        : slot.moduleName !== "neko.workspaces" ? root.glassCapsule
-        : Island.mode !== "" && Island.mode !== "media" ? "transparent" : root.glassIslandCapsule
+      // The media and workspace capsules share the island's tint. Both
+      // clear as the island becomes an OSD or notification.
+      readonly property bool islandPart: slot.moduleName === "neko.workspaces" || slot.moduleName === "neko.media-players"
+      color: islandPart && Island.mode !== "" && Island.mode !== "media" ? "transparent"
+        : !root.glass ? NekoColor.bar.capsule
+        : islandPart ? root.glassIslandCapsule : root.glassCapsule
       Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
 

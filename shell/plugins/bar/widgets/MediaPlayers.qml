@@ -5,10 +5,8 @@ import qs.Commons
 import qs.Ui
 import "../../services/media/MediaModel.js" as MediaModel
 
-// An icon for each media player with something loaded (Spotify, a browser
-// playing YouTube...), in the accent while it plays. Hovering one grows the
-// island into its card (see Island): art, track, a seek bar and the buttons.
-// A click plays or pauses it.
+// One icon per player with a track loaded. Hovering opens that player's
+// separate card below the workspace island; clicking toggles playback.
 BarWidget {
   id: root
   moduleName: "neko.media-players"
@@ -18,22 +16,38 @@ BarWidget {
     return all.filter(function(p) { return p && !MediaModel.isProxyPlayer(p) && MediaModel.hasTrackMetadata(p) })
   }
 
-  // The app's icon from its desktop entry, else "". Browsers often don't name
-  // their entry, so the player's name is tried as it is, in lower case and
-  // with "google-" before it (Chrome is google-chrome)
   function iconFor(player) {
-    var identity = String(player.identity || "").toLowerCase().replace(/\s+/g, "-")
-    var names = [player.desktopEntry, player.identity, MediaModel.playerAppLabel(player), identity, identity ? "google-" + identity : ""]
-    for (var i = 0; i < names.length; i++) {
-      var name = String(names[i] || "")
+    var identity = String(player.identity || "")
+    var desktopEntry = String(player.desktopEntry || "")
+    var dbusApp = String(player.dbusName || "").replace(/^org\.mpris\.MediaPlayer2\./, "").replace(/\.instance.*$/, "")
+    var chrome = /(^|[^a-z])chrome([^a-z]|$)/i.test(identity + " " + desktopEntry + " " + dbusApp)
+    var names = chrome ? ["google-chrome", "com.google.Chrome"] : []
+    var raw = [desktopEntry, identity, MediaModel.playerAppLabel(player), dbusApp]
+    for (var i = 0; i < raw.length; i++) {
+      var name = String(raw[i] || "").trim()
       if (!name) continue
-      var entry = typeof DesktopEntries.heuristicLookup === "function" ? DesktopEntries.heuristicLookup(name) : DesktopEntries.byId(name)
-      if (entry && entry.icon) return Quickshell.iconPath(entry.icon, true)
+      names.push(name)
+      names.push(name.replace(/\.desktop$/i, "").toLowerCase().replace(/\s+/g, "-"))
+    }
+
+    for (var j = 0; j < names.length; j++) {
+      var entry = typeof DesktopEntries.heuristicLookup === "function" ? DesktopEntries.heuristicLookup(names[j]) : DesktopEntries.byId(names[j])
+      if (entry && entry.icon) {
+        var desktopIcon = Quickshell.iconPath(entry.icon, true)
+        if (desktopIcon) return desktopIcon
+      }
+    }
+    for (var k = 0; k < names.length; k++) {
+      var themedIcon = Quickshell.iconPath(names[k], true)
+      if (themedIcon) return themedIcon
     }
     return ""
   }
 
   visible: players.length > 0 && !root.vertical
+  enabled: Island.mode === "" || Island.mode === "media"
+  opacity: enabled ? 1 : 0
+  Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
   implicitWidth: visible ? row.implicitWidth : 0
   implicitHeight: root.barSize
 
@@ -80,7 +94,6 @@ BarWidget {
           font.pixelSize: Style.bar.iconFont
         }
 
-        // A dot under the one that's playing
         Rectangle {
           visible: cell.playing
           anchors.horizontalCenter: parent.horizontalCenter
