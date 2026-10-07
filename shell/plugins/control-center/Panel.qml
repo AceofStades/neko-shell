@@ -55,7 +55,6 @@ Panel {
   property string page: ""
   // The wallpaper's file name, readable: "a_red_alien.png" reads "a red alien"
   readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
-  property int reminders: 0
   property bool recorderInstalled: false
   property bool recording: false
   // Brightness as a tick on the curve (0-64) and the backlight's raw maximum
@@ -113,7 +112,6 @@ Panel {
       "echo rotation=$(cat ~/.config/neko/wallpaper-rotation 2>/dev/null)",
       "echo wallpaper=$(readlink -f ~/.local/state/neko/current/background)",
       "echo colors=$(neko-settings get colors)",
-      "echo reminders=$(neko-reminder show --json 2>/dev/null | jq -r .count)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
       "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
       "echo brightness=$(brightnessctl -m | awk -F, '{print $3","$5}')",
@@ -135,7 +133,6 @@ Panel {
           else if (key === "rotation") root.rotation = value
           else if (key === "wallpaper") root.wallpaper = value
           else if (key === "colors") root.colors = value
-          else if (key === "reminders") root.reminders = Number(value) || 0
           else if (key === "recorder") root.recorderInstalled = value === "yes"
           else if (key === "recording") root.recording = value === "yes"
           else if (key === "brightness" && !brightnessSlider.dragging) {
@@ -302,15 +299,8 @@ Panel {
             onClicked: root.act("neko-toggle-idle toggle")
           }
           QuickTile {
-            icon: "󰀠"
-            label: "Reminders"
-            subtitle: root.reminders > 0 ? root.reminders + " set" : "Set one"
-            active: root.reminders > 0
-            Layout.columnSpan: root.recorderInstalled ? 1 : 2
-            onClicked: root.runAndClose("neko-reminder -i")
-          }
-          QuickTile {
             visible: root.recorderInstalled
+            Layout.columnSpan: 2
             icon: "󰑊"
             label: "Screen record"
             subtitle: root.recording ? "Recording" : "Off"
