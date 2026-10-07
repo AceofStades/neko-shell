@@ -20,6 +20,7 @@ QtObject {
   property bool vertical: false
   property int barSize: 0
   property bool transparent: false
+  property bool glass: false
   property bool foregroundAnimationEnabled: true
   property bool centerSectionRevealHeld: false
   property bool _centerHoverRevealSuppressed: false

@@ -82,7 +82,10 @@ BarWidget {
   // Glass like the bar's capsules, blurred by the compositor (neko.lua's
   // neko-island rule), with the bar's text color and the capsules' tint
   // (Bar.qml's glassIslandCapsule), so it grows out of its capsule unchanged
-  readonly property color islandText: root.bar ? root.bar.barForeground : NekoColor.foreground
+  // On glass the capsule and the island are tinted dark, so their text stays
+  // white whatever color the rest of the bar picked
+  readonly property bool glassBar: !!root.bar && root.bar.glass === true
+  readonly property color islandText: root.glassBar ? "#f2f2f2" : root.bar ? root.bar.barForeground : NekoColor.foreground
   readonly property color islandColor: Qt.rgba(0, 0, 0, 0.32)
   readonly property color islandDim: Util.alpha(root.islandText, 0.65)
   readonly property color islandTrack: Util.alpha(root.islandText, 0.2)
@@ -379,7 +382,7 @@ BarWidget {
           anchors.centerIn: parent
           opacity: cell.shown
           text: root.kanji[cell.index]
-          color: cell.focused ? root.accent : cell.foreground
+          color: cell.focused ? root.accent : root.glassBar ? root.islandText : cell.foreground
           font.family: root.kanjiFamily || cell.fontFamily
           font.pixelSize: Style.bar.fontSize
           font.weight: cell.focused ? Font.Bold : Font.Normal
