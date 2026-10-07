@@ -2080,7 +2080,9 @@ Item {
     // beside a neighbour whose own capsule wraps round this one
     Shape {
       id: capsuleShoulders
-      readonly property real size: Style.space(8)
+      // The side groups fall away in a full round, the island's pills in a
+      // smaller one beside their neighbours
+      readonly property real size: slot.region === "center" ? Style.space(8) : capsuleRect.round
       readonly property real capsuleLeft: capsuleRect.x
       readonly property real capsuleRight: capsuleRect.x + capsuleRect.width
       readonly property bool atStart: slot.topAttached && capsuleRect.visible && !slot.joinsPrevious && !slot.atScreenStart && !slot.neighbourWraps(-1)
