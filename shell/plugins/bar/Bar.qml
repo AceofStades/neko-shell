@@ -67,8 +67,10 @@ Item {
   // bar.style; only a top bar attaches)
   property string barStyle: "floating"
   readonly property bool glassOverLight: glass && useTransparentForeground && transparentForeground.hslLightness < 0.5
-  readonly property color glassCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.2 : 0.12)
-  readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.3 : 0.2)
+  // Every group takes the same tint, dark enough to read the widgets on
+  // over a light wallpaper; the island's pills share it
+  readonly property color glassCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.3 : 0.2)
+  readonly property color glassIslandCapsule: glassCapsule
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
   // Attached, a side group's panel grows out of it, and the group takes the
@@ -2133,7 +2135,7 @@ Item {
       property color fill: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
         : root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion ? root.attachedPanelColor
         : !root.glass ? NekoColor.bar.capsule
-        : slot.islandPart ? root.glassIslandCapsule : root.glassCapsule
+        : root.glassCapsule
       // The island's capsules clear at once as it takes over, back gently
       Behavior on fill { ColorAnimation { duration: Style.duration(!slot.islandPart ? 160 : Island.mode !== "" ? 50 : 90) } }
       // In a group along the bar, the group's first capsule paints them all
