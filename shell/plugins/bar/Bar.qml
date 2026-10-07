@@ -600,6 +600,11 @@ Item {
 
   readonly property bool vertical: position === "left" || position === "right"
   readonly property int barSize: vertical ? Style.bar.sizeVertical : Style.bar.sizeHorizontal
+  // The workspace anchor owns the dynamic island. On a floating top bar its
+  // three-part center group meets the screen edge while the side sections
+  // retain their normal floating gap.
+  readonly property bool centerTopAttached: !vertical && position === "top"
+    && Style.bar.floatMargin > 0 && centerAnchor === "neko.workspaces"
 
   function normalizePosition(value) {
     return BarModel.normalizePosition(value)
@@ -1321,9 +1326,13 @@ Item {
     // still parks it just past the edge.
     readonly property int floatMargin: Style.bar.floatMargin
     readonly property bool floating: floatMargin > 0
+    readonly property bool centerAttached: root.centerTopAttached
 
     function edgeMargin(side) {
-      if (side === root.position) return root.barHidden ? -root.barSize : floatMargin
+      if (side === root.position) {
+        var surfaceSize = root.barSize + (centerAttached ? floatMargin : 0)
+        return root.barHidden ? -surfaceSize : (centerAttached ? 0 : floatMargin)
+      }
       var alongBar = root.vertical ? (side === "top" || side === "bottom") : (side === "left" || side === "right")
       return alongBar ? floatMargin : 0
     }
@@ -1343,7 +1352,7 @@ Item {
     }
 
     implicitWidth: root.vertical ? root.barSize : 0
-    implicitHeight: root.vertical ? 0 : root.barSize
+    implicitHeight: root.vertical ? 0 : root.barSize + (centerAttached ? floatMargin : 0)
     color: root.transparent || floating ? "transparent" : root.background
     surfaceFormat.opaque: false
     WlrLayershell.namespace: "neko-bar"
@@ -1352,6 +1361,7 @@ Item {
     // A floating bar draws its own rounded background instead of filling the window
     Rectangle {
       anchors.fill: parent
+      anchors.topMargin: barWindow.centerAttached ? barWindow.floatMargin : 0
       visible: barWindow.floating && !root.transparent
       color: root.background
       radius: Style.bar.floatRadius
@@ -1448,18 +1458,25 @@ Item {
       Item {
         anchors.fill: parent
 
-        CenterModules { anchors.fill: parent }
+        CenterModules {
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.top: parent.top
+          height: root.barSize
+        }
 
         LeftModules {
           anchors.left: parent.left
           anchors.leftMargin: Style.space(8)
-          anchors.verticalCenter: parent.verticalCenter
+          anchors.top: parent.top
+          anchors.topMargin: barWindow.centerAttached ? barWindow.floatMargin : 0
         }
 
         RightModules {
           anchors.right: parent.right
           anchors.rightMargin: Style.space(8)
-          anchors.verticalCenter: parent.verticalCenter
+          anchors.top: parent.top
+          anchors.topMargin: barWindow.centerAttached ? barWindow.floatMargin : 0
         }
       }
     }
@@ -1969,6 +1986,9 @@ Item {
     // like the system monitor's rings, which follow the capsule's curve)
     readonly property bool capsuled: (root.glass || NekoColor.bar.capsule.a > 0) && !root.transparent
     readonly property bool ownCapsule: !!activeItem && activeItem.ownCapsule === true
+    readonly property bool islandPart: moduleName === "neko.workspaces"
+      || moduleName === "neko.media-players" || moduleName === "neko.pomodoro"
+    readonly property bool topAttachedIsland: root.centerTopAttached && region === "center" && islandPart
     readonly property bool padded: capsuled && contentShown && !ownCapsule && !(activeItem && activeItem.capsulePadded === false)
     readonly property real padStart: padded && !joinsPrevious ? Style.bar.capsulePadding : 0
     readonly property real padEnd: padded && !joinsNext ? Style.bar.capsulePadding : 0
@@ -1995,23 +2015,21 @@ Item {
       readonly property real end: 2 + slot.gap / 2
       readonly property real round: Math.min(root.vertical ? width : height, root.vertical ? height : width) / 2
 
-      anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 0 : end) : inset
+      anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 0 : end) : (slot.topAttachedIsland ? 0 : inset)
       anchors.bottomMargin: root.vertical ? (slot.joinsNext ? 0 : end) : inset
       // A small gap between neighbouring capsules, none inside a group
       anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious ? 0 : end)
       anchors.rightMargin: root.vertical ? inset : (slot.joinsNext ? 0 : end)
       radius: round
-      topLeftRadius: slot.joinsPrevious ? 0 : round
-      topRightRadius: (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
+      topLeftRadius: slot.topAttachedIsland || slot.joinsPrevious ? 0 : round
+      topRightRadius: slot.topAttachedIsland || (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
       bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious) ? 0 : round
       bottomRightRadius: slot.joinsNext ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
-      readonly property bool islandPart: slot.moduleName === "neko.workspaces"
-        || slot.moduleName === "neko.media-players" || slot.moduleName === "neko.pomodoro"
-      color: islandPart && Island.mode !== "" ? "transparent"
+      color: slot.islandPart && Island.mode !== "" ? "transparent"
         : !root.glass ? NekoColor.bar.capsule
-        : islandPart ? root.glassIslandCapsule : root.glassCapsule
+        : slot.islandPart ? root.glassIslandCapsule : root.glassCapsule
       Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
 

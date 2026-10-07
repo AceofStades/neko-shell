@@ -74,8 +74,10 @@ BarWidget {
     NumberAnimation { duration: Style.duration(280); easing.type: Easing.OutCubic }
   }
 
+  readonly property bool topAttached: !!root.bar && root.bar.centerTopAttached === true
   readonly property real capsuleInset: Style.bar.capsuleInset
-  readonly property real capsuleHeight: root.barSize - 2 * capsuleInset
+  readonly property real capsuleTop: root.topAttached ? 0 : root.capsuleInset
+  readonly property real capsuleHeight: root.barSize - root.capsuleTop - root.capsuleInset
   readonly property real endRadius: capsuleHeight / 2
   readonly property real workspaceCenter: width + Style.space(2) + endRadius
   readonly property real notchRadius: endRadius + Style.space(4)
@@ -90,11 +92,11 @@ BarWidget {
       fillColor: root.bar && root.bar.glass ? root.bar.glassIslandCapsule : NekoColor.bar.capsule
       strokeWidth: 0
       startX: Style.space(2) + root.endRadius
-      startY: root.capsuleInset
-      PathLine { x: root.tipX; y: root.capsuleInset }
-      PathArc { x: root.tipX; y: root.capsuleInset + root.capsuleHeight; radiusX: root.notchRadius; radiusY: root.notchRadius; direction: PathArc.Counterclockwise }
-      PathLine { x: Style.space(2) + root.endRadius; y: root.capsuleInset + root.capsuleHeight }
-      PathArc { x: Style.space(2) + root.endRadius; y: root.capsuleInset; radiusX: root.endRadius; radiusY: root.endRadius }
+      startY: root.capsuleTop
+      PathLine { x: root.tipX; y: root.capsuleTop }
+      PathArc { x: root.tipX; y: root.capsuleTop + root.capsuleHeight; radiusX: root.notchRadius; radiusY: root.notchRadius; direction: PathArc.Counterclockwise }
+      PathLine { x: Style.space(2) + root.endRadius; y: root.capsuleTop + root.capsuleHeight }
+      PathArc { x: Style.space(2) + root.endRadius; y: root.capsuleTop; radiusX: root.endRadius; radiusY: root.endRadius }
     }
   }
 

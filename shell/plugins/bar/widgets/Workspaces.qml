@@ -78,9 +78,12 @@ BarWidget {
 
   // The capsule the bar draws behind this widget: inset from the bar's edges
   // and a little from the slot's ends. The island grows out of it.
+  readonly property bool topAttached: !root.vertical && !!root.bar && root.bar.centerTopAttached === true
   readonly property real restInset: Style.bar.capsuleInset
+  readonly property real restTopInset: root.topAttached ? 0 : root.restInset
+  readonly property real restBottomInset: root.restInset
   readonly property real restWidth: root.width + 2 * Style.bar.capsulePadding - 4
-  readonly property real restHeight: root.height - 2 * root.restInset
+  readonly property real restHeight: root.height - root.restTopInset - root.restBottomInset
 
   // Glass like the bar's capsules, blurred by the compositor (neko.lua's
   // neko-island rule), with the bar's text color and the capsules' tint
@@ -137,7 +140,7 @@ BarWidget {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
     anchors.top: true
     anchors.left: true
-    margins.top: Style.bar.floatMargin
+    margins.top: root.topAttached ? 0 : Style.bar.floatMargin
     margins.left: root.islandLeft
     mask: Region { item: root.islandMode !== "" ? pill : null }
 
@@ -153,11 +156,16 @@ BarWidget {
         : root.islandMode === "osd" ? Style.space(66) : root.restHeight
 
       readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
+      readonly property real targetRadius: card ? Style.space(26) : height / 2
       x: Math.round((island.width - width) / 2)
-      y: root.restInset
+      y: root.restTopInset
       width: targetWidth
       height: targetHeight
-      radius: card ? Style.space(26) : height / 2
+      radius: targetRadius
+      topLeftRadius: root.topAttached ? 0 : targetRadius
+      topRightRadius: root.topAttached ? 0 : targetRadius
+      bottomLeftRadius: targetRadius
+      bottomRightRadius: targetRadius
       color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
       opacity: root.islandMode !== "" ? 1 : 0
       clip: true
@@ -172,6 +180,10 @@ BarWidget {
         anchors.fill: parent
         visible: pill.card
         radius: parent.radius
+        topLeftRadius: parent.topLeftRadius
+        topRightRadius: parent.topRightRadius
+        bottomLeftRadius: parent.bottomLeftRadius
+        bottomRightRadius: parent.bottomRightRadius
         gradient: Gradient {
           orientation: Gradient.Horizontal
           GradientStop { position: 0; color: Util.alpha(root.accent, 0.14) }
@@ -184,6 +196,10 @@ BarWidget {
         anchors.fill: parent
         visible: pill.card
         radius: parent.radius
+        topLeftRadius: parent.topLeftRadius
+        topRightRadius: parent.topRightRadius
+        bottomLeftRadius: parent.bottomLeftRadius
+        bottomRightRadius: parent.bottomRightRadius
         color: "transparent"
         border.width: 1
         border.color: Util.alpha(root.islandText, 0.11)
