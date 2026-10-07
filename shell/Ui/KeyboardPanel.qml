@@ -47,7 +47,7 @@ PanelWindow {
   property var borderSpec: Border.surfaceSpec("popups", "border", NekoColor.popups.border, Math.max(1, Style.space(2)))
   property bool centerOnBar: false
   property bool open: false
-  property int gap: Style.gapsOut  // distance between bar edge and panel
+  property int gap: Math.max(Style.gapsOut, Style.space(5))  // distance between bar edge and panel
   property bool popoutSwitching: false
   property bool popoutSwitchClosing: false
   property bool focusPrimed: false
@@ -119,7 +119,7 @@ PanelWindow {
   readonly property real _barStripSize: {
     if (!bar) return 0
     var actual = (root.barPos === "top" || root.barPos === "bottom") ? root.barH : root.barW
-    return Math.max(bar.barSize, actual) + root.gap
+    return Math.max(bar.barSize, actual) + root.barInset + root.gap
   }
   mask: Region {
     width: root.screenW
@@ -151,10 +151,10 @@ PanelWindow {
   readonly property real screenW: screen ? screen.width : 0
   readonly property real screenH: screen ? screen.height : 0
   readonly property real availableCardWidth: screenW > 0
-    ? Math.max(120, screenW - ((barPos === "left" || barPos === "right") ? barW + gap + margin : margin * 2))
+    ? Math.max(120, screenW - ((barPos === "left" || barPos === "right") ? barReachW + gap + margin : margin * 2))
     : 0
   readonly property real availableCardHeight: screenH > 0
-    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom") ? barH + gap + margin : margin * 2))
+    ? Math.max(120, screenH - ((barPos === "top" || barPos === "bottom") ? barReachH + gap + margin : margin * 2))
     : 0
   readonly property real verticalContentInset: padding * 2 + Border.top(borderSpec) + Border.bottom(borderSpec)
 
@@ -191,27 +191,32 @@ PanelWindow {
   // centering the card under the icon.
   readonly property real barW: anchorWindow ? anchorWindow.width : screenW
   readonly property real barH: anchorWindow ? anchorWindow.height : 0
+  // A floating bar sits this far in from its screen edges, so its far edge
+  // is that much further out and its content starts that much along
+  readonly property real barInset: Style.bar.floatMargin
+  readonly property real barReachW: barW + barInset
+  readonly property real barReachH: barH + barInset
   readonly property point cardOrigin: {
     if (!anchorItem || !bar) return Qt.point(margin, margin)
     var x = 0, y = 0
     if (centerOnBar && (barPos === "top" || barPos === "bottom")) {
       x = screenW / 2 - contentWidth / 2
-      y = barPos === "bottom" ? screenH - barH - contentHeight - gap : barH + gap
+      y = barPos === "bottom" ? screenH - barReachH - contentHeight - gap : barReachH + gap
     } else if (centerOnBar) {
-      x = barPos === "left" ? barW + gap : screenW - barW - contentWidth - gap
+      x = barPos === "left" ? barReachW + gap : screenW - barReachW - contentWidth - gap
       y = screenH / 2 - contentHeight / 2
     } else if (barPos === "bottom") {
-      x = anchorScreenPos.x + anchorW / 2 - contentWidth / 2
-      y = screenH - barH - contentHeight - gap
+      x = barInset + anchorScreenPos.x + anchorW / 2 - contentWidth / 2
+      y = screenH - barReachH - contentHeight - gap
     } else if (barPos === "left") {
-      x = barW + gap
-      y = anchorScreenPos.y + anchorH / 2 - contentHeight / 2
+      x = barReachW + gap
+      y = barInset + anchorScreenPos.y + anchorH / 2 - contentHeight / 2
     } else if (barPos === "right") {
-      x = screenW - barW - contentWidth - gap
-      y = anchorScreenPos.y + anchorH / 2 - contentHeight / 2
+      x = screenW - barReachW - contentWidth - gap
+      y = barInset + anchorScreenPos.y + anchorH / 2 - contentHeight / 2
     } else { // "top" (default)
-      x = anchorScreenPos.x + anchorW / 2 - contentWidth / 2
-      y = barH + gap
+      x = barInset + anchorScreenPos.x + anchorW / 2 - contentWidth / 2
+      y = barReachH + gap
     }
     x = Math.max(margin, Math.min(x, screenW - contentWidth - margin))
     y = Math.max(margin, Math.min(y, screenH - contentHeight - margin))
@@ -293,10 +298,13 @@ PanelWindow {
       return py <= root._barStripSize
     }
 
+    // A screen point in the bar window, which a floating bar keeps barInset
+    // in from its screen edges
     function barPoint(px, py) {
-      if (root.barPos === "bottom") return Qt.point(px, py - (root.screenH - root.barH))
-      if (root.barPos === "right") return Qt.point(px - (root.screenW - root.barW), py)
-      return Qt.point(px, py)
+      var inset = root.barInset
+      if (root.barPos === "bottom") return Qt.point(px - inset, py - (root.screenH - root.barH - inset))
+      if (root.barPos === "right") return Qt.point(px - (root.screenW - root.barW - inset), py - inset)
+      return Qt.point(px - inset, py - inset)
     }
 
     function pressTargetAt(px, py) {
