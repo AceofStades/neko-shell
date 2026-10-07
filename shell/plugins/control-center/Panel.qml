@@ -508,11 +508,49 @@ Panel {
               root.calendarToday = new Date()
               viewYear = root.calendarToday.getFullYear()
               viewMonth = root.calendarToday.getMonth()
+              selectedKey = ClockModel.keyForDate(root.calendarToday)
+            }
+
+            // Events from the feeds in ~/.config/neko/calendars, by day key;
+            // the command answers from its cache at once and again once a
+            // stale feed is fetched
+            property var events: ({})
+            property bool calendarsConfigured: false
+            property var calendarErrors: []
+            property string selectedKey: ClockModel.keyForDate(root.calendarToday)
+            readonly property var selectedEvents: events[selectedKey] || []
+
+            function refreshEvents() {
+              if (!panel.open || days.length === 0) return
+              eventsProc.running = false
+              eventsProc.command = ["neko-calendar-events", "--from", days[0].key, "--to", days[days.length - 1].key]
+              eventsProc.running = true
+            }
+            onDaysChanged: refreshEvents()
+
+            Process {
+              id: eventsProc
+              stdout: SplitParser {
+                onRead: data => {
+                  try {
+                    var report = JSON.parse(data)
+                    calendar.calendarsConfigured = report.configured === true
+                    calendar.events = report.days || {}
+                    calendar.calendarErrors = report.errors || []
+                  } catch (e) {
+                    console.warn("calendar events:", e)
+                  }
+                }
+              }
             }
 
             Connections {
               target: panel
-              function onOpenChanged() { if (panel.open) calendar.goToToday() }
+              function onOpenChanged() {
+                if (!panel.open) return
+                calendar.goToToday()
+                calendar.refreshEvents()
+              }
             }
 
             RowLayout {
@@ -567,7 +605,10 @@ Panel {
               Repeater {
                 model: calendar.days
                 Item {
+                  id: dayCell
                   required property var modelData
+                  readonly property bool selected: modelData.key === calendar.selectedKey
+                  readonly property bool busy: (calendar.events[modelData.key] || []).length > 0
                   Layout.fillWidth: true
                   Layout.preferredHeight: Style.space(26)
 
@@ -577,6 +618,25 @@ Panel {
                     height: width
                     radius: width / 2
                     color: modelData.today ? Util.alpha(root.accent, 0.24) : "transparent"
+                    border.width: dayCell.selected && !modelData.today && calendar.calendarsConfigured ? 1 : 0
+                    border.color: Util.alpha(root.foreground, 0.35)
+                  }
+                  // A day with something on
+                  Rectangle {
+                    visible: dayCell.busy
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: Style.space(1)
+                    width: Style.space(4)
+                    height: width
+                    radius: width / 2
+                    color: modelData.inMonth ? root.accent : Util.alpha(root.accent, 0.4)
+                  }
+                  MouseArea {
+                    anchors.fill: parent
+                    enabled: calendar.calendarsConfigured
+                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onClicked: calendar.selectedKey = dayCell.modelData.key
                   }
                   Text {
                     anchors.centerIn: parent
@@ -589,6 +649,106 @@ Panel {
                     font.weight: modelData.today ? Font.Bold : Font.Normal
                   }
                 }
+              }
+            }
+
+            // The chosen day's events, today's when it opens
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.topMargin: Style.space(4)
+              visible: calendar.calendarsConfigured
+              spacing: Style.space(6)
+
+              Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: 1
+                color: Util.alpha(root.foreground, 0.08)
+              }
+
+              Text {
+                Layout.fillWidth: true
+                text: {
+                  var parts = calendar.selectedKey.split("-")
+                  var day = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+                  return calendar.selectedKey === ClockModel.keyForDate(root.calendarToday) ? "Today"
+                    : Qt.locale().toString(day, "dddd d MMMM")
+                }
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+
+              Repeater {
+                model: calendar.selectedEvents.slice(0, 6)
+                RowLayout {
+                  required property var modelData
+                  Layout.fillWidth: true
+                  spacing: Style.space(8)
+
+                  Rectangle {
+                    Layout.preferredWidth: Style.space(3)
+                    Layout.fillHeight: true
+                    radius: width / 2
+                    color: root.accent
+                  }
+                  Text {
+                    Layout.preferredWidth: Style.space(78)
+                    text: modelData.allDay ? "All day"
+                      : modelData.start && modelData.end ? modelData.start + "–" + modelData.end
+                      : modelData.start ? modelData.start
+                      : modelData.end ? "until " + modelData.end : "All day"
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.caption
+                  }
+                  ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+                    Text {
+                      Layout.fillWidth: true
+                      text: modelData.title
+                      color: root.foreground
+                      elide: Text.ElideRight
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                    }
+                    Text {
+                      Layout.fillWidth: true
+                      visible: text !== ""
+                      text: modelData.location || ""
+                      color: root.dim
+                      elide: Text.ElideRight
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+                  }
+                }
+              }
+
+              Text {
+                visible: calendar.selectedEvents.length > 6
+                text: "and " + (calendar.selectedEvents.length - 6) + " more"
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                visible: calendar.selectedEvents.length === 0
+                text: "No events"
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              Text {
+                Layout.fillWidth: true
+                visible: calendar.calendarErrors.length > 0
+                text: "Couldn't refresh " + (calendar.calendarErrors.length === 1 ? "a calendar" : calendar.calendarErrors.length + " calendars")
+                color: Util.alpha(NekoColor.urgent, 0.9)
+                elide: Text.ElideRight
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
               }
             }
           }

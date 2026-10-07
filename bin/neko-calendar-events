@@ -1,0 +1,405 @@
+#!/usr/bin/python3
+# neko:summary=Print the events of the calendars in ~/.config/neko/calendars as JSON
+# neko:args=--from YYYY-MM-DD --to YYYY-MM-DD [--force]
+# neko:hidden=true
+"""Events between two days from iCal feeds, for the control center's calendar.
+
+~/.config/neko/calendars lists one feed per line: a URL (like Google
+Calendar's "secret address in iCal format") or a local .ics file, optionally
+after a name ("Work https://..."); # starts a comment. Feeds are cached under
+~/.cache/neko/calendars and fetched again once they're 15 minutes old.
+
+It prints a line of JSON from the cache at once, then, if a feed was stale,
+another once it has been fetched:
+
+  {"configured": true, "days": {"2026-10-08": [{"title", "calendar",
+   "allDay", "start", "end", "location"}]}, "errors": []}
+
+start and end are local "HH:MM" (empty for all-day events). Repeating events
+are expanded for the common rules (daily, weekly, monthly and yearly, with
+INTERVAL, COUNT, UNTIL, BYDAY, BYMONTHDAY and BYMONTH), with their
+exceptions and moved instances.
+"""
+
+import argparse
+import calendar
+import hashlib
+import json
+import os
+import re
+import sys
+import time
+import urllib.request
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+CONFIG = Path.home() / ".config/neko/calendars"
+CACHE = Path.home() / ".cache/neko/calendars"
+STALE = 15 * 60
+WEEKDAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+LOCAL = datetime.now().astimezone().tzinfo
+# Enough for a daily event that began years ago; a runaway rule stops here
+MAX_STEPS = 20000
+
+
+def feeds(path):
+    out = []
+    if not path.is_file():
+        return out
+    for raw in path.read_text(errors="replace").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.rsplit(None, 1)
+        source = parts[-1]
+        name = parts[0] if len(parts) > 1 else ""
+        out.append((name, source))
+    return out
+
+
+def cache_file(source):
+    return CACHE / (hashlib.sha256(source.encode()).hexdigest()[:24] + ".ics")
+
+
+def read_feed(source, fetch):
+    """The feed's text, fetched when asked and it's a URL; None if there is none."""
+    if not re.match(r"^(https?|webcal)://", source):
+        path = Path(os.path.expanduser(source))
+        return path.read_text(errors="replace") if path.is_file() else None
+    cached = cache_file(source)
+    if fetch:
+        url = re.sub(r"^webcal://", "https://", source)
+        request = urllib.request.Request(url, headers={"User-Agent": "neko-calendar"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            data = response.read()
+        CACHE.mkdir(parents=True, exist_ok=True)
+        partial = cached.with_suffix(".part")
+        partial.write_bytes(data)
+        partial.replace(cached)
+    return cached.read_text(errors="replace") if cached.is_file() else None
+
+
+def stale(source):
+    if not re.match(r"^(https?|webcal)://", source):
+        return False
+    cached = cache_file(source)
+    return not cached.is_file() or time.time() - cached.stat().st_mtime > STALE
+
+
+# ---------------------------------------------------------------- parsing
+
+def unfold(text):
+    lines = []
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        if line[:1] in (" ", "\t") and lines:
+            lines[-1] += line[1:]
+        else:
+            lines.append(line)
+    return lines
+
+
+def unescape(value):
+    return re.sub(r"\\([\\,;nN])", lambda m: "\n" if m.group(1) in "nN" else m.group(1), value)
+
+
+def split_property(line):
+    head, _, value = line.partition(":")
+    name, *params = head.split(";")
+    options = {}
+    for param in params:
+        key, _, val = param.partition("=")
+        options[key.upper()] = val.strip('"')
+    return name.upper(), options, value
+
+
+def parse_time(value, options):
+    """A date for all-day values, else an aware local datetime."""
+    value = value.strip()
+    if options.get("VALUE") == "DATE" or re.fullmatch(r"\d{8}", value):
+        return date(int(value[:4]), int(value[4:6]), int(value[6:8]))
+    stamp = datetime.strptime(value[:15], "%Y%m%dT%H%M%S")
+    if value.endswith("Z"):
+        return stamp.replace(tzinfo=timezone.utc)
+    zone = options.get("TZID")
+    if zone:
+        try:
+            return stamp.replace(tzinfo=ZoneInfo(zone))
+        except (ZoneInfoNotFoundError, ValueError):
+            pass
+    return stamp.replace(tzinfo=LOCAL)
+
+
+def parse_duration(value):
+    match = re.fullmatch(r"([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", value.strip())
+    if not match:
+        return None
+    sign, weeks, days, hours, minutes, seconds = match.groups()
+    delta = timedelta(weeks=int(weeks or 0), days=int(days or 0), hours=int(hours or 0),
+                      minutes=int(minutes or 0), seconds=int(seconds or 0))
+    return -delta if sign == "-" else delta
+
+
+def events(text):
+    found = []
+    current = None
+    depth = 0
+    for line in unfold(text):
+        if line == "BEGIN:VEVENT":
+            current = {"exdates": []}
+            depth = 0
+            continue
+        if current is None:
+            continue
+        if line.startswith("BEGIN:"):
+            depth += 1  # a VALARM inside the event
+            continue
+        if line.startswith("END:") and depth:
+            depth -= 1
+            continue
+        if line == "END:VEVENT":
+            found.append(current)
+            current = None
+            continue
+        if depth:
+            continue
+        name, options, value = split_property(line)
+        try:
+            if name in ("DTSTART", "DTEND", "RECURRENCE-ID"):
+                current[name] = parse_time(value, options)
+            elif name == "EXDATE":
+                current["exdates"] += [parse_time(v, options) for v in value.split(",") if v]
+            elif name == "DURATION":
+                current["DURATION"] = parse_duration(value)
+            elif name in ("SUMMARY", "LOCATION", "UID", "STATUS", "RRULE"):
+                current[name] = unescape(value) if name in ("SUMMARY", "LOCATION") else value
+        except ValueError:
+            continue
+    return found
+
+
+# -------------------------------------------------------------- recurrence
+
+def instant_key(value):
+    """Compare instances whatever zone they were written in."""
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).replace(second=0, microsecond=0)
+    return value
+
+
+def month_days(year, month, start, byday, bymonthday):
+    """The days of a month a monthly (or yearly-by-month) rule lands on."""
+    last = calendar.monthrange(year, month)[1]
+    days = set()
+    if byday:
+        for entry in byday:
+            match = re.fullmatch(r"([+-]?\d+)?(MO|TU|WE|TH|FR|SA|SU)", entry)
+            if not match:
+                continue
+            nth = int(match.group(1)) if match.group(1) else 0
+            weekday = WEEKDAYS.index(match.group(2))
+            matching = [d for d in range(1, last + 1) if date(year, month, d).weekday() == weekday]
+            if nth == 0:
+                days.update(matching)
+            elif -len(matching) <= nth <= len(matching) and nth != 0:
+                days.add(matching[nth - 1] if nth > 0 else matching[nth])
+    elif bymonthday:
+        for value in bymonthday:
+            d = value if value > 0 else last + 1 + value
+            if 1 <= d <= last:
+                days.add(d)
+    elif start.day <= last:
+        days.add(start.day)
+    return sorted(days)
+
+
+def occurrences(start, rule, range_end):
+    """Starts of a repeating event, from its first up to range_end (inclusive)."""
+    parts = dict(p.split("=", 1) for p in rule.split(";") if "=" in p)
+    freq = parts.get("FREQ", "")
+    interval = max(1, int(parts.get("INTERVAL", "1") or 1))
+    count = int(parts["COUNT"]) if "COUNT" in parts else None
+    until = None
+    if "UNTIL" in parts:
+        until = parse_time(parts["UNTIL"], {})
+        if isinstance(start, datetime) and not isinstance(until, datetime):
+            until = datetime.combine(until, datetime.max.time(), start.tzinfo)
+        elif not isinstance(start, datetime) and isinstance(until, datetime):
+            until = until.astimezone(LOCAL).date()
+    byday = [d for d in parts.get("BYDAY", "").split(",") if d]
+    bymonthday = [int(d) for d in parts.get("BYMONTHDAY", "").split(",") if d.lstrip("-").isdigit()]
+    bymonth = [int(m) for m in parts.get("BYMONTH", "").split(",") if m.isdigit()]
+
+    def at(day):
+        if isinstance(start, datetime):
+            return datetime.combine(day, start.timetz())
+        return day
+
+    def candidates():
+        start_day = start.date() if isinstance(start, datetime) else start
+        if freq == "DAILY":
+            step = 0
+            while True:
+                yield at(start_day + timedelta(days=step * interval))
+                step += 1
+        elif freq == "WEEKLY":
+            weekdays = sorted(WEEKDAYS.index(d[-2:]) for d in byday) or [start_day.weekday()]
+            week = start_day - timedelta(days=start_day.weekday())
+            step = 0
+            while True:
+                for weekday in weekdays:
+                    yield at(week + timedelta(weeks=step * interval, days=weekday))
+                step += 1
+        elif freq == "MONTHLY":
+            step = 0
+            while True:
+                month_index = start_day.month - 1 + step * interval
+                year, month = start_day.year + month_index // 12, month_index % 12 + 1
+                for day in month_days(year, month, start_day, byday, bymonthday):
+                    yield at(date(year, month, day))
+                step += 1
+        elif freq == "YEARLY":
+            step = 0
+            while True:
+                year = start_day.year + step * interval
+                for month in (bymonth or [start_day.month]):
+                    if byday or bymonthday or bymonth:
+                        for day in month_days(year, month, start_day, byday, bymonthday):
+                            yield at(date(year, month, day))
+                    elif start_day.day <= calendar.monthrange(year, month)[1]:
+                        yield at(date(year, month, start_day.day))
+                step += 1
+        else:
+            yield start
+
+    seen = 0
+    for steps, when in enumerate(candidates()):
+        if steps > MAX_STEPS:
+            break
+        if when < start:
+            continue
+        if until is not None and when > until:
+            break
+        if count is not None and seen >= count:
+            break
+        seen += 1
+        day = when.astimezone(LOCAL).date() if isinstance(when, datetime) else when
+        if day > range_end:
+            break
+        yield when
+
+
+# ------------------------------------------------------------------ output
+
+def place(days, event, start, end, name, first, last):
+    if isinstance(start, datetime):
+        start_local = start.astimezone(LOCAL)
+        end_local = (end or start).astimezone(LOCAL)
+        span_end = end_local.date() if end_local.time() != datetime.min.time() or end_local.date() == start_local.date() else end_local.date() - timedelta(days=1)
+        day = start_local.date()
+        while day <= span_end:
+            if first <= day <= last:
+                days.setdefault(day.isoformat(), []).append({
+                    "title": event.get("SUMMARY", "") or "(No title)",
+                    "calendar": name,
+                    "allDay": False,
+                    "start": start_local.strftime("%H:%M") if day == start_local.date() else "",
+                    "end": end_local.strftime("%H:%M") if end and end > start and day == end_local.date() else "",
+                    "location": event.get("LOCATION", ""),
+                })
+            day += timedelta(days=1)
+    else:
+        span_end = (end - timedelta(days=1)) if isinstance(end, date) and end > start else start
+        day = start
+        while day <= span_end:
+            if first <= day <= last:
+                days.setdefault(day.isoformat(), []).append({
+                    "title": event.get("SUMMARY", "") or "(No title)",
+                    "calendar": name,
+                    "allDay": True,
+                    "start": "",
+                    "end": "",
+                    "location": event.get("LOCATION", ""),
+                })
+            day += timedelta(days=1)
+
+
+def collect(text, name, first, last, days):
+    found = events(text)
+    moved = {}
+    for event in found:
+        if "RECURRENCE-ID" in event and "UID" in event:
+            moved.setdefault(event["UID"], set()).add(instant_key(event["RECURRENCE-ID"]))
+    for event in found:
+        start = event.get("DTSTART")
+        if start is None or event.get("STATUS", "").upper() == "CANCELLED":
+            continue
+        length = None
+        if event.get("DTEND") is not None:
+            length = event["DTEND"] - start if type(event["DTEND"]) is type(start) else None
+        elif event.get("DURATION") is not None:
+            length = event["DURATION"]
+        elif not isinstance(start, datetime):
+            length = timedelta(days=1)
+        if "RRULE" in event and "RECURRENCE-ID" not in event:
+            skip = {instant_key(d) for d in event["exdates"]} | moved.get(event.get("UID"), set())
+            # A long event that began before the range still reaches into it
+            reach = first - (length if length and length > timedelta(0) else timedelta(0)) - timedelta(days=1)
+            for when in occurrences(start, event["RRULE"], last):
+                if instant_key(when) in skip:
+                    continue
+                day = when.astimezone(LOCAL).date() if isinstance(when, datetime) else when
+                if day < reach:
+                    continue
+                place(days, event, when, when + length if length else None, name, first, last)
+        else:
+            place(days, event, start, start + length if length else None, name, first, last)
+
+
+def report(sources, first, last, fetch_stale, errors):
+    days = {}
+    for name, source in sources:
+        try:
+            text = read_feed(source, fetch_stale and stale(source))
+        except Exception as error:  # network, HTTP, disk: keep the cache
+            errors.append(f"{name or source.split('/')[2] if '://' in source else source}: {error}")
+            try:
+                text = read_feed(source, False)
+            except Exception:
+                text = None
+        if text:
+            collect(text, name, first, last, days)
+    for entries in days.values():
+        entries.sort(key=lambda e: (not e["allDay"], e["start"] or "", e["title"].lower()))
+    return days
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--from", dest="first", required=True)
+    parser.add_argument("--to", dest="last", required=True)
+    parser.add_argument("--force", action="store_true", help="fetch every feed now")
+    parser.add_argument("--config", default=str(CONFIG))
+    args = parser.parse_args()
+    os.umask(0o077)
+    first = date.fromisoformat(args.first)
+    last = date.fromisoformat(args.last)
+    sources = feeds(Path(args.config))
+    if not sources:
+        print(json.dumps({"configured": False, "days": {}, "errors": []}), flush=True)
+        return
+    errors = []
+    print(json.dumps({"configured": True, "days": report(sources, first, last, False, []), "errors": []}), flush=True)
+    if args.force or any(stale(source) for _, source in sources):
+        if args.force:
+            for _, source in sources:
+                if re.match(r"^(https?|webcal)://", source) and cache_file(source).is_file():
+                    os.utime(cache_file(source), (0, 0))
+        print(json.dumps({"configured": True, "days": report(sources, first, last, True, errors), "errors": errors}), flush=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except BrokenPipeError:
+        pass
