@@ -234,8 +234,16 @@ BarWidget {
       opacity: root.islandMode !== "" ? 1 : 0
       clip: true
 
-      Behavior on width { NumberAnimation { duration: Style.duration(420); easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
-      Behavior on height { NumberAnimation { duration: Style.duration(420); easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
+      // A soft spring between shapes, so a change of width and height at
+      // once (the capsule into an OSD, say) settles together without a jolt
+      Behavior on width {
+        enabled: !Style.reduceMotion
+        SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+      }
+      Behavior on height {
+        enabled: !Style.reduceMotion
+        SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+      }
       Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode !== "" ? 120 : 320) } }
 
       // A quiet tonal wash gives the two interactive cards some depth while
@@ -279,11 +287,28 @@ BarWidget {
       // Screen brightness shows its sixteen steps, and anything with only a
       // few levels (the keyboard backlight) a segment per level.
       Column {
+        id: osdView
+        // In a beat after the shape starts to form, so the glyph and meter
+        // grow into a pill that's nearly there; out at once, before it shrinks
+        property bool shown: false
+        readonly property bool wanted: root.islandMode === "osd"
+        onWantedChanged: {
+          if (wanted) osdIn.restart()
+          else { osdIn.stop(); shown = false }
+        }
+        Timer {
+          id: osdIn
+          interval: Style.duration(110)
+          onTriggered: osdView.shown = true
+        }
+
         anchors.centerIn: parent
         spacing: Style.space(8)
-        opacity: root.islandMode === "osd" ? 1 : 0
+        opacity: shown ? 1 : 0
+        scale: shown ? 1 : 0.82
         visible: opacity > 0
-        Behavior on opacity { NumberAnimation { duration: Style.duration(180) } }
+        Behavior on opacity { NumberAnimation { duration: Style.duration(osdView.shown ? 220 : 90); easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: Style.duration(320); easing.type: Easing.OutBack; easing.overshoot: 1.3 } }
 
         readonly property real fraction: Island.osd && Island.osd.maxValue > 0 ? Math.max(0, Math.min(1, Island.osd.value / Island.osd.maxValue)) : 0
         readonly property int segments: !Island.osd ? 0 : Island.osd.maxValue === 64 ? 16 : Island.osd.maxValue <= 10 ? Island.osd.maxValue : 0
