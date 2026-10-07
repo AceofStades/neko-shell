@@ -6,9 +6,9 @@ import qs.Commons
 import qs.Ui
 import "../../services/media/MediaModel.js" as MediaModel
 
-// A concave capsule beside the workspace island holds one icon per player.
-// Its inset follows the workspace capsule with a visible gap. Hovering an
-// icon opens that player's card; clicking toggles playback.
+// One music control sits beside the workspace island. Its concave edge
+// follows the workspace capsule with a gap, and fades as the island changes
+// to an OSD or notification. Hovering opens the selected player's card.
 BarWidget {
   id: root
   moduleName: "neko.media-players"
@@ -18,6 +18,23 @@ BarWidget {
     var all = Mpris.players ? Mpris.players.values : []
     return all.filter(function(p) { return p && !MediaModel.isProxyPlayer(p) && MediaModel.hasTrackMetadata(p) })
   }
+  readonly property var player: {
+    var playing = null
+    var spotify = null
+    for (var i = 0; i < players.length; i++) {
+      var p = players[i]
+      var name = (String(p.identity || "") + " " + String(p.desktopEntry || "") + " " + String(p.dbusName || "")).toLowerCase()
+      if (name.indexOf("spotify") >= 0) {
+        if (p.isPlaying) return p
+        spotify = p
+      }
+      if (p.isPlaying && !playing) playing = p
+    }
+    return playing || spotify || players[0] || null
+  }
+  readonly property bool spotifyPlayer: !!player && (String(player.identity || "") + " " + String(player.desktopEntry || "") + " " + String(player.dbusName || "")).toLowerCase().indexOf("spotify") >= 0
+  readonly property bool playing: !!player && player.isPlaying
+  readonly property string iconUrl: player && !spotifyPlayer ? iconFor(player) : ""
 
   function iconFor(player) {
     var identity = String(player.identity || "")
@@ -47,11 +64,11 @@ BarWidget {
     return ""
   }
 
-  visible: players.length > 0 && !root.vertical
+  visible: player !== null && !root.vertical
   enabled: Island.mode === "" || Island.mode === "media"
   opacity: enabled ? 1 : 0
   Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
-  implicitWidth: visible ? row.implicitWidth + Style.space(4) : 0
+  implicitWidth: visible ? Style.space(40) : 0
   implicitHeight: root.barSize
 
   readonly property real capsuleInset: Style.bar.capsuleInset
@@ -78,67 +95,43 @@ BarWidget {
     }
   }
 
-  Row {
-    id: row
-    x: Style.space(2)
-    anchors.verticalCenter: parent.verticalCenter
+  WidgetButton {
+    id: button
+    anchors.fill: parent
+    bar: root.bar
+    hasVisualContent: true
+    tooltipText: ""
+    onPressed: function(b) { if (root.player && root.player.canTogglePlaying) root.player.togglePlaying() }
 
-    Repeater {
-      model: root.players
+    Image {
+      id: appIcon
+      anchors.centerIn: parent
+      width: Style.bar.iconFont + 3
+      height: width
+      source: root.iconUrl
+      sourceSize.width: width * 2
+      sourceSize.height: height * 2
+      fillMode: Image.PreserveAspectFit
+      smooth: true
+      visible: !root.spotifyPlayer && status === Image.Ready
+      opacity: root.playing ? 1 : 0.55
+    }
 
-      WidgetButton {
-        id: cell
-        required property var modelData
-        readonly property bool playing: modelData.isPlaying
-        readonly property string iconUrl: root.iconFor(modelData)
+    Text {
+      anchors.centerIn: parent
+      visible: root.spotifyPlayer || appIcon.status !== Image.Ready
+      text: "󰝚"
+      color: root.playing ? NekoColor.accent : button.foreground
+      opacity: root.playing ? 1 : 0.6
+      font.family: button.fontFamily
+      font.pixelSize: Style.bar.iconFont + 1
+      Behavior on color { ColorAnimation { duration: Style.duration(200) } }
+    }
 
-        bar: root.bar
-        hasVisualContent: true
-        fixedWidth: Style.bar.iconSlot
-        fixedHeight: root.barSize
-        tooltipText: ""
-        onPressed: function(b) { if (cell.modelData.canTogglePlaying) cell.modelData.togglePlaying() }
-
-        Image {
-          id: appIcon
-          anchors.centerIn: parent
-          width: Style.bar.iconFont + 3
-          height: width
-          source: cell.iconUrl
-          sourceSize.width: width * 2
-          sourceSize.height: height * 2
-          fillMode: Image.PreserveAspectFit
-          smooth: true
-          visible: status === Image.Ready
-          opacity: cell.playing ? 1 : 0.45
-        }
-        Text {
-          anchors.centerIn: parent
-          visible: appIcon.status !== Image.Ready
-          text: "󰝚"
-          color: cell.playing ? NekoColor.accent : cell.foreground
-          opacity: cell.playing ? 1 : 0.55
-          font.family: cell.fontFamily
-          font.pixelSize: Style.bar.iconFont
-        }
-
-        Rectangle {
-          visible: cell.playing
-          anchors.horizontalCenter: parent.horizontalCenter
-          anchors.bottom: parent.bottom
-          anchors.bottomMargin: Style.bar.capsuleInset + Style.space(2)
-          width: Style.space(3)
-          height: width
-          radius: width / 2
-          color: NekoColor.accent
-        }
-
-        HoverHandler {
-          onHoveredChanged: {
-            if (hovered) Island.showMedia(cell.modelData)
-            else Island.leaveMediaIcon()
-          }
-        }
+    HoverHandler {
+      onHoveredChanged: {
+        if (hovered && root.player) Island.showMedia(root.player)
+        else if (!hovered) Island.leaveMediaIcon()
       }
     }
   }

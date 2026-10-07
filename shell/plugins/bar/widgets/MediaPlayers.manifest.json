@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "neko.media-players",
-  "name": "Media players",
+  "name": "Music",
   "version": "1.0.0",
   "author": "Neko",
-  "description": "An icon for each media player; hovering one shows its controls in the island",
+  "description": "A music control beside the island; hovering opens the selected player's card",
   "kinds": [
     "bar-widget"
   ],
@@ -12,8 +12,8 @@
     "barWidget": "MediaPlayers.qml"
   },
   "barWidget": {
-    "displayName": "Media players",
-    "description": "An icon for each media player; hovering one shows its controls in the island",
+    "displayName": "Music",
+    "description": "A music control beside the island; hovering opens the selected player's card",
     "category": "Audio",
     "allowMultiple": false
   }
