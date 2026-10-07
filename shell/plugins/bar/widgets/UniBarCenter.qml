@@ -4,6 +4,7 @@ import Quickshell.Services.Mpris
 import qs.Commons
 import qs.Ui
 import "../../services/media/MediaModel.js" as MediaModel
+import "../../control-center" as ControlCenterPlugin
 
 // The UniBar's exact center: a minute clock at rest and the anchor from which
 // notifications, OSDs, media, Pomodoro and settings grow. Its compact gestures
@@ -112,6 +113,18 @@ BarWidget {
     }
   }
 
+  // The clock owns UniBar's control center directly, so opening it needs no
+  // zero-width layout module beside the visible widgets. Its hidden button
+  // contributes neither geometry nor a click target; the clock below is the
+  // sole trigger and the shared KeyboardPanel morphs from this UniBar slot.
+  ControlCenterPlugin.Panel {
+    id: controlCenter
+    anchors.fill: parent
+    z: -5
+    bar: root.bar
+    settings: ({ hideButton: true, panelWidth: 440 })
+  }
+
   WidgetButton {
     id: button
     anchors.fill: parent
@@ -132,8 +145,8 @@ BarWidget {
       } else if (mouseButton === Qt.RightButton) {
         Island.togglePomodoro()
         Island.showPomodoro()
-      } else if (root.bar) {
-        root.bar.run("neko-shell neko.control-center toggle")
+      } else {
+        controlCenter.toggle()
       }
     }
 

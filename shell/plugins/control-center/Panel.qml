@@ -25,6 +25,8 @@ Panel {
   // With hideButton set the widget takes no space in the bar and is opened
   // from the clock; its panel opens there too
   readonly property bool buttonHidden: setting("hideButton", false) === true
+  readonly property int preferredPanelWidth: Math.max(320,
+    Math.round(Number(setting("panelWidth", 380)) || 380))
   implicitWidth: buttonHidden ? 0 : button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -197,7 +199,7 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(380))
+    contentWidth: panel.fittedContentWidth(Style.space(root.preferredPanelWidth))
     contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight
       : root.page === "display" ? displayPage.implicitHeight : column.implicitHeight)
 
