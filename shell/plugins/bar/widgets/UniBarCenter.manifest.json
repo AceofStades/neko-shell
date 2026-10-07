@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.unibar-center",
+  "name": "UniBar center",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "A compact centered clock that hosts the dynamic island and contextual media and Pomodoro controls",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "UniBarCenter.qml"
+  },
+  "barWidget": {
+    "displayName": "UniBar center",
+    "description": "Centered clock and dynamic island host",
+    "category": "Time",
+    "allowMultiple": false
+  }
+}

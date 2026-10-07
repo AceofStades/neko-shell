@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.workspace-bars-right",
+  "name": "Workspace bars 6–10",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Five compact vertical workspace state bars for workspaces 6 through 10",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "WorkspaceBars.qml"
+  },
+  "barWidget": {
+    "displayName": "Workspace bars 6–10",
+    "description": "Five compact vertical workspace state bars for workspaces 6 through 10",
+    "category": "Compositor",
+    "allowMultiple": false
+  }
+}

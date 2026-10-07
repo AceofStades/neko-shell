@@ -2058,8 +2058,11 @@ Item {
     // like the system monitor's rings, which follow the capsule's curve)
     readonly property bool capsuled: (root.glass || NekoColor.bar.capsule.a > 0) && !root.transparent
     readonly property bool ownCapsule: !!activeItem && activeItem.ownCapsule === true
+    readonly property bool islandFollower: group === "unibar"
     readonly property bool islandPart: moduleName === "neko.workspaces"
       || moduleName === "neko.media-players" || moduleName === "neko.pomodoro"
+      || moduleName === "neko.unibar-center" || islandFollower
+    readonly property real islandContentOpacity: islandFollower && (Island.mode !== "" || Island.settling) ? 0 : 1
     // Attached style: the capsule meets the screen's top edge
     readonly property bool topAttached: root.centerTopAttached
 
@@ -2281,7 +2284,8 @@ Item {
       anchors.rightMargin: root.vertical ? 0 : slot.padEnd
       anchors.topMargin: root.vertical ? slot.padStart : 0
       anchors.bottomMargin: root.vertical ? slot.padEnd : 0
-      opacity: slot.dragSource ? 0.22 : 1.0
+      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity
+      Behavior on opacity { NumberAnimation { duration: Style.duration(slot.islandContentOpacity > 0 ? 140 : 60) } }
       onLoaded: {
         slot.injectProps()
         Qt.callLater(slot.injectProps)
@@ -2297,7 +2301,8 @@ Item {
       anchors.rightMargin: root.vertical ? 0 : slot.padEnd
       anchors.topMargin: root.vertical ? slot.padStart : 0
       anchors.bottomMargin: root.vertical ? slot.padEnd : 0
-      opacity: slot.dragSource ? 0.22 : 1.0
+      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity
+      Behavior on opacity { NumberAnimation { duration: Style.duration(slot.islandContentOpacity > 0 ? 140 : 60) } }
       onLoaded: {
         slot.injectProps()
         Qt.callLater(slot.injectProps)
@@ -2313,7 +2318,8 @@ Item {
       anchors.rightMargin: root.vertical ? 0 : slot.padEnd
       anchors.topMargin: root.vertical ? slot.padStart : 0
       anchors.bottomMargin: root.vertical ? slot.padEnd : 0
-      opacity: slot.dragSource ? 0.22 : 1.0
+      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity
+      Behavior on opacity { NumberAnimation { duration: Style.duration(slot.islandContentOpacity > 0 ? 140 : 60) } }
       onLoaded: {
         slot.injectProps()
         Qt.callLater(slot.injectProps)
@@ -2362,7 +2368,7 @@ Item {
 
       anchors.fill: parent
       acceptedButtons: Qt.LeftButton
-      enabled: slot.visible && slot.width > 0 && slot.height > 0
+      enabled: slot.visible && slot.width > 0 && slot.height > 0 && slot.islandContentOpacity > 0.5
       propagateComposedEvents: true
       // Only the hovered slot needs the hit test; without the guard every
       // slot on every monitor re-ran it on each click target change.
