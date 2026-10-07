@@ -49,6 +49,8 @@ Example `shell.json` (bar subtree only shown):
 
 `glass` leaves the bar itself clear and puts each widget on dark glass, blur with a dark tint and white text, so the widgets take their color from what's under them rather than from the theme. Where the top of the wallpaper is light (checked again whenever it changes) the tint deepens so the text still stands out. The workspaces' capsule alone is tinted dark, with white text, like the island that grows out of it. `transparent` wins over it, so double-clicking the bar goes between the two.
 
+Give neighbouring entries the same `"group"` (any name) to put them in one shared capsule instead of one each: the default config groups the status icons on the right, `{ "id": "neko.network", "group": "status" }`. Hidden widgets between them don't break the group.
+
 `centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. Set to an empty string to disable anchoring (the center list is centered as a group).
 
 ## Module catalogue

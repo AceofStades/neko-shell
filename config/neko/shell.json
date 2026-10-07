@@ -25,25 +25,32 @@
       ],
       "right": [
         {
-          "id": "neko.keyboard-layout"
+          "id": "neko.keyboard-layout",
+          "group": "status"
         },
         {
-          "id": "neko.tray"
+          "id": "neko.tray",
+          "group": "status"
         },
         {
-          "id": "neko.agents"
+          "id": "neko.agents",
+          "group": "status"
         },
         {
-          "id": "neko.bluetooth"
+          "id": "neko.bluetooth",
+          "group": "status"
         },
         {
-          "id": "neko.network"
+          "id": "neko.network",
+          "group": "status"
         },
         {
-          "id": "neko.audio"
+          "id": "neko.audio",
+          "group": "status"
         },
         {
-          "id": "neko.power"
+          "id": "neko.power",
+          "group": "status"
         },
         {
           "id": "neko.control-center"

@@ -66,6 +66,9 @@ Item {
   readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.5 : 0.32)
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
+  // Bumped whenever a widget's slot changes size, so capsules grouped with
+  // their neighbours notice one appearing or hiding between them
+  property int slotGeometrySerial: 0
   property bool centerSectionHovered: false
   // One bar surface exists per monitor and each reports into this count, so a
   // pointer crossing from one monitor's bar to another's stays counted however
@@ -1846,12 +1849,16 @@ Item {
         spacing: 0
 
         Repeater {
+          id: moduleRepeater
           model: moduleListRoot.entries
 
           ModuleSlot {
             required property var modelData
+            required property int index
             entry: modelData
             region: moduleListRoot.region
+            slotIndex: index
+            siblings: moduleRepeater
           }
         }
       }
@@ -1864,12 +1871,16 @@ Item {
         spacing: 0
 
         Repeater {
+          id: moduleRepeater
           model: moduleListRoot.entries
 
           ModuleSlot {
             required property var modelData
+            required property int index
             entry: modelData
             region: moduleListRoot.region
+            slotIndex: index
+            siblings: moduleRepeater
           }
         }
       }
@@ -1884,6 +1895,26 @@ Item {
     readonly property string moduleName: root.entryId(entry)
     readonly property var moduleSettings: root.entrySettings(entry)
     readonly property string customType: root.customModuleType(entry)
+    // Neighbouring widgets with the same "group" in shell.json share one
+    // capsule: where two meet, neither insets nor rounds its capsule
+    property int slotIndex: -1
+    property var siblings: null
+    readonly property string group: String(moduleSettings.group || "")
+    readonly property bool joinsPrevious: groupedWith(-1)
+    readonly property bool joinsNext: groupedWith(1)
+
+    function groupedWith(step) {
+      root.slotGeometrySerial
+      if (!group || !siblings || slotIndex < 0) return false
+      for (var i = slotIndex + step; i >= 0 && i < siblings.count; i += step) {
+        var other = siblings.itemAt(i)
+        if (other && (root.vertical ? other.height : other.width) > 0) return other.group === group
+      }
+      return false
+    }
+
+    onWidthChanged: root.slotGeometrySerial++
+    onHeightChanged: root.slotGeometrySerial++
     readonly property var registryMetadata: root.barWidgetRegistry.metadataFor(root.canonicalWidgetId(moduleName))
     readonly property bool firstParty: registryMetadata && registryMetadata.firstParty === true
     readonly property string pluginApiId: registered ? root.canonicalWidgetId(moduleName) : "bar-entry:" + moduleName
@@ -1940,12 +1971,19 @@ Item {
 
       visible: (root.glass || NekoColor.bar.capsule.a > 0) && slot.width > 0 && !root.transparent
       anchors.fill: parent
-      anchors.topMargin: root.vertical ? 2 + slot.gap / 2 : inset
-      anchors.bottomMargin: root.vertical ? 2 + slot.gap / 2 : inset
-      // A small gap between neighbouring capsules
-      anchors.leftMargin: root.vertical ? inset : 2 + slot.gap / 2
-      anchors.rightMargin: root.vertical ? inset : 2 + slot.gap / 2
-      radius: Math.min(width, height) / 2
+      readonly property real end: 2 + slot.gap / 2
+      readonly property real round: Math.min(root.vertical ? width : height, root.vertical ? height : width) / 2
+
+      anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 0 : end) : inset
+      anchors.bottomMargin: root.vertical ? (slot.joinsNext ? 0 : end) : inset
+      // A small gap between neighbouring capsules, none inside a group
+      anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious ? 0 : end)
+      anchors.rightMargin: root.vertical ? inset : (slot.joinsNext ? 0 : end)
+      radius: round
+      topLeftRadius: slot.joinsPrevious ? 0 : round
+      topRightRadius: (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
+      bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious) ? 0 : round
+      bottomRightRadius: slot.joinsNext ? 0 : round
       // The workspaces' capsule clears while the island is out of it, so
       // none of it shows around an island narrower than itself
       color: !root.glass ? NekoColor.bar.capsule
