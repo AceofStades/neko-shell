@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
 import "../../notifications/NotificationLogic.js" as NotificationLogic
@@ -78,9 +79,31 @@ BarWidget {
   readonly property real restWidth: root.width - 4
   readonly property real restHeight: root.height - 2 * root.restInset
 
-  readonly property color islandColor: Qt.rgba(0.05, 0.05, 0.06, 0.94)
-  readonly property color islandText: "#f2f2f2"
-  readonly property color islandDim: Qt.rgba(0.95, 0.95, 0.95, 0.6)
+  // Glass like the bar's capsules: all but clear, blurred by the compositor
+  // (neko.lua's neko-island rule), with the bar's text color
+  readonly property color islandColor: Qt.rgba(0.5, 0.5, 0.5, 0.03)
+  readonly property color islandText: root.bar ? root.bar.barForeground : NekoColor.foreground
+  readonly property color islandDim: Util.alpha(root.islandText, 0.65)
+  readonly property color islandTrack: Util.alpha(root.islandText, 0.2)
+
+  // Where the island's surface sits: over this widget, from the screen's
+  // left edge (the bar floats in by its margin)
+  property real islandLeft: 0
+
+  function placeIsland() {
+    var point = root.mapToItem(null, 0, 0)
+    root.islandLeft = Math.round(Style.bar.floatMargin + point.x + (root.width - island.implicitWidth) / 2)
+  }
+
+  onIslandModeChanged: if (root.islandMode !== "") placeIsland()
+  onWidthChanged: placeIsland()
+
+  // Once the bar has laid itself out, so the first show starts in place
+  Timer {
+    interval: 1000
+    running: true
+    onTriggered: root.placeIsland()
+  }
 
   function iconSource(icon) {
     var value = String(icon || "")
@@ -90,26 +113,26 @@ BarWidget {
     return Quickshell.iconPath(value, true)
   }
 
-  PopupWindow {
+  // A surface of its own above the bar, so the compositor blurs it like the
+  // bar. It stays mapped (mapping one costs a frame or more) and clear while
+  // idle, taking the pointer only over the pill while it shows something.
+  PanelWindow {
     id: island
 
-    visible: root.islandUp && (root.islandMode !== "" || pill.opacity > 0)
+    screen: root.QsWindow.window ? root.QsWindow.window.screen : null
+    visible: root.islandUp
     color: "transparent"
     implicitWidth: Style.space(460)
     implicitHeight: Style.space(150)
-    // Only the pill takes the pointer; the rest of the popup lets it through
-    mask: Region { item: pill }
-
-    anchor {
-      item: root
-      rect.x: (root.width - island.implicitWidth) / 2
-      rect.y: 0
-      rect.width: 1
-      rect.height: 1
-      edges: Edges.Top | Edges.Left
-      gravity: Edges.Bottom | Edges.Right
-      adjustment: PopupAdjustment.None
-    }
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.namespace: "neko-island"
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    anchors.top: true
+    anchors.left: true
+    margins.top: Style.bar.floatMargin
+    margins.left: root.islandLeft
+    mask: Region { item: root.islandMode !== "" ? pill : null }
 
     Rectangle {
       id: pill
@@ -162,7 +185,7 @@ BarWidget {
           width: Style.space(104)
           height: Style.space(5)
           radius: height / 2
-          color: Qt.rgba(1, 1, 1, 0.18)
+          color: root.islandTrack
 
           Rectangle {
             height: parent.height
@@ -188,7 +211,7 @@ BarWidget {
               width: Style.space(5)
               height: Style.space(5)
               radius: height / 2
-              color: Qt.rgba(1, 1, 1, 0.18)
+              color: root.islandTrack
 
               Rectangle {
                 height: parent.height

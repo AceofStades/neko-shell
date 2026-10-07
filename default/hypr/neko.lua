@@ -18,11 +18,11 @@ hl.layer_rule({
   blur = true,
   ignore_alpha = 0.2,
 })
--- The bar blurs behind anything but clear, so its glass widgets can sit on
--- plain blur with next to no tint. X-ray blurs only the wallpaper: the blur
+-- The bar and its island blur behind anything but clear, so their glass can
+-- sit on plain blur with next to no tint. X-ray blurs only the wallpaper: the blur
 -- reaches further than the bar is tall, and would otherwise pull the windows
 -- below it in, darkening the widgets' lower half.
-hl.layer_rule({ match = { namespace = "^neko-bar$" }, blur = true, ignore_alpha = 0.01, xray = true })
+hl.layer_rule({ match = { namespace = "^neko-(bar|island)$" }, blur = true, ignore_alpha = 0.01, xray = true })
 
 -- The bar's panels (audio, network, clock...) are popups of the bar surface
 hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } })
@@ -31,7 +31,7 @@ hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } 
 -- grow from a parked 1x1, which Hyprland would otherwise animate as a slide.
 hl.layer_rule({ match = { namespace = "^neko-bar$" }, no_anim = true, animation = "none" })
 hl.layer_rule({
-  match = { namespace = "^neko-(menu|image-selector|emojis|clipboard|keyboard-panel|osd|reminders|network-qr|settings)$" },
+  match = { namespace = "^neko-(menu|image-selector|emojis|clipboard|keyboard-panel|osd|reminders|network-qr|settings|island)$" },
   no_anim = true,
   animation = "none",
 })
