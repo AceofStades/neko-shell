@@ -11,6 +11,7 @@
 #                 top edge, flat-topped)
 #   bar.float     on | off  (floating or attached, rather than docked)
 #   bar.capsules  on | off  (pill behind each bar widget)
+#   bar.glass     on | off  (the bar and its groups as tinted glass over a blur)
 #   app.<name>    on | off  (kitty, btop, tmux or gtk follows the theme)
 #
 # Bar settings are overrides in ~/.config/neko/shell.toml, which the shell
@@ -73,6 +74,20 @@ layout_style() {
   jq -r '.bar.style // "floating"' "$file" 2> /dev/null
 }
 
+layout_glass() {
+  local layout=$HOME/.config/neko/shell.json
+  [[ -f $layout ]] || layout=$NEKO_PATH/config/neko/shell.json
+  [[ $(jq -r '.bar.glass // false' "$layout" 2> /dev/null) == "true" ]] && echo on || echo off
+}
+
+set_layout_glass() {
+  if [[ ! -f $layout ]]; then
+    mkdir -p "$(dirname "$layout")"
+    cp "$NEKO_PATH/config/neko/shell.json" "$layout"
+  fi
+  jq --indent 2 --argjson glass "$1" '.bar.glass = $glass' "$layout" > "$layout.tmp" && mv "$layout.tmp" "$layout"
+}
+
 set_layout_style() {
   if [[ ! -f $layout ]]; then
     mkdir -p "$(dirname "$layout")"
@@ -118,6 +133,9 @@ get() {
       ;;
     bar.capsules)
       [[ $(toml_get bar capsule-alpha) == "0" ]] && echo off || echo on
+      ;;
+    bar.glass)
+      layout_glass
       ;;
     app.*)
       [[ " $(themed_apps) " == *" ${1#app.} "* ]] && echo on || echo off
@@ -184,6 +202,9 @@ set_value() {
         toml_unset bar background-alpha
       fi
       ;;
+    bar.glass)
+      [[ $value == "on" ]] && set_layout_glass true || set_layout_glass false
+      ;;
     app.*)
       local app=${key#app.} apps
       apps=" $(themed_apps) "
@@ -212,6 +233,19 @@ json() {
     command -v "$agent" > /dev/null && agents+=("$agent")
   done
 
+  # The rest of the system the settings window drives, each through its own command
+  local text_size power_profile power_profiles charge_limit stay_awake dnd dns weather calendars font
+  text_size=$(neko-display-text-size 2> /dev/null | sed -n 's/^text size: \([0-9.]*\).*/\1/p')
+  power_profiles=$(neko-powerprofiles-list --active-state 2> /dev/null || true)
+  power_profile=$(awk -F'\t' '$2 == 1 { print $1 }' <<< "$power_profiles")
+  charge_limit=$(neko-battery-limit get 2> /dev/null || true)
+  stay_awake=$(neko-toggle-idle status 2> /dev/null | jq -r '.enabled // false' 2> /dev/null || echo false)
+  dnd=$(neko-shell notifications isDnd 2> /dev/null || true)
+  dns=$(neko-dns 2> /dev/null || true)
+  weather=$(jq -r '.name // ""' "$HOME/.local/state/neko/settings/weather.json" 2> /dev/null || true)
+  calendars=$(neko-calendars list --json 2> /dev/null || echo '[]')
+  font=$(neko-font-current 2> /dev/null || true)
+
   jq -n \
     --arg colors "$(get colors)" \
     --arg float "$(get bar.float)" \
@@ -222,6 +256,17 @@ json() {
     --arg apps "$(themed_apps)" \
     --arg agent "$(neko-default-agent 2> /dev/null)" \
     --arg agents "${agents[*]}" \
+    --arg glass "$(get bar.glass)" \
+    --arg font "$font" \
+    --arg textSize "$text_size" \
+    --arg powerProfile "$power_profile" \
+    --arg powerProfiles "$(cut -f1 <<< "$power_profiles")" \
+    --arg chargeLimit "$charge_limit" \
+    --arg stayAwake "$stay_awake" \
+    --arg dnd "$dnd" \
+    --arg dns "$dns" \
+    --arg weather "$weather" \
+    --argjson calendars "${calendars:-[]}" \
     '{
       colors: $colors,
       barFloat: ($float == "on"),
@@ -231,7 +276,18 @@ json() {
       rotation: (if $rotation == "" then "off" else $rotation end),
       apps: ($apps | split(" ") | map(select(. != ""))),
       agent: $agent,
-      agents: ($agents | split(" ") | map(select(. != "")))
+      agents: ($agents | split(" ") | map(select(. != ""))),
+      barGlass: ($glass == "on"),
+      font: $font,
+      textSize: ($textSize | tonumber? // 0),
+      powerProfile: $powerProfile,
+      powerProfiles: ($powerProfiles | split("\n") | map(select(. != ""))),
+      chargeLimit: ($chargeLimit | tonumber? // 0),
+      stayAwake: ($stayAwake == "true"),
+      dnd: ($dnd == "on"),
+      dns: $dns,
+      weather: $weather,
+      calendars: $calendars
     }'
 }
 
