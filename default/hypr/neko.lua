@@ -29,6 +29,10 @@ hl.layer_rule({ match = { namespace = "^neko-island$" }, blur = true, ignore_alp
 -- The bar's panels (audio, network, clock...) are popups of the bar surface
 hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } })
 
+-- Windows round like the shell: its capsules, shoulders and cards are 14
+-- across, and the shell reads this back for the corners that follow Hyprland
+hl.config({ decoration = { rounding = 14 } })
+
 -- Keep the bar and the overlays instant. Overlays stay mapped between opens and
 -- grow from a parked 1x1, which Hyprland would otherwise animate as a slide.
 hl.layer_rule({ match = { namespace = "^neko-bar$" }, no_anim = true, animation = "none" })
