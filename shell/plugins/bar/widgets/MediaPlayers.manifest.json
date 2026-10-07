@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.media-players",
+  "name": "Media players",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "An icon for each media player; hovering one shows its controls in the island",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "MediaPlayers.qml"
+  },
+  "barWidget": {
+    "displayName": "Media players",
+    "description": "An icon for each media player; hovering one shows its controls in the island",
+    "category": "Audio",
+    "allowMultiple": false
+  }
+}

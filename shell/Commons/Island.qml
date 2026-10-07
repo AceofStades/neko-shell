@@ -60,7 +60,7 @@ Singleton {
   Timer {
     interval: 50
     repeat: true
-    running: root.active && root.current !== null && root.lifetime > 0 && !root.hovered && !root.osdShown
+    running: root.active && root.current !== null && root.lifetime > 0 && !root.hovered && !root.osdShown && root.mode !== "media"
     onTriggered: {
       root.remaining -= interval / root.lifetime
       if (root.remaining <= 0 && root.notifications && root.count > 0) {
@@ -91,6 +91,35 @@ Singleton {
     onTriggered: root.osdShown = false
   }
 
-  // What the island shows: "osd", "notification" or "" (the workspaces)
-  readonly property string mode: !active ? "" : osdShown ? "osd" : current ? "notification" : ""
+  // ---------- Media ----------
+  // The player whose card shows while the pointer is on its icon in the bar
+  // (the media players widget) or on the card itself; it closes a moment
+  // after the pointer leaves both, so it can cross from one to the other
+  property var mediaPlayer: null
+  property bool mediaIconHovered: false
+  readonly property bool mediaShown: mediaPlayer !== null && (mediaIconHovered || hovered || mediaCloseTimer.running)
+
+  function showMedia(player) {
+    mediaPlayer = player
+    mediaIconHovered = true
+    mediaCloseTimer.stop()
+  }
+
+  function leaveMediaIcon() {
+    mediaIconHovered = false
+    if (!hovered) mediaCloseTimer.restart()
+  }
+
+  onHoveredChanged: if (!hovered && !mediaIconHovered && mediaPlayer) mediaCloseTimer.restart()
+
+  Timer {
+    id: mediaCloseTimer
+    interval: 350
+    onTriggered: if (!root.mediaIconHovered && !root.hovered) root.mediaPlayer = null
+  }
+
+  // What the island shows: "osd", "media", "notification" or "" (the
+  // workspaces). A passing OSD outranks the card the pointer asked for,
+  // which outranks a notification.
+  readonly property string mode: !active ? "" : osdShown ? "osd" : mediaShown ? "media" : current ? "notification" : ""
 }

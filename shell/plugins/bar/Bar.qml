@@ -2008,7 +2008,7 @@ Item {
       // none of it shows around an island narrower than itself
       color: !root.glass ? NekoColor.bar.capsule
         : slot.moduleName !== "neko.workspaces" ? root.glassCapsule
-        : Island.mode !== "" ? "transparent" : root.glassIslandCapsule
+        : Island.mode !== "" && Island.mode !== "media" ? "transparent" : root.glassIslandCapsule
       Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
 

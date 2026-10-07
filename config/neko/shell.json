@@ -8,7 +8,7 @@
     "position": "top",
     "transparent": false,
     "glass": true,
-    "centerAnchor": "",
+    "centerAnchor": "neko.workspaces",
     "layout": {
       "left": [
         {
@@ -19,6 +19,9 @@
         }
       ],
       "center": [
+        {
+          "id": "neko.media-players"
+        },
         {
           "id": "neko.workspaces"
         }
