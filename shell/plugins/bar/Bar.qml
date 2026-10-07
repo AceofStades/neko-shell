@@ -54,17 +54,16 @@ Item {
   property bool requestedTransparent: false
   property bool useTransparentForeground: false
   property bool transparent: false
-  // Glass: the bar itself is clear, and each widget sits on blur, so the
-  // widgets take their color from what's under them rather than from the
-  // theme. Its text is black, or white where the wallpaper under the bar is
-  // dark, picked by neko-bar-text-color as the transparent bar's is, and the
-  // capsule carries the faintest tint against it (dark under white text,
-  // light under black) so the text holds up on any wallpaper. The
-  // workspaces' capsule alone is tinted dark, the island's tint, so the
-  // island grows out of it unchanged; its text stays glassIslandText.
+  // Glass: the bar itself is clear, and each widget sits on dark glass, blur
+  // with a dark tint and white text, so the widgets take their color from
+  // what's under them rather than from the theme. neko-bar-text-color tells
+  // whether the wallpaper under the bar is light; over a light one the tint
+  // deepens so the white text still stands out. The workspaces' capsule is
+  // the island's, a little darker, so the island grows out of it unchanged.
   property bool glass: false
-  readonly property color glassCapsule: barForeground.hslLightness > 0.5 ? Qt.rgba(0, 0, 0, 0.12) : Qt.rgba(1, 1, 1, 0.14)
-  readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, 0.32)
+  readonly property bool glassOverLight: glass && useTransparentForeground && transparentForeground.hslLightness < 0.5
+  readonly property color glassCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.45 : 0.25)
+  readonly property color glassIslandCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.5 : 0.32)
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
   property bool centerSectionHovered: false
@@ -89,7 +88,7 @@ Item {
   property color themeContrastForeground: NekoColor.background
   property color transparentForeground: NekoColor.bar.text
   property color foreground: themeForeground
-  property color barForeground: useTransparentForeground ? transparentForeground : themeForeground
+  property color barForeground: glass ? glassLightText : useTransparentForeground ? transparentForeground : themeForeground
   property bool foregroundAnimationEnabled: true
   property color background: glass ? "transparent" : NekoColor.bar.background
   property color urgent: NekoColor.bar.active
@@ -151,6 +150,7 @@ Item {
     api.barSize = Qt.binding(function() { return root.barSize })
     api.transparent = Qt.binding(function() { return root.transparent })
     api.glass = Qt.binding(function() { return root.glass })
+    api.glassIslandCapsule = Qt.binding(function() { return root.glassIslandCapsule })
     api.foregroundAnimationEnabled = Qt.binding(function() { return root.foregroundAnimationEnabled })
     api.centerSectionRevealHeld = Qt.binding(function() { return root.centerSectionRevealHeld })
     api._centerHoverRevealSuppressed = Qt.binding(function() { return root.centerHoverRevealSuppressed })
