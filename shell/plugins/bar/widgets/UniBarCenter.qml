@@ -59,6 +59,33 @@ BarWidget {
     onDateChanged: root.now = date
   }
 
+  // Keep the media island's IPC surface available in this layout even though
+  // its old dedicated bar icon is folded into the clock.
+  ShellIpc {
+    target: "media-island"
+    enabled: root.player !== null
+
+    function status(): string {
+      return JSON.stringify({
+        available: root.player !== null,
+        playing: root.playing,
+        identity: root.player ? String(root.player.identity || "") : ""
+      })
+    }
+
+    function show(): string {
+      if (!root.player) return "no-player"
+      Island.showMedia(root.player)
+      return "ok"
+    }
+
+    function hide(): string {
+      Island.mediaIconHovered = false
+      Island.mediaPlayer = null
+      return "ok"
+    }
+  }
+
   // The existing island renderer is hosted invisibly at the clock's position.
   // Its own native overlay window remains visible when it expands.
   Workspaces {
