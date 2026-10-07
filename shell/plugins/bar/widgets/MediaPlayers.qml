@@ -7,8 +7,8 @@ import qs.Ui
 import "../../services/media/MediaModel.js" as MediaModel
 
 // One music control sits beside the workspace island. Its concave edge
-// follows the workspace capsule with a gap, and fades as the island changes
-// to an OSD or notification. Hovering opens the selected player's card.
+// follows the workspace capsule with a gap, then fades as the island grows
+// into the selected player, an OSD or a notification.
 BarWidget {
   id: root
   moduleName: "neko.media-players"
@@ -66,7 +66,7 @@ BarWidget {
 
   visible: player !== null && !root.vertical
   enabled: Island.mode === "" || Island.mode === "media"
-  opacity: enabled ? 1 : 0
+  opacity: Island.mode === "" ? 1 : 0
   Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
   implicitWidth: visible ? Style.space(40) : 0
   implicitHeight: root.barSize

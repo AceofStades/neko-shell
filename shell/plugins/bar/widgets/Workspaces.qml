@@ -13,8 +13,8 @@ import "../../notifications/NotificationLogic.js" as NotificationLogic
 // Workspaces 1 to 10, always all ten, written in kanji (一 to 十). The
 // focused one sits on an accent pill; empty ones are dimmed.
 //
-// On a horizontal bar this is also the island (see Island): a notification
-// or an OSD grows a dark pill out of the workspaces' capsule to show it, the
+// On a horizontal bar this is also the island (see Island): a notification,
+// OSD or player grows out of the workspaces' capsule, with the
 // workspaces fading out beneath, and it shrinks back into the capsule after.
 BarWidget {
   id: root
@@ -129,7 +129,7 @@ BarWidget {
     visible: root.islandUp
     color: "transparent"
     implicitWidth: Style.space(460)
-    implicitHeight: Math.max(Style.space(150), root.height - root.restInset + Style.space(4) + mediaView.implicitHeight + Style.space(4))
+    implicitHeight: Style.space(150)
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "neko-island"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -149,11 +149,9 @@ BarWidget {
         : root.islandMode === "notification" ? notificationView.implicitHeight
         : root.islandMode === "osd" ? Style.space(66) : root.restHeight
 
-      // Keep the media card four pixels below the workspace capsule.
       readonly property bool card: root.islandMode === "media"
       x: Math.round((island.width - width) / 2)
-      y: card ? root.height - root.restInset + Style.space(4) : root.restInset
-      Behavior on y { NumberAnimation { duration: Style.duration(420); easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
+      y: root.restInset
       width: targetWidth
       height: targetHeight
       radius: card ? Style.space(24) : height / 2
@@ -586,8 +584,8 @@ BarWidget {
   GridLayout {
     id: grid
     anchors.fill: parent
-    // Keep the workspaces visible while the separate media card is open.
-    opacity: root.islandMode === "" || root.islandMode === "media" ? 1 : 0
+    // The workspace cells give way as the island becomes the player.
+    opacity: root.islandMode === "" ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
     columns: root.vertical ? 1 : 10
     columnSpacing: 0
