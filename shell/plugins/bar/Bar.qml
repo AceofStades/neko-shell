@@ -1998,6 +1998,25 @@ Item {
       Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
 
+    // Hovering a widget lights its own part of the capsule a little; in a
+    // group, just that widget's. The workspaces light their own cells.
+    Rectangle {
+      readonly property real inset: Style.bar.capsuleInset + Style.space(2)
+      readonly property real end: 2 + slot.gap / 2 + Style.space(2)
+
+      visible: opacity > 0
+      opacity: slot.hovered && slot.capsuled && slot.contentShown && !slot.dragSource && slot.moduleName !== "neko.workspaces" ? 1 : 0
+      anchors.fill: parent
+      anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 1 : end) : inset
+      anchors.bottomMargin: root.vertical ? (slot.joinsNext ? 1 : end) : inset
+      anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious ? 1 : end)
+      anchors.rightMargin: root.vertical ? inset : (slot.joinsNext ? 1 : end)
+      radius: Math.min(width, height) / 2
+      color: Util.alpha(root.barForeground, 0.14)
+
+      Behavior on opacity { NumberAnimation { duration: Style.duration(120) } }
+    }
+
     BorderSurface {
       visible: slot.dragSource
       anchors.fill: parent
