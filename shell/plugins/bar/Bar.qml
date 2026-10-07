@@ -2000,17 +2000,21 @@ Item {
 
     // Hovering a widget lights its own part of the capsule a little; in a
     // group, just that widget's. The workspaces light their own cells.
+    // Centered on the widget, not the slot: the slot also holds the capsule
+    // end's padding, on one side only at a group's ends. It reaches the same
+    // way past the widget on both sides, a little into a lone capsule's
+    // padding, and a pixel short of a neighbour in a group.
     Rectangle {
       readonly property real inset: Style.bar.capsuleInset + Style.space(2)
-      readonly property real end: 2 + slot.gap / 2 + Style.space(2)
+      readonly property real grow: slot.joinsPrevious || slot.joinsNext ? -1 : Style.bar.capsulePadding - Style.space(4)
 
       visible: opacity > 0
       opacity: slot.hovered && slot.capsuled && slot.contentShown && !slot.dragSource && slot.moduleName !== "neko.workspaces" ? 1 : 0
       anchors.fill: parent
-      anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 1 : end) : inset
-      anchors.bottomMargin: root.vertical ? (slot.joinsNext ? 1 : end) : inset
-      anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious ? 1 : end)
-      anchors.rightMargin: root.vertical ? inset : (slot.joinsNext ? 1 : end)
+      anchors.topMargin: root.vertical ? slot.padStart - grow : inset
+      anchors.bottomMargin: root.vertical ? slot.padEnd - grow : inset
+      anchors.leftMargin: root.vertical ? inset : slot.padStart - grow
+      anchors.rightMargin: root.vertical ? inset : slot.padEnd - grow
       radius: Math.min(width, height) / 2
       color: Util.alpha(root.barForeground, 0.14)
 
