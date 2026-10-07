@@ -85,7 +85,7 @@ BarWidget {
 
   Shape {
     anchors.fill: parent
-    visible: !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0)
+    visible: !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
@@ -97,6 +97,39 @@ BarWidget {
       PathArc { x: root.tipX; y: root.capsuleTop + root.capsuleHeight; radiusX: root.notchRadius; radiusY: root.notchRadius; direction: PathArc.Counterclockwise }
       PathLine { x: Style.space(2) + root.endRadius; y: root.capsuleTop + root.capsuleHeight }
       PathArc { x: Style.space(2) + root.endRadius; y: root.capsuleTop; radiusX: root.endRadius; radiusY: root.endRadius }
+    }
+  }
+
+  // Attached to the screen's top edge (with the workspaces between this and
+  // its twin): flat along the top, a shoulder curving the outer side into
+  // the edge, a rounded bottom outer corner, and the notch following the
+  // workspaces' attached capsule, straight down and round its bottom corner,
+  // a few pixels off
+  readonly property real shoulder: Style.space(8)
+  readonly property real islandLeft: root.width + Style.space(2)
+  readonly property real notchGap: Style.space(4)
+  readonly property real notchCurveCenterX: root.islandLeft + root.endRadius
+  readonly property real notchCurveCenterY: root.capsuleTop + root.capsuleHeight - root.endRadius
+  readonly property real notchBottomX: root.notchCurveCenterX - Math.sqrt(Math.max(0, (root.endRadius + root.notchGap) * (root.endRadius + root.notchGap) - root.endRadius * root.endRadius))
+
+  Shape {
+    anchors.fill: parent
+    visible: !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
+    preferredRendererType: Shape.CurveRenderer
+
+    ShapePath {
+      fillColor: root.bar && root.bar.glass ? root.bar.glassIslandCapsule : NekoColor.bar.capsule
+      strokeWidth: 0
+      strokeColor: "transparent"
+      startX: Style.space(2) - root.shoulder
+      startY: root.capsuleTop
+      PathLine { x: root.islandLeft - root.notchGap; y: root.capsuleTop }
+      PathLine { x: root.islandLeft - root.notchGap; y: root.notchCurveCenterY }
+      PathArc { x: root.notchBottomX; y: root.capsuleTop + root.capsuleHeight; radiusX: root.endRadius + root.notchGap; radiusY: root.endRadius + root.notchGap; direction: PathArc.Counterclockwise }
+      PathLine { x: Style.space(2) + root.endRadius; y: root.capsuleTop + root.capsuleHeight }
+      PathArc { x: Style.space(2); y: root.capsuleTop + root.capsuleHeight - root.endRadius; radiusX: root.endRadius; radiusY: root.endRadius }
+      PathLine { x: Style.space(2); y: root.capsuleTop + root.shoulder }
+      PathArc { x: Style.space(2) - root.shoulder; y: root.capsuleTop; radiusX: root.shoulder; radiusY: root.shoulder; direction: PathArc.Counterclockwise }
     }
   }
 
