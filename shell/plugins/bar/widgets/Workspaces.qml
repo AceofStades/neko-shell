@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import Quickshell.Services.Mpris
 import Quickshell.Wayland
 import Quickshell.Widgets
 import qs.Commons
@@ -128,7 +129,7 @@ BarWidget {
     visible: root.islandUp
     color: "transparent"
     implicitWidth: Style.space(460)
-    implicitHeight: Style.space(150)
+    implicitHeight: Math.max(Style.space(150), root.height - root.restInset + Style.space(4) + mediaView.implicitHeight + Style.space(4))
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "neko-island"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -141,24 +142,22 @@ BarWidget {
 
     Rectangle {
       id: pill
-      readonly property real targetWidth: root.islandMode === "media" ? Style.space(390)
+      readonly property real targetWidth: root.islandMode === "media" ? Style.space(440)
         : root.islandMode === "notification" ? Style.space(360)
         : root.islandMode === "osd" ? Style.space(150) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
         : root.islandMode === "osd" ? Style.space(66) : root.restHeight
 
-      // A media card drops down from under the capsule instead, a rounded
-      // rectangle below the bar that leaves the workspaces and the player
-      // icons beside them in view
+      // Keep the media card four pixels below the workspace capsule.
       readonly property bool card: root.islandMode === "media"
       x: Math.round((island.width - width) / 2)
-      y: card ? root.height + Style.space(4) : root.restInset
+      y: card ? root.height - root.restInset + Style.space(4) : root.restInset
       Behavior on y { NumberAnimation { duration: Style.duration(420); easing.type: Easing.OutBack; easing.overshoot: 1.1 } }
       width: targetWidth
       height: targetHeight
-      radius: card ? Style.space(18) : height / 2
-      color: root.islandColor
+      radius: card ? Style.space(24) : height / 2
+      color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
       opacity: root.islandMode !== "" ? 1 : 0
       clip: true
 
@@ -239,7 +238,8 @@ BarWidget {
         }
       }
 
-      // A media player's card: its art, the track, the buttons and a seek bar
+      // A player's card: art, track, controls and a seek bar, with an
+      // equalizer that moves while it plays.
       Item {
         id: mediaView
         // Kept while the card closes, so it doesn't blank as it shrinks
@@ -251,8 +251,9 @@ BarWidget {
         // While the seek bar is dragged, where it's been dragged to (0..1)
         property real dragFraction: -1
         readonly property real fraction: dragFraction >= 0 ? dragFraction : length > 0 ? Math.min(1, position / length) : 0
-        readonly property string artUrl: player && player.trackArtUrl ? String(player.trackArtUrl) : ""
-        readonly property real pad: Style.space(12)
+        readonly property real pad: Style.space(16)
+        readonly property real art: Style.space(80)
+        readonly property bool spotify: !!player && (String(player.identity || "") + String(player.desktopEntry || "")).toLowerCase().indexOf("spotify") >= 0
 
         function clock(seconds) {
           var s = Math.max(0, Math.floor(seconds))
@@ -261,10 +262,10 @@ BarWidget {
         }
 
         anchors.fill: parent
-        implicitHeight: pad + Style.space(52) + Style.space(10) + Style.space(14) + pad
+        implicitHeight: pad + art + Style.space(14) + Style.space(16) + pad
         opacity: root.islandMode === "media" ? 1 : 0
         visible: opacity > 0
-        Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
+        Behavior on opacity { NumberAnimation { duration: Style.duration(220) } }
 
         // The player doesn't announce its position as it plays; ask for it
         Timer {
@@ -274,67 +275,112 @@ BarWidget {
           onTriggered: mediaView.player.positionChanged()
         }
 
-        Row {
-          id: mediaTop
-          x: Style.space(24)
+        ClippingRectangle {
+          id: mediaArtBox
+          x: mediaView.pad
           y: mediaView.pad
-          width: parent.width - Style.space(24) - Style.space(26)
-          spacing: Style.space(12)
+          width: mediaView.art
+          height: mediaView.art
+          radius: Style.space(14)
+          color: Util.alpha(root.islandText, 0.08)
 
-          ClippingRectangle {
-            width: Style.space(52)
-            height: width
-            radius: Style.space(12)
-            color: Util.alpha(root.islandText, 0.08)
-
-            Image {
-              id: mediaArt
-              anchors.fill: parent
-              source: mediaView.artUrl
-              sourceSize.width: width * 2
-              sourceSize.height: height * 2
-              fillMode: Image.PreserveAspectCrop
-              asynchronous: true
-              visible: status === Image.Ready
-            }
-            Text {
-              anchors.centerIn: parent
-              visible: mediaArt.status !== Image.Ready
-              text: "󰝚"
-              color: root.islandText
-              font.family: root.bar ? root.bar.fontFamily : Style.font.family
-              font.pixelSize: Style.font.display
-            }
+          Image {
+            id: mediaArt
+            anchors.fill: parent
+            source: mediaView.player && mediaView.player.trackArtUrl ? String(mediaView.player.trackArtUrl) : ""
+            sourceSize.width: width * 2
+            sourceSize.height: height * 2
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            visible: status === Image.Ready
           }
-
-          Column {
-            width: parent.width - Style.space(52) - mediaButtons.width - 2 * parent.spacing
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
-            Text {
-              width: parent.width
-              textFormat: Text.PlainText
-              text: mediaView.player ? (mediaView.player.trackTitle || mediaView.player.identity || "") : ""
-              color: root.islandText
-              font.pixelSize: Style.font.body
-              font.bold: true
-              elide: Text.ElideRight
-            }
-            Text {
-              width: parent.width
-              textFormat: Text.PlainText
-              text: mediaView.player ? (mediaView.player.trackArtist || mediaView.player.identity || "") : ""
-              color: root.islandDim
-              font.pixelSize: Style.font.bodySmall
-              elide: Text.ElideRight
-            }
+          Text {
+            anchors.centerIn: parent
+            visible: mediaArt.status !== Image.Ready
+            text: "󰝚"
+            color: root.islandDim
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.font.displayLarge
           }
+        }
+
+        // The app's mark, with an equalizer that dances while it plays
+        Row {
+          id: mediaMark
+          anchors.right: parent.right
+          anchors.rightMargin: mediaView.pad + Style.space(2)
+          y: mediaView.pad
+          spacing: Style.space(8)
 
           Row {
-            id: mediaButtons
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(4)
+            spacing: Style.space(2)
+            Repeater {
+              model: [0.55, 1, 0.7, 0.85]
+              Rectangle {
+                id: eqBar
+                required property real modelData
+                required property int index
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.space(3)
+                radius: width / 2
+                color: root.accent
+                property real level: 0.35
+                height: Math.max(width, Style.space(13) * level)
+                SequentialAnimation on level {
+                  running: mediaView.visible && !!mediaView.player && mediaView.player.isPlaying
+                  loops: Animation.Infinite
+                  NumberAnimation { to: eqBar.modelData; duration: 260 + eqBar.index * 70; easing.type: Easing.InOutSine }
+                  NumberAnimation { to: 0.25 + eqBar.index * 0.08; duration: 300 + eqBar.index * 50; easing.type: Easing.InOutSine }
+                }
+              }
+            }
+          }
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: mediaView.spotify ? "󰓇" : "󰝚"
+            color: mediaView.spotify ? "#1ed760" : root.accent
+            font.family: root.bar ? root.bar.fontFamily : Style.font.family
+            font.pixelSize: Style.bar.iconFont + 2
+          }
+        }
 
+        Column {
+          x: mediaView.pad + mediaView.art + Style.space(16)
+          y: mediaView.pad
+          width: parent.width - x - mediaView.pad
+          height: mediaView.art
+          spacing: Style.space(2)
+
+          Text {
+            width: parent.width - mediaMark.width - Style.space(10)
+            textFormat: Text.PlainText
+            text: mediaView.player ? (mediaView.player.trackTitle || mediaView.player.identity || "") : ""
+            color: root.islandText
+            font.pixelSize: Style.font.title
+            font.bold: true
+            elide: Text.ElideRight
+          }
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            text: mediaView.player ? [mediaView.player.trackArtist, mediaView.player.trackAlbum].filter(function(t) { return !!t }).join("  ·  ") : ""
+            color: root.islandDim
+            font.pixelSize: Style.font.bodySmall
+            elide: Text.ElideRight
+          }
+
+          Item { width: 1; height: Style.space(6) }
+
+          // Shuffle, back, play, forward, repeat
+          Row {
+            spacing: Style.space(6)
+            MediaButton {
+              visible: !!mediaView.player && mediaView.player.shuffleSupported
+              glyph: "󰒝"
+              lit: !!mediaView.player && mediaView.player.shuffle
+              onClicked: mediaView.player.shuffle = !mediaView.player.shuffle
+            }
             MediaButton { glyph: "󰒮"; enabled: !!mediaView.player && mediaView.player.canGoPrevious; onClicked: mediaView.player.previous() }
             MediaButton {
               glyph: mediaView.player && mediaView.player.isPlaying ? "󰏤" : "󰐊"
@@ -343,15 +389,22 @@ BarWidget {
               onClicked: mediaView.player.togglePlaying()
             }
             MediaButton { glyph: "󰒭"; enabled: !!mediaView.player && mediaView.player.canGoNext; onClicked: mediaView.player.next() }
+            MediaButton {
+              visible: !!mediaView.player && mediaView.player.loopSupported
+              glyph: mediaView.player && mediaView.player.loopState === MprisLoopState.Track ? "󰑘" : "󰑖"
+              lit: !!mediaView.player && mediaView.player.loopState !== MprisLoopState.None
+              onClicked: mediaView.player.loopState = mediaView.player.loopState === MprisLoopState.None ? MprisLoopState.Playlist
+                : mediaView.player.loopState === MprisLoopState.Playlist ? MprisLoopState.Track : MprisLoopState.None
+            }
           }
         }
 
         // Where the track is, with a bar to drag or click to move it
         Row {
-          x: Style.space(24)
-          y: mediaTop.y + Style.space(52) + Style.space(10)
-          width: parent.width - Style.space(24) - Style.space(26)
-          height: Style.space(14)
+          x: mediaView.pad
+          y: mediaView.pad + mediaView.art + Style.space(14)
+          width: parent.width - 2 * mediaView.pad
+          height: Style.space(16)
           spacing: Style.space(10)
 
           Text {
@@ -372,25 +425,26 @@ BarWidget {
             Rectangle {
               anchors.verticalCenter: parent.verticalCenter
               width: parent.width
-              height: Style.space(4)
+              height: Style.space(5)
               radius: height / 2
               color: root.islandTrack
 
               Rectangle {
                 height: parent.height
                 radius: height / 2
-                width: parent.width * mediaView.fraction
+                width: Math.max(height, parent.width * mediaView.fraction)
                 color: root.accent
               }
             }
             Rectangle {
-              visible: seek.seekable && (seekArea.containsMouse || seekArea.pressed)
               x: parent.width * mediaView.fraction - width / 2
               anchors.verticalCenter: parent.verticalCenter
-              width: Style.space(10)
+              width: seekArea.containsMouse || seekArea.pressed ? Style.space(13) : Style.space(9)
               height: width
               radius: width / 2
               color: root.islandText
+              visible: seek.seekable
+              Behavior on width { NumberAnimation { duration: Style.duration(120) } }
             }
             MouseArea {
               id: seekArea
@@ -532,8 +586,7 @@ BarWidget {
   GridLayout {
     id: grid
     anchors.fill: parent
-    // Out of the way while the island is out of the capsule (a media card
-    // hangs below it instead)
+    // Keep the workspaces visible while the separate media card is open.
     opacity: root.islandMode === "" || root.islandMode === "media" ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
     columns: root.vertical ? 1 : 10
@@ -590,21 +643,26 @@ BarWidget {
     id: mediaButton
     property string glyph: ""
     property bool big: false
+    // A toggle that's on (shuffle, repeat)
+    property bool lit: false
     signal clicked()
 
-    width: big ? Style.space(34) : Style.space(28)
+    width: big ? Style.space(36) : Style.space(30)
     height: width
     opacity: enabled ? 1 : 0.35
 
+    // The big one (play) is filled with the accent; the rest light on hover
     Rectangle {
       anchors.fill: parent
       radius: width / 2
-      color: Util.alpha(root.islandText, buttonArea.containsMouse ? 0.16 : (mediaButton.big ? 0.08 : 0))
+      color: mediaButton.big ? (buttonArea.containsMouse ? Qt.lighter(root.accent, 1.15) : root.accent)
+        : Util.alpha(root.islandText, buttonArea.containsMouse ? 0.16 : 0)
+      Behavior on color { ColorAnimation { duration: Style.duration(120) } }
     }
     Text {
       anchors.centerIn: parent
       text: mediaButton.glyph
-      color: root.islandText
+      color: mediaButton.big ? "#101010" : mediaButton.lit ? root.accent : root.islandText
       font.family: root.bar ? root.bar.fontFamily : Style.font.family
       font.pixelSize: mediaButton.big ? Style.font.title + 4 : Style.font.title
     }
