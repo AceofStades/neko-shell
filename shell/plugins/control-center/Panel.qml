@@ -506,13 +506,13 @@ Panel {
           radius: Style.space(14)
           color: Util.alpha(root.foreground, 0.06)
 
-          Image {
+          // Only decoded while the page shows, at about twice its size; a
+          // format this Qt can't read shows through a PNG copy
+          BackgroundMedia {
             anchors.fill: parent
-            // Only decoded while the page shows, at about twice its size
-            source: root.page === "wallpaper" && root.wallpaper ? "file://" + root.wallpaper : ""
-            sourceSize.width: Style.space(760)
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
+            path: root.page === "wallpaper" ? root.wallpaper : ""
+            constrainDecode: true
+            decodeSize: Qt.size(Style.space(760), Math.round(Style.space(760) * 9 / 16))
           }
         }
         Text {

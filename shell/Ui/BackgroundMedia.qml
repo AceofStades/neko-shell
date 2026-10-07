@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Io
 import qs.Commons
 
 // The shell draws stills only. OWE owns video backgrounds on the desktop, and
@@ -21,7 +22,29 @@ Item {
   readonly property bool video: Util.isVideoPath(path)
   // Cache-bust images selected in a running lock session, so a theme switch
   // that replaces the file behind an unchanged path shows the new pixels.
-  readonly property url imageUrl: path && !video ? Util.fileUrl(path) + (version ? "?v=" + version : "") : ""
+  readonly property url imageUrl: path && !video ? Util.fileUrl(fallbackPath || path) + (version ? "?v=" + version : "") : ""
+
+  // A PNG copy of an image this Qt has no plugin for (WebP, AVIF... without
+  // qt6-imageformats), from neko-image-png; cleared with every new path
+  property string fallbackPath: ""
+  onPathChanged: fallbackPath = ""
+
+  function useFallback() {
+    if (fallbackPath || converter.running || !path) return
+    converter.command = ["neko-image-png", path]
+    converter.running = true
+  }
+
+  Process {
+    id: converter
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var copy = String(text || "").trim()
+        if (copy) root.fallbackPath = copy
+      }
+    }
+  }
 
   Loader {
     id: imageLoader
@@ -41,6 +64,7 @@ Item {
       cache: root.cached
       sourceSize.width: root.constrainDecode ? root.decodeSize.width : (root.version > 0 ? width : 0)
       sourceSize.height: root.constrainDecode ? root.decodeSize.height : (root.version > 0 ? height : 0)
+      onStatusChanged: if (status === Image.Error) root.useFallback()
     }
   }
 }

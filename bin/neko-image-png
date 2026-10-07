@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# neko:summary=Print a PNG copy of an image the shell can't decode itself, making it once
+# neko:args=<image>
+# neko:hidden=true
+
+# The shell's Qt reads only the formats it has plugins for (WebP, AVIF and
+# others need qt6-imageformats). ImageMagick reads them all, so the shell asks
+# for a PNG of the first frame instead. Copies are kept by the file's path,
+# size and modification time, and ones unused for 30 days are cleared.
+
+image=${1:-}
+if [[ -z $image || ! -f $image ]]; then
+  echo "Usage: neko-image-png <image>" >&2
+  exit 1
+fi
+if ! command -v magick > /dev/null; then
+  echo "magick (ImageMagick) is needed to convert $image" >&2
+  exit 1
+fi
+
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/neko/png
+mkdir -p "$cache"
+image=$(realpath "$image")
+key=$(printf '%s\n' "$image" "$(stat -c '%s %Y' "$image")" | sha1sum | cut -c1-16)
+copy=$cache/$key.png
+
+if [[ ! -f $copy ]]; then
+  magick "$image[0]" -auto-orient -define png:compression-level=1 "$copy.tmp.png" && mv "$copy.tmp.png" "$copy" || { rm -f "$copy.tmp.png"; exit 1; }
+fi
+touch "$copy"
+find "$cache" -name '*.png' -mtime +30 -delete 2> /dev/null
+
+echo "$copy"
