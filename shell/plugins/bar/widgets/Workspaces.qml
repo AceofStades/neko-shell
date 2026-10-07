@@ -236,7 +236,7 @@ BarWidget {
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
-        : root.islandMode === "osd" ? Style.space(78) : root.restHeight
+        : root.islandMode === "osd" ? Style.space(80) : root.restHeight
 
       readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
       readonly property real targetRadius: card ? Style.space(26) : height / 2
@@ -329,8 +329,12 @@ BarWidget {
           onTriggered: osdView.shown = true
         }
 
-        anchors.centerIn: parent
-        spacing: Style.space(8)
+        // Held up off the pill's bottom edge; the glyph's line already leaves
+        // room under it, so the meter needs little more
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Style.space(18)
+        spacing: Style.space(3)
         opacity: shown ? 1 : 0
         scale: shown ? 1 : 0.82
         visible: opacity > 0
