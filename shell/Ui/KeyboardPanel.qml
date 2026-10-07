@@ -209,6 +209,31 @@ PanelWindow {
   readonly property real snapReach: Style.space(40)
   readonly property bool snappedLeft: attached && cardOrigin.x <= 0.5
   readonly property bool snappedRight: attached && cardOrigin.x + contentWidth >= screenW - 0.5
+  // It stays within its group's span when it fits there, against the
+  // group's ends when it comes near them
+  readonly property var groupSpan: {
+    anchorWatcher.transform
+    return attached && typeof bar.groupSpan === "function" ? bar.groupSpan(anchorItem) : null
+  }
+  readonly property bool groupFits: !!groupSpan && groupSpan.right - groupSpan.left >= contentWidth
+  // Flush with the group's inner end, it runs straight down from it: no
+  // shoulder on that side, and the group squares its corner there
+  readonly property bool flushStart: groupFits && !snappedLeft && Math.abs(cardOrigin.x - groupSpan.left) < 0.5
+  readonly property bool flushEnd: groupFits && !snappedRight && Math.abs(cardOrigin.x + contentWidth - groupSpan.right) < 0.5
+  Binding {
+    when: root.attached && root.open && root.bar && root.bar.openCardFlushStart !== undefined
+    target: root.bar
+    property: "openCardFlushStart"
+    value: root.flushStart
+    restoreMode: Binding.RestoreValue
+  }
+  Binding {
+    when: root.attached && root.open && root.bar && root.bar.openCardFlushEnd !== undefined
+    target: root.bar
+    property: "openCardFlushEnd"
+    value: root.flushEnd
+    restoreMode: Binding.RestoreValue
+  }
 
   // How far it has grown: a spring to the card's height as it opens, back to
   // nothing as it closes; the contents, at their full size, are clipped to it
@@ -257,6 +282,11 @@ PanelWindow {
     if (attached) {
       // Joined to the group's bottom edge, against the screen's side if near it
       y = barH - Style.bar.capsuleInset
+      if (groupFits) {
+        x = Math.max(groupSpan.left, Math.min(x, groupSpan.right - contentWidth))
+        if (x - groupSpan.left < snapReach) x = groupSpan.left
+        else if (groupSpan.right - x - contentWidth < snapReach) x = groupSpan.right - contentWidth
+      }
       if (x < snapReach) x = 0
       else if (x + contentWidth > screenW - snapReach) x = screenW - contentWidth
       return Qt.point(Math.round(x), Math.round(y))
@@ -442,7 +472,7 @@ PanelWindow {
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
-      fillColor: root.snappedLeft ? "transparent" : root.attachedColor
+      fillColor: root.snappedLeft || root.flushStart ? "transparent" : root.attachedColor
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.cardLeft - shoulders.size
@@ -452,7 +482,7 @@ PanelWindow {
       PathArc { x: shoulders.cardLeft - shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
     }
     ShapePath {
-      fillColor: root.snappedRight ? "transparent" : root.attachedColor
+      fillColor: root.snappedRight || root.flushEnd ? "transparent" : root.attachedColor
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.cardRight + shoulders.size

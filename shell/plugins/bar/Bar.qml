@@ -74,6 +74,11 @@ Item {
   // Attached, a side group's panel grows out of it, and the group takes the
   // panel's glass while it's open so the two read as one
   readonly property color attachedPanelColor: glass ? Qt.rgba(0.02, 0.02, 0.03, 0.55) : NekoColor.popups.background
+  // Set by an attached panel that lines up with its group's inner end
+  // (the start or the end away from the screen's side), so the group's corner
+  // there squares off and runs straight down into the panel
+  property bool openCardFlushStart: false
+  property bool openCardFlushEnd: false
   readonly property string openPanelRegion: {
     for (var i = 0; i < moduleSlots.length; i++) {
       var slot = moduleSlots[i]
@@ -393,6 +398,28 @@ Item {
     var next = moduleSlots.slice()
     next.push(slot)
     moduleSlots = next
+  }
+
+  // Where the capsule group holding `item` (a widget, or something inside
+  // one) starts and ends across its bar window: { left, right }, or null when
+  // it isn't in a bar slot. A panel growing out of the group stays inside it.
+  function groupSpan(item) {
+    var slot = null
+    for (var it = item; it && !slot; it = it.parent) {
+      for (var i = 0; i < moduleSlots.length; i++) {
+        if (moduleSlots[i] && moduleSlots[i].activeItem === it) { slot = moduleSlots[i]; break }
+      }
+    }
+    var window = slot ? slot.QsWindow.window : null
+    if (!window) return null
+    var first = slot, last = slot
+    while (first.joinsPrevious && first.shownNeighbour(-1)) first = first.shownNeighbour(-1)
+    while (last.joinsNext && last.shownNeighbour(1)) last = last.shownNeighbour(1)
+    // Read for the binding's sake: mapToItem alone doesn't notice them move
+    var serial = first.x + first.width + last.x + last.width + first.capsuleLeft + last.capsuleRight
+    var start = first.mapToItem(window.contentItem, first.capsuleLeft, 0)
+    var end = last.mapToItem(window.contentItem, last.capsuleRight, 0)
+    return { left: start.x, right: end.x }
   }
 
   // A widget's item by id, on the same bar window as `near` when given, so a
@@ -1943,6 +1970,8 @@ Item {
     property int slotIndex: -1
     property var siblings: null
     readonly property string group: String(moduleSettings.group || "")
+    readonly property real capsuleLeft: capsuleRect.x
+    readonly property real capsuleRight: capsuleRect.x + capsuleRect.width
     readonly property bool joinsPrevious: groupedWith(-1)
     readonly property bool joinsNext: groupedWith(1)
 
@@ -1950,12 +1979,19 @@ Item {
       root.slotGeometrySerial
       // Attached, each side is one group, running into the screen's corner
       var sideGroup = root.centerTopAttached && (region === "left" || region === "right")
-      if ((!group && !sideGroup) || !siblings || slotIndex < 0) return false
+      if ((!group && !sideGroup) || slotIndex < 0) return false
+      var other = shownNeighbour(step)
+      return !!other && (sideGroup || other.group === group)
+    }
+
+    // The next slot along with something showing, either way
+    function shownNeighbour(step) {
+      if (!siblings || slotIndex < 0) return null
       for (var i = slotIndex + step; i >= 0 && i < siblings.count; i += step) {
         var other = siblings.itemAt(i)
-        if (other && other.contentShown) return sideGroup || other.group === group
+        if (other && other.contentShown) return other
       }
-      return false
+      return null
     }
 
     // Attached, the side groups meet the screen's left and right edges
@@ -2086,8 +2122,10 @@ Item {
       radius: round
       topLeftRadius: slot.topAttached || slot.joinsPrevious ? 0 : round
       topRightRadius: slot.topAttached || (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
-      bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious || slot.atScreenStart) ? 0 : round
-      bottomRightRadius: slot.joinsNext || slot.atScreenEnd ? 0 : round
+      // An attached panel flush with the group's inner end runs on from here
+      readonly property bool panelBelow: root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion
+      bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious || slot.atScreenStart || panelBelow && root.openCardFlushStart) ? 0 : round
+      bottomRightRadius: slot.joinsNext || slot.atScreenEnd || panelBelow && root.openCardFlushEnd ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
       color: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
