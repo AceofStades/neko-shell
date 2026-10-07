@@ -6,6 +6,8 @@ Item {
 
   property var bar: null
   property string text: ""
+  // Text.StyledText lets a label color part of itself (the clock's day name)
+  property int textFormat: Text.PlainText
   property string fontFamily: bar ? bar.fontFamily : Style.font.family
   property real fontSize: bar ? Style.bar.fontSize : Style.font.body
   property color foreground: bar ? bar.barForeground : NekoColor.foreground
@@ -76,7 +78,7 @@ Item {
 
   Text {
     id: label
-    textFormat: Text.PlainText
+    textFormat: root.textFormat
     visible: root.labelVisible
     anchors.centerIn: parent
     // Centering the line box puts the figures above the bar's middle, since

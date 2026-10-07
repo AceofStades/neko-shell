@@ -54,7 +54,7 @@ BarWidget {
         id: nameText
         textFormat: Text.PlainText
         text: root.appName
-        color: root.bar ? root.bar.barForeground : NekoColor.foreground
+        color: NekoColor.accent
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
         font.pixelSize: Style.bar.fontSize
         font.weight: Font.Bold

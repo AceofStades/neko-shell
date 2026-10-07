@@ -33,6 +33,16 @@ BarWidget {
   // repaint a second is a price only the formats that print seconds pay.
   readonly property bool showsSeconds: Model.clockNeedsSeconds(activeFormat)
   readonly property string displayText: formatted(displayDate)
+  // The label with the day's name in the accent color, wherever the format
+  // puts it (dddd or ddd); as it is when the format has no day name
+  readonly property string dayName: activeFormat.indexOf("dddd") >= 0 ? Qt.formatDate(displayDate, "dddd")
+    : activeFormat.indexOf("ddd") >= 0 ? Qt.formatDate(displayDate, "ddd") : ""
+  readonly property string displayStyled: {
+    var text = displayText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    var at = dayName ? text.indexOf(dayName) : -1
+    if (at < 0) return text
+    return text.slice(0, at) + '<font color="' + NekoColor.accent + '">' + dayName + "</font>" + text.slice(at + dayName.length)
+  }
   readonly property var verticalLines: displayText.split("\n")
 
   function refresh() {
@@ -147,7 +157,8 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.vertical ? "" : root.displayText
+    text: root.vertical ? "" : root.displayStyled
+    textFormat: Text.StyledText
     labelVisible: !root.vertical
     hasVisualContent: root.vertical ? root.verticalLines.length > 0 : text !== ""
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
