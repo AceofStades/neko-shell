@@ -25,6 +25,10 @@ hl.layer_rule({
 -- hangs over the windows, so it blurs them, as glass over them would.
 hl.layer_rule({ match = { namespace = "^neko-bar$" }, blur = true, ignore_alpha = 0.01, xray = true })
 hl.layer_rule({ match = { namespace = "^neko-island$" }, blur = true, ignore_alpha = 0.01, xray = false })
+-- The bar's panels grow out of its groups, so they blur what the bar does:
+-- the wallpaper alone. Over the window below, the same tint would read a
+-- shade off from the group it hangs from.
+hl.layer_rule({ match = { namespace = "^neko-keyboard-panel$" }, blur = true, ignore_alpha = 0.2, xray = true })
 
 -- The bar's panels (audio, network, clock...) are popups of the bar surface
 hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } })
