@@ -129,7 +129,7 @@ BarWidget {
     visible: root.islandUp
     color: "transparent"
     implicitWidth: Style.space(460)
-    implicitHeight: Style.space(150)
+    implicitHeight: Style.space(170)
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "neko-island"
     WlrLayershell.layer: WlrLayer.Overlay

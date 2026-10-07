@@ -288,6 +288,59 @@ Singleton {
     onTriggered: if (!root.pomodoroIconHovered && !root.hovered) root.pomodoroRequested = false
   }
 
+  ShellIpc {
+    target: "pomodoro"
+
+    function status(): string {
+      return JSON.stringify({
+        active: root.pomodoroActive,
+        running: root.pomodoroRunning,
+        phase: root.pomodoroPhase,
+        remaining: root.pomodoroRemaining,
+        completed: root.pomodoroCompleted
+      })
+    }
+
+    function start(): string {
+      root.startPomodoro()
+      return "ok"
+    }
+
+    function pause(): string {
+      root.pausePomodoro()
+      return "ok"
+    }
+
+    function toggle(): string {
+      root.togglePomodoro()
+      return "ok"
+    }
+
+    function reset(): string {
+      root.resetPomodoro()
+      return "ok"
+    }
+
+    function skip(): string {
+      root.skipPomodoro()
+      return "ok"
+    }
+
+    function show(): string {
+      root.pomodoroRequested = true
+      root.pomodoroIconHovered = true
+      pomodoroCloseTimer.stop()
+      return "ok"
+    }
+
+    function hide(): string {
+      root.pomodoroIconHovered = false
+      root.pomodoroRequested = false
+      pomodoroCloseTimer.stop()
+      return "ok"
+    }
+  }
+
   Component.onCompleted: Qt.callLater(function() { pomodoroStateFile.reload() })
 
   // What the island shows: "osd", "pomodoro", "media", "notification" or "" (the
