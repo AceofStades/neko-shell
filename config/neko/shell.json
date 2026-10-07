@@ -59,10 +59,7 @@
           "group": "status"
         },
         {
-          "id": "neko.control-center"
-        },
-        {
-          "id": "neko.elsewhen",
+          "id": "neko.control-center",
           "hideButton": true
         },
         {

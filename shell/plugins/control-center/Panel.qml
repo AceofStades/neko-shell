@@ -10,6 +10,7 @@ import qs.Commons
 import qs.Ui
 import "../panels/monitor/Model.js" as MonitorModel
 import "../panels/weather/Model.js" as WeatherModel
+import "../panels/clock/Model.js" as ClockModel
 import "../../services/BrightnessModel.js" as BrightnessModel
 
 // The cat button and its control center: quick toggles, volume and
@@ -21,8 +22,14 @@ Panel {
   moduleName: "neko.control-center"
   ipcTarget: "neko.control-center"
 
-  implicitWidth: button.implicitWidth
+  // With hideButton set the widget takes no space in the bar and is opened
+  // from the clock; its panel opens there too
+  readonly property bool buttonHidden: setting("hideButton", false) === true
+  implicitWidth: buttonHidden ? 0 : button.implicitWidth
   implicitHeight: button.implicitHeight
+
+  // Today, for the calendar at the panel's foot; read again on every open
+  property var calendarToday: new Date()
 
   readonly property color foreground: NekoColor.popups.text
   readonly property color dim: Util.alpha(NekoColor.popups.text, 0.6)
@@ -174,6 +181,7 @@ Panel {
   BarIconButton {
     id: button
     anchors.fill: parent
+    visible: !root.buttonHidden
     bar: root.bar
     text: "󰄛"
     tooltipText: ""
@@ -185,7 +193,9 @@ Panel {
 
   KeyboardPanel {
     id: panel
-    anchorItem: button
+    // Hidden, the button has no place in the bar; open from the clock instead
+    anchorItem: (root.buttonHidden && root.bar && typeof root.bar.moduleItem === "function"
+      && root.bar.moduleItem("neko.clock", root)) || button
     owner: root
     bar: root.bar
     open: root.opened
@@ -469,6 +479,124 @@ Panel {
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.caption
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // A month at a glance, under everything else: the clock opens this.
+        // A card like the weather's, today marked like an active tile
+        Rectangle {
+          Layout.fillWidth: true
+          implicitHeight: calendar.implicitHeight + Style.space(24)
+          radius: Style.space(14)
+          color: Util.alpha(root.foreground, 0.06)
+
+          ColumnLayout {
+            id: calendar
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: Style.space(12)
+            spacing: Style.space(6)
+
+            property int viewYear: root.calendarToday.getFullYear()
+            property int viewMonth: root.calendarToday.getMonth()
+            readonly property int weekStart: ClockModel.normalizedWeekStart(null, Qt.locale().firstDayOfWeek)
+            readonly property var weeks: ClockModel.monthGrid(viewYear, viewMonth, weekStart, ClockModel.keyForDate(root.calendarToday))
+            readonly property var days: weeks.reduce(function(all, week) { return all.concat(week.days) }, [])
+
+            function move(delta) {
+              var date = new Date(viewYear, viewMonth + delta, 1)
+              viewYear = date.getFullYear()
+              viewMonth = date.getMonth()
+            }
+
+            function goToToday() {
+              root.calendarToday = new Date()
+              viewYear = root.calendarToday.getFullYear()
+              viewMonth = root.calendarToday.getMonth()
+            }
+
+            Connections {
+              target: panel
+              function onOpenChanged() { if (panel.open) calendar.goToToday() }
+            }
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: Style.space(4)
+              Text {
+                Layout.fillWidth: true
+                text: Qt.locale().standaloneMonthName(calendar.viewMonth) + " " + calendar.viewYear
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                font.weight: Font.DemiBold
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: calendar.goToToday()
+                }
+              }
+              PanelActionButton {
+                iconText: "󰅁"
+                tooltipText: "Last month"
+                foreground: root.foreground
+                onClicked: calendar.move(-1)
+              }
+              PanelActionButton {
+                iconText: "󰅂"
+                tooltipText: "Next month"
+                foreground: root.foreground
+                onClicked: calendar.move(1)
+              }
+            }
+
+            GridLayout {
+              Layout.fillWidth: true
+              columns: 7
+              rowSpacing: Style.space(2)
+              columnSpacing: 0
+
+              Repeater {
+                model: ClockModel.weekdayOrder(calendar.weekStart)
+                Text {
+                  required property var modelData
+                  Layout.fillWidth: true
+                  horizontalAlignment: Text.AlignHCenter
+                  text: Qt.locale().dayName(modelData, Locale.NarrowFormat)
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
+              }
+
+              Repeater {
+                model: calendar.days
+                Item {
+                  required property var modelData
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: Style.space(26)
+
+                  Rectangle {
+                    anchors.centerIn: parent
+                    width: Style.space(24)
+                    height: width
+                    radius: width / 2
+                    color: modelData.today ? Util.alpha(root.accent, 0.24) : "transparent"
+                  }
+                  Text {
+                    anchors.centerIn: parent
+                    text: modelData.day
+                    color: modelData.today ? root.accent
+                      : !modelData.inMonth ? Util.alpha(root.foreground, 0.28)
+                      : modelData.weekend ? root.dim : root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.bodySmall
+                    font.weight: modelData.today ? Font.Bold : Font.Normal
                   }
                 }
               }

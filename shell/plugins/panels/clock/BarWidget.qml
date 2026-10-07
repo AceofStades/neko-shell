@@ -164,7 +164,7 @@ BarWidget {
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
     horizontalMargin: 8.75
     verticalPadding: 8.75
-    tooltipText: "Click: world clock · Right-click: calendar · Scroll: format"
+    tooltipText: "Click: control center · Right-click: calendar · Scroll: format"
 
     // Left click opens the world clock (falling back to the calendar when it
     // isn't in the bar), right click the calendar, middle click the timezone
@@ -172,7 +172,7 @@ BarWidget {
     onPressed: function(b) {
       if (b === Qt.RightButton) root.togglePanel()
       else if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("neko-menu-timezone") }
-      else if (root.bar) root.bar.run("neko-shell neko.elsewhen toggle || neko-shell neko.clock toggle")
+      else if (root.bar) root.bar.run("neko-shell neko.control-center toggle || neko-shell neko.clock toggle")
     }
     onWheelMoved: function(delta) { root.cycleFormat() }
 
