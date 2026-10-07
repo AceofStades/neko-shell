@@ -73,7 +73,7 @@ Item {
   readonly property string glassLightText: "#f2f2f2"
   // Attached, a side group's panel grows out of it, and the group takes the
   // panel's glass while it's open so the two read as one
-  readonly property color attachedPanelColor: glass ? Qt.rgba(0.02, 0.02, 0.03, 0.55) : NekoColor.popups.background
+  readonly property color attachedPanelColor: glass ? Qt.rgba(0.02, 0.02, 0.03, 0.62) : NekoColor.popups.background
   // Set by an attached panel that lines up with its group's inner end
   // (the start or the end away from the screen's side), so the group's corner
   // there squares off and runs straight down into the panel
