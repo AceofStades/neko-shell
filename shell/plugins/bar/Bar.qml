@@ -2071,7 +2071,8 @@ Item {
       color: slot.islandPart && Island.mode !== "" ? "transparent"
         : !root.glass ? NekoColor.bar.capsule
         : slot.islandPart ? root.glassIslandCapsule : root.glassCapsule
-      Behavior on color { ColorAnimation { duration: Style.duration(160) } }
+      // The island's capsules clear at once as it takes over, back gently
+      Behavior on color { ColorAnimation { duration: Style.duration(!slot.islandPart ? 160 : Island.mode !== "" ? 50 : 220) } }
     }
 
     // Attached to the top edge, shoulders curve a capsule's ends into it,

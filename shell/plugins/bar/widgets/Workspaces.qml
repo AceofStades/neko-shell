@@ -244,7 +244,8 @@ BarWidget {
         enabled: !Style.reduceMotion
         SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
       }
-      Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode !== "" ? 120 : 320) } }
+      // In as fast as the center group goes, so one becomes the other
+      Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode !== "" ? 70 : 320) } }
 
       // A quiet tonal wash gives the two interactive cards some depth while
       // leaving the compositor blur visible underneath.
@@ -1042,7 +1043,8 @@ BarWidget {
     anchors.fill: parent
     // The workspace cells give way as the island becomes the player.
     opacity: root.islandMode === "" ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: Style.duration(200) } }
+    // Gone at once as the island takes over, back gently once it's done
+    Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode === "" ? 220 : 50) } }
     columns: root.vertical ? 1 : 10
     columnSpacing: 0
     rowSpacing: 0
