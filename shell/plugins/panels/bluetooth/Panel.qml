@@ -653,6 +653,9 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     text: root.icon
+    // In the accent while a device is connected
+    active: root.connectedDevices.length > 0
+    activeColor: NekoColor.accent
     onPressed: function(b) {
       if (b === Qt.RightButton) root.toggleBluetooth()
       else root.toggle()
