@@ -177,12 +177,16 @@ Panel {
     }
   }
 
-  onOpenedChanged: {
-    if (!opened) return
-    previous = null
-    coreUse = []
+  // The details are read once at startup and whenever the pointer comes to
+  // the widget (see Bar's prefetch), and kept between opens, so the panel
+  // opens on the last figures and updates them in place instead of opening
+  // empty and growing
+  function prefetch() {
     if (!detailsProc.running) detailsProc.running = true
   }
+
+  onOpenedChanged: if (opened) prefetch()
+  Component.onCompleted: prefetch()
 
   Process {
     id: detailsProc
@@ -192,7 +196,7 @@ Panel {
       onStreamFinished: root.readDetails(text)
     }
     // The first read only sets the counters; the second gives the rates
-    onExited: if (root.opened && root.coreUse.length === 0 && root.previous) running = true
+    onExited: if (root.coreUse.length === 0 && root.previous) running = true
   }
 
   // ---------- On the bar ----------

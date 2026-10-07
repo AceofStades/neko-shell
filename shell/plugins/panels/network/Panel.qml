@@ -567,6 +567,10 @@ Panel {
     bar.shell.summon("neko.wifiqr", JSON.stringify(payload))
   }
 
+  // Read ahead when the pointer comes to the button (see Bar's prefetch),
+  // without the Wi-Fi scan an open starts
+  function prefetch() { refresh(false) }
+
   function refresh(scanWifi) {
     checkConnectivity()
     if (scanWifi === undefined) scanWifi = false

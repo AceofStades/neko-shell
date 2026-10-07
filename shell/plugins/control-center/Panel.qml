@@ -66,13 +66,17 @@ Panel {
 
   onOpenedChanged: if (opened) refresh(); else page = ""
 
+  // Read ahead when the pointer comes to the button (see Bar's prefetch), so
+  // the panel opens on current figures instead of filling in after
+  function prefetch() { refresh() }
+
   function refresh() {
     stateProc.running = false
     stateProc.running = true
     if (!weatherProc.running && Date.now() - weatherFetched > 15 * 60 * 1000) weatherProc.running = true
   }
 
-  Component.onCompleted: weatherProc.running = true
+  Component.onCompleted: refresh()
 
   function rotationLabel(minutes) {
     return minutes === "60" ? "hour" : minutes + " min"

@@ -185,6 +185,11 @@ Panel {
     function togglePercentage() { root.togglePercentage() }
   }
 
+  // Read ahead when the pointer comes to the battery (see Bar's prefetch) and
+  // at startup, so the panel opens complete
+  function prefetch() { refresh() }
+  Component.onCompleted: refresh()
+
   onOpenedChanged: {
     if (opened) {
       if (!batteryPresent) {

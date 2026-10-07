@@ -1914,6 +1914,17 @@ Item {
     }
 
     onContentShownChanged: root.slotGeometrySerial++
+
+    // A widget with a panel can read its data ahead while the pointer comes
+    // to it (prefetch()), so the panel opens complete instead of filling in
+    // after the click; at most every three seconds
+    property real lastPrefetch: 0
+    onHoveredChanged: {
+      if (!hovered || !activeItem || typeof activeItem.prefetch !== "function") return
+      if (Date.now() - lastPrefetch < 3000) return
+      lastPrefetch = Date.now()
+      activeItem.prefetch()
+    }
     readonly property var registryMetadata: root.barWidgetRegistry.metadataFor(root.canonicalWidgetId(moduleName))
     readonly property bool firstParty: registryMetadata && registryMetadata.firstParty === true
     readonly property string pluginApiId: registered ? root.canonicalWidgetId(moduleName) : "bar-entry:" + moduleName
