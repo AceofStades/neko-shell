@@ -10,6 +10,11 @@ Item {
 
   property real fraction: 0
   property bool charging: false
+  // On power without charging (full, or holding at the charge limit): a plug
+  // where the bolt goes
+  property bool plugged: false
+  // The outline and nub, as the power profile wants (orange in performance)
+  property color outlineColor: foreground
   property bool low: false
   // The battery's state as a color, "" for none (see Model.batteryStateColor)
   property string stateColor: ""
@@ -20,18 +25,18 @@ Item {
 
   readonly property real bodyWidth: 30
   readonly property real bodyHeight: 15
-  readonly property real boltWidth: charging ? boltText.implicitWidth + 2 : 0
+  readonly property real boltWidth: charging || plugged ? boltText.implicitWidth + 2 : 0
 
   implicitWidth: boltWidth + bodyWidth + 3
   implicitHeight: bodyHeight
 
   Text {
     id: boltText
-    visible: root.charging
+    visible: root.charging || root.plugged
     anchors.verticalCenter: parent.verticalCenter
     anchors.right: body.left
     anchors.rightMargin: 2
-    text: "󱐋"
+    text: root.charging ? "󱐋" : "󰚥"
     color: root.fillColor
     font.family: root.fontFamily
     font.pixelSize: 11
@@ -46,7 +51,7 @@ Item {
     radius: 3.5
     color: "transparent"
     border.width: 1.2
-    border.color: Util.alpha(root.foreground, 0.75)
+    border.color: Util.alpha(root.outlineColor, 0.75)
 
     Rectangle {
       anchors.left: parent.left
@@ -80,6 +85,6 @@ Item {
     width: 2
     height: 6
     radius: 1
-    color: Util.alpha(root.foreground, 0.75)
+    color: Util.alpha(root.outlineColor, 0.75)
   }
 }

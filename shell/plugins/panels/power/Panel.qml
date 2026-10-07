@@ -302,6 +302,8 @@ Panel {
       charging: !root.discharging && !root.batteryFlowIdle
       low: root.discharging && root.batteryFraction <= 0.15
       stateColor: root.batteryStateColor
+      plugged: !root.discharging && root.batteryFlowIdle
+      outlineColor: Model.profileColor(root.activeProfile) || button.foreground
       showNumber: root.showPercentage
       foreground: button.foreground
       fontFamily: button.fontFamily

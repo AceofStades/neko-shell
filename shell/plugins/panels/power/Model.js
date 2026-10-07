@@ -52,10 +52,9 @@ function batteryStateColor(fraction, onBattery) {
   return ""
 }
 
-// Each power profile's color: green saving, blue balanced, orange performance
+// A power profile's color: performance in orange, the quiet and balanced
+// ones "" (the text color), so only the one that costs battery stands out
 function profileColor(name) {
-  if (name === "power-saver") return "#4ade80"
-  if (name === "balanced") return "#60a5fa"
   if (name === "performance") return "#fb923c"
   return ""
 }
