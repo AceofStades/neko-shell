@@ -232,11 +232,12 @@ BarWidget {
       readonly property real targetWidth: root.islandMode === "media" ? Style.space(460)
         : root.islandMode === "pomodoro" ? Style.space(400)
         : root.islandMode === "notification" ? Style.space(410)
-        : root.islandMode === "osd" ? Style.space(175) : root.restWidth
+        : root.islandMode === "osd" ? Style.space(175)
+        : root.islandMode === "faceauth" ? Style.space(200) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
-        : root.islandMode === "osd" ? Style.space(80) : root.restHeight
+        : root.islandMode === "osd" || root.islandMode === "faceauth" ? Style.space(80) : root.restHeight
 
       readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
       readonly property real targetRadius: card ? Style.space(26) : height / 2
@@ -397,6 +398,68 @@ BarWidget {
               }
             }
           }
+        }
+      }
+
+      // Face unlock: the face in its frame, breathing while Howdy looks, then
+      // how it went
+      Column {
+        id: faceAuthView
+        // In a beat after the shape starts to form, as the OSD does
+        property bool shown: false
+        readonly property bool wanted: root.islandMode === "faceauth"
+        onWantedChanged: {
+          if (wanted) faceAuthIn.restart()
+          else { faceAuthIn.stop(); shown = false }
+        }
+        Timer {
+          id: faceAuthIn
+          interval: Style.duration(110)
+          onTriggered: faceAuthView.shown = true
+        }
+
+        readonly property string state: Island.faceAuth
+        // Kept while the pill closes, so it doesn't blank as it shrinks
+        property string shownState: "scanning"
+        onStateChanged: if (state !== "") shownState = state
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Style.space(14)
+        spacing: Style.space(2)
+        opacity: shown ? 1 : 0
+        scale: shown ? 1 : 0.82
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Style.duration(faceAuthView.shown ? 220 : 90); easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: Style.duration(320); easing.type: Easing.OutBack; easing.overshoot: 1.3 } }
+
+        Text {
+          id: faceGlyph
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: "\u{F0C7B}"
+          color: faceAuthView.shownState === "approved" ? root.accent
+            : faceAuthView.shownState === "failed" ? NekoColor.urgent : root.islandText
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.pixelSize: Math.round(Style.font.display * 1.2)
+          Behavior on color { ColorAnimation { duration: Style.duration(160) } }
+
+          // Breathes while it looks; still once it's done
+          SequentialAnimation on opacity {
+            running: faceAuthView.visible && faceAuthView.shownState === "scanning" && !Style.reduceMotion
+            loops: Animation.Infinite
+            onRunningChanged: if (!running) faceGlyph.opacity = 1
+            NumberAnimation { to: 0.4; duration: Style.duration(650); easing.type: Easing.InOutSine }
+            NumberAnimation { to: 1; duration: Style.duration(650); easing.type: Easing.InOutSine }
+          }
+        }
+
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: faceAuthView.shownState === "approved" ? "Welcome back"
+            : faceAuthView.shownState === "failed" ? "Not recognized" : "Looking for you"
+          color: Util.alpha(root.islandText, 0.75)
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.pixelSize: Style.font.caption
         }
       }
 

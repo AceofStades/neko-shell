@@ -1,0 +1,126 @@
+#!/usr/bin/python3
+# neko:summary=Print a line each time Howdy looks for a face, and how it went
+# neko:args=
+# neko:hidden=true
+"""Follow Howdy's face unlock as it happens, for the bar's island.
+
+Howdy logs only its verdict, not that it has started looking, but it opens its
+IR camera when it starts and closes it when done. This waits on those opens
+and closes through inotify, asleep in the kernel in between (nothing polls),
+and prints:
+
+  scanning   the camera has been open a moment (a quick probe doesn't count)
+  approved   Howdy let the face in
+  failed     it gave up (timeout, or no match)
+  done       the camera closed with no verdict to read
+
+The verdict is read from the journal once per scan. Without Howdy, or with a
+camera it can't watch, it says so and exits.
+"""
+
+import configparser
+import ctypes
+import ctypes.util
+import os
+import select
+import struct
+import subprocess
+import sys
+import time
+
+CONFIG = "/etc/howdy/config.ini"
+IN_OPEN = 0x20
+IN_CLOSE_WRITE = 0x08
+IN_CLOSE_NOWRITE = 0x10
+IN_CLOEXEC = 0o2000000
+EVENT = struct.Struct("iIII")
+# An open shorter than this is a probe (PipeWire looking at devices), not a scan
+SETTLE = 0.15
+
+
+def fail(message):
+    print(f"neko-faceauth-watch: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def camera_path():
+    if not os.path.isfile(CONFIG):
+        fail(f"Howdy isn't set up ({CONFIG} is missing)")
+    config = configparser.ConfigParser(strict=False, interpolation=None)
+    try:
+        config.read(CONFIG)
+    except configparser.Error as error:
+        fail(f"can't read {CONFIG}: {error}")
+    path = config.get("video", "device_path", fallback="").strip()
+    if not path:
+        fail(f"{CONFIG} names no camera (video.device_path)")
+    return os.path.realpath(path)
+
+
+def say(line):
+    print(line, flush=True)
+
+
+def verdict(since):
+    """Howdy's last word since the scan began, waiting a moment for it to land."""
+    for _ in range(6):
+        result = subprocess.run(
+            ["journalctl", "-q", "-t", "pam_howdy", "-o", "cat", "--since", f"@{since:.0f}"],
+            capture_output=True, text=True, check=False)
+        for line in reversed(result.stdout.splitlines()):
+            if "approved" in line.lower():
+                return "approved"
+            if "failure" in line.lower() or "timeout" in line.lower():
+                return "failed"
+        time.sleep(0.2)
+    return "done"
+
+
+def main():
+    path = camera_path()
+    libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+    fd = libc.inotify_init1(IN_CLOEXEC)
+    if fd < 0:
+        fail("can't start inotify")
+    if libc.inotify_add_watch(fd, path.encode(), IN_OPEN | IN_CLOSE_WRITE | IN_CLOSE_NOWRITE) < 0:
+        fail(f"can't watch {path}: {os.strerror(ctypes.get_errno())}")
+
+    opened = 0
+    scanning = False
+    started = 0.0
+
+    def read_events():
+        nonlocal opened
+        data = os.read(fd, 4096)
+        offset = 0
+        while offset < len(data):
+            _, mask, _, length = EVENT.unpack_from(data, offset)
+            offset += EVENT.size + length
+            if mask & IN_OPEN:
+                opened += 1
+            elif mask & (IN_CLOSE_WRITE | IN_CLOSE_NOWRITE):
+                opened = max(0, opened - 1)
+
+    while True:
+        read_events()
+        if opened > 0 and not scanning:
+            # Open long enough to be Howdy looking, not a probe
+            if select.select([fd], [], [], SETTLE)[0]:
+                continue
+            scanning = True
+            started = time.time() - SETTLE
+            say("scanning")
+        elif opened == 0 and scanning:
+            # OpenCV can close and reopen the camera as it starts; a scan is
+            # over once it stays closed
+            if select.select([fd], [], [], SETTLE)[0]:
+                continue
+            scanning = False
+            say(verdict(started - 1))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyboardInterrupt, BrokenPipeError):
+        pass

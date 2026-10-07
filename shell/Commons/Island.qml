@@ -64,7 +64,7 @@ Singleton {
   Timer {
     interval: 50
     repeat: true
-    running: root.active && root.current !== null && root.lifetime > 0 && !root.hovered && !root.osdShown && root.mode !== "media"
+    running: root.active && root.current !== null && root.lifetime > 0 && !root.hovered && !root.osdShown && root.mode !== "media" && root.faceAuth === ""
     onTriggered: {
       root.remaining -= interval / root.lifetime
       if (root.remaining <= 0 && root.notifications && root.count > 0) {
@@ -93,6 +93,49 @@ Singleton {
   Timer {
     id: osdTimer
     onTriggered: root.osdShown = false
+  }
+
+  // ---------- Face unlock ----------
+  // Howdy looking for a face (sudo, a polkit prompt, the lock screen): a
+  // watcher asleep on its IR camera's opens and closes (it polls nothing)
+  // says when it starts and how it went. "scanning", "approved", "failed" or
+  // "" when there's nothing to show; without Howdy the watcher just exits.
+  property string faceAuth: ""
+
+  function faceAuthEvent(line) {
+    var event = String(line || "").trim()
+    if (event === "scanning") {
+      faceAuthClear.stop()
+      faceAuth = "scanning"
+      faceAuthStale.restart()
+    } else if (event === "approved" || event === "failed") {
+      faceAuthStale.stop()
+      faceAuth = event
+      faceAuthClear.interval = event === "approved" ? 1100 : 1800
+      faceAuthClear.restart()
+    } else if (event === "done") {
+      faceAuthStale.stop()
+      faceAuth = ""
+    }
+  }
+
+  Process {
+    running: true
+    command: ["setpriv", "--pdeathsig", "TERM", "neko-faceauth-watch"]
+    stdout: SplitParser { onRead: data => root.faceAuthEvent(data) }
+  }
+
+  Timer {
+    id: faceAuthClear
+    onTriggered: root.faceAuth = ""
+  }
+
+  // Howdy gives up long before this; a close the watcher missed can't leave
+  // the face up for good
+  Timer {
+    id: faceAuthStale
+    interval: 20000
+    onTriggered: root.faceAuth = ""
   }
 
   // ---------- Media ----------
@@ -346,8 +389,9 @@ Singleton {
 
   Component.onCompleted: Qt.callLater(function() { pomodoroStateFile.reload() })
 
-  // What the island shows: "osd", "pomodoro", "media", "notification" or "" (the
-  // workspaces). A passing OSD outranks the card the pointer asked for,
+  // What the island shows: "faceauth", "osd", "pomodoro", "media",
+  // "notification" or "" (the workspaces). Face unlock, asking for you,
+  // outranks all; a passing OSD outranks the card the pointer asked for,
   // which outranks a notification.
-  readonly property string mode: !active ? "" : osdShown ? "osd" : pomodoroShown ? "pomodoro" : mediaShown ? "media" : current ? "notification" : ""
+  readonly property string mode: !active ? "" : faceAuth !== "" ? "faceauth" : osdShown ? "osd" : pomodoroShown ? "pomodoro" : mediaShown ? "media" : current ? "notification" : ""
 }
