@@ -1998,8 +1998,10 @@ Item {
       Behavior on color { ColorAnimation { duration: Style.duration(160) } }
     }
 
-    // Hovering a widget lights its own part of the capsule a little; in a
-    // group, just that widget's. The workspaces light their own cells.
+    // Hovering a widget lights its own part of the capsule a little, and so
+    // does its panel being open (in place of the underline the bar draws
+    // without capsules); in a group, just that widget's. The workspaces
+    // light their own cells.
     // Centered on the widget, not the slot: the slot also holds the capsule
     // end's padding, on one side only at a group's ends. It reaches the same
     // way past the widget on both sides, a little into a lone capsule's
@@ -2009,7 +2011,7 @@ Item {
       readonly property real grow: slot.joinsPrevious || slot.joinsNext ? -1 : Style.bar.capsulePadding - Style.space(4)
 
       visible: opacity > 0
-      opacity: slot.hovered && slot.capsuled && slot.contentShown && !slot.dragSource && slot.moduleName !== "neko.workspaces" ? 1 : 0
+      opacity: (slot.hovered || slot.panelOpen) && slot.capsuled && slot.contentShown && !slot.dragSource && slot.moduleName !== "neko.workspaces" ? 1 : 0
       anchors.fill: parent
       anchors.topMargin: root.vertical ? slot.padStart - grow : inset
       anchors.bottomMargin: root.vertical ? slot.padEnd - grow : inset
@@ -2084,8 +2086,9 @@ Item {
 
       readonly property int inset: Style.space(2)
 
+      // With capsules, the open widget keeps its highlight instead
       visible: opacity > 0
-      opacity: slot.panelOpen && !slot.dragSource ? 0.9 : 0
+      opacity: slot.panelOpen && !slot.dragSource && !slot.capsuled ? 0.9 : 0
       color: NekoColor.accent
       radius: Math.min(width, height) / 2
       width: root.vertical ? Style.space(2) : slot.panelIndicatorExtent
