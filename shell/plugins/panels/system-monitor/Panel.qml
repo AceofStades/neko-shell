@@ -136,6 +136,8 @@ Panel {
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
+  // The rings round off the capsule's ends themselves, so it needs no padding
+  readonly property bool capsulePadded: false
 
   FileView {
     id: statFile

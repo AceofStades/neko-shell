@@ -1953,10 +1953,13 @@ Item {
     // slot's, which the gap and padding below add to
     readonly property bool contentShown: !!activeItem && activeItem.visible && (root.vertical ? activeItem.implicitHeight : activeItem.implicitWidth) > 0
     readonly property int gap: contentShown ? Style.bar.widgetGap : 0
-    // Padding inside the capsule's outer ends; none where grouped widgets meet
+    // Padding inside the capsule's outer ends; none where grouped widgets
+    // meet, nor for a widget that sizes its own ends (capsulePadded: false,
+    // like the system monitor's rings, which follow the capsule's curve)
     readonly property bool capsuled: (root.glass || NekoColor.bar.capsule.a > 0) && !root.transparent
-    readonly property real padStart: capsuled && contentShown && !joinsPrevious ? Style.bar.capsulePadding : 0
-    readonly property real padEnd: capsuled && contentShown && !joinsNext ? Style.bar.capsulePadding : 0
+    readonly property bool padded: capsuled && contentShown && !(activeItem && activeItem.capsulePadded === false)
+    readonly property real padStart: padded && !joinsPrevious ? Style.bar.capsulePadding : 0
+    readonly property real padEnd: padded && !joinsNext ? Style.bar.capsulePadding : 0
     implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth + gap + padStart + padEnd) : 0
     implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight + (root.vertical ? gap + padStart + padEnd : 0) : 0
     width: implicitWidth
