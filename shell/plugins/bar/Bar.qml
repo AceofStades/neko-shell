@@ -1333,7 +1333,12 @@ Item {
     // textures — which measures ~150ms against ~20ms to tear down. Parking
     // keeps the surface alive, so showing is only a margin change.
     visible: !remapGuard.remapping
-    exclusionMode: root.barHidden ? ExclusionMode.Ignore : ExclusionMode.Auto
+    exclusionMode: root.barHidden ? ExclusionMode.Ignore : dropRoom > 0 ? ExclusionMode.Normal : ExclusionMode.Auto
+    // Attached, the side groups' outer shoulders fall down the screen's
+    // edges, below the bar: the window reaches that far further down, but
+    // windows keep only the bar's height clear and the pointer passes through
+    exclusiveZone: root.barSize
+    mask: Region { item: barContent }
 
     ScreenMoveRemap {
       id: remapGuard
@@ -1345,11 +1350,12 @@ Item {
     readonly property int floatMargin: Style.bar.floatMargin
     readonly property bool floating: floatMargin > 0
     readonly property bool centerAttached: root.centerTopAttached
+    readonly property int dropRoom: centerAttached ? Math.ceil(root.barSize / 2) : 0
 
     function edgeMargin(side) {
       if (side === root.position) {
         // Attached, the whole bar meets its edge; the float gap stays at its ends
-        return root.barHidden ? -root.barSize : (centerAttached ? 0 : floatMargin)
+        return root.barHidden ? -root.barSize - dropRoom : (centerAttached ? 0 : floatMargin)
       }
       var alongBar = root.vertical ? (side === "top" || side === "bottom") : (side === "left" || side === "right")
       // Attached, the side groups run into the screen's corners
@@ -1371,7 +1377,7 @@ Item {
     }
 
     implicitWidth: root.vertical ? root.barSize : 0
-    implicitHeight: root.vertical ? 0 : root.barSize
+    implicitHeight: root.vertical ? 0 : root.barSize + dropRoom
     color: root.transparent || floating ? "transparent" : root.background
     surfaceFormat.opaque: false
     WlrLayershell.namespace: "neko-bar"
@@ -1386,13 +1392,14 @@ Item {
     }
 
     Loader {
+      id: barContent
       readonly property int endPadding: barWindow.floating && !barWindow.centerAttached ? Math.round(Style.bar.floatRadius / 2) : 0
 
       anchors.fill: parent
       anchors.leftMargin: root.vertical ? 0 : endPadding
       anchors.rightMargin: root.vertical ? 0 : endPadding
       anchors.topMargin: root.vertical ? endPadding : 0
-      anchors.bottomMargin: root.vertical ? endPadding : 0
+      anchors.bottomMargin: root.vertical ? endPadding : barWindow.dropRoom
       sourceComponent: root.vertical ? verticalBar : horizontalBar
 
       // A child of the loader, not a sibling of the sections: an ancestor stays
@@ -2098,11 +2105,17 @@ Item {
       readonly property real size: slot.region === "center" ? Style.space(8) : capsuleRect.round
       readonly property real capsuleLeft: capsuleRect.x
       readonly property real capsuleRight: capsuleRect.x + capsuleRect.width
+      readonly property real capsuleBottom: capsuleRect.y + capsuleRect.height
       readonly property bool atStart: slot.topAttached && capsuleRect.visible && !slot.joinsPrevious && !slot.atScreenStart && !slot.neighbourWraps(-1)
       readonly property bool atEnd: slot.topAttached && capsuleRect.visible && !slot.joinsNext && !slot.atScreenEnd && !slot.neighbourWraps(1)
+      // At the screen's edges they fall down its sides, into the room the bar
+      // window keeps below the bar; a panel open from the group covers that
+      // corner, so they step aside for it
+      readonly property bool dropsStart: slot.atScreenStart && capsuleRect.visible && slot.region !== root.openPanelRegion
+      readonly property bool dropsEnd: slot.atScreenEnd && capsuleRect.visible && slot.region !== root.openPanelRegion
 
       anchors.fill: parent
-      visible: !root.vertical && (atStart || atEnd)
+      visible: !root.vertical && (atStart || atEnd || dropsStart || dropsEnd)
       preferredRendererType: Shape.CurveRenderer
 
       ShapePath {
@@ -2124,6 +2137,24 @@ Item {
         PathLine { x: capsuleShoulders.capsuleRight; y: 0 }
         PathLine { x: capsuleShoulders.capsuleRight; y: capsuleShoulders.size }
         PathArc { x: capsuleShoulders.capsuleRight + capsuleShoulders.size; y: 0; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size }
+      }
+      ShapePath {
+        fillColor: capsuleShoulders.dropsStart ? capsuleRect.color : "transparent"
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: capsuleShoulders.capsuleLeft
+        startY: capsuleShoulders.capsuleBottom
+        PathLine { x: capsuleShoulders.capsuleLeft + capsuleShoulders.size; y: capsuleShoulders.capsuleBottom }
+        PathArc { x: capsuleShoulders.capsuleLeft; y: capsuleShoulders.capsuleBottom + capsuleShoulders.size; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size; direction: PathArc.Counterclockwise }
+      }
+      ShapePath {
+        fillColor: capsuleShoulders.dropsEnd ? capsuleRect.color : "transparent"
+        strokeWidth: 0
+        strokeColor: "transparent"
+        startX: capsuleShoulders.capsuleRight
+        startY: capsuleShoulders.capsuleBottom
+        PathLine { x: capsuleShoulders.capsuleRight - capsuleShoulders.size; y: capsuleShoulders.capsuleBottom }
+        PathArc { x: capsuleShoulders.capsuleRight; y: capsuleShoulders.capsuleBottom + capsuleShoulders.size; radiusX: capsuleShoulders.size; radiusY: capsuleShoulders.size }
       }
     }
 
