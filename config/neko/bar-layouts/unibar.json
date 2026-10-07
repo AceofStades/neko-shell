@@ -3,7 +3,7 @@
   "style": "attached",
   "transparent": false,
   "glass": true,
-  "centerAnchor": "",
+  "centerAnchor": "neko.unibar-center",
   "layout": {
     "left": [],
     "center": [
@@ -15,11 +15,6 @@
         "id": "neko.workspace-bars-left",
         "group": "unibar",
         "start": 1
-      },
-      {
-        "id": "neko.spacer",
-        "group": "unibar",
-        "size": 69
       },
       {
         "id": "neko.unibar-center",

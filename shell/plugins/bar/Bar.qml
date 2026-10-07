@@ -1979,6 +1979,12 @@ Item {
     readonly property real capsuleBottomRightRadius: capsuleRect.bottomRightRadius
     readonly property bool joinsPrevious: groupedWith(-1)
     readonly property bool joinsNext: groupedWith(1)
+    // A centered anchor lives in its own item between the rows on either
+    // side. A shared group can still continue across those item boundaries;
+    // keep this separate from joinsPrevious/Next because each row paints its
+    // own segment of the otherwise continuous capsule.
+    readonly property bool continuesPrevious: joinsPrevious || groupedAcrossAnchor(-1)
+    readonly property bool continuesNext: joinsNext || groupedAcrossAnchor(1)
 
     function groupedWith(step) {
       root.slotGeometrySerial
@@ -1997,6 +2003,36 @@ Item {
         if (other && other.contentShown) return other
       }
       return null
+    }
+
+    function sectionNeighbour(step) {
+      root.slotGeometrySerial
+      var entries = root.layoutConfig && root.layoutConfig[region] ? root.layoutConfig[region] : []
+      var mine = entries.indexOf(slot.entry)
+      if (mine < 0) mine = root.entryIndex(entries, moduleName)
+      if (mine < 0) return null
+
+      var nearest = null
+      var nearestDistance = Infinity
+      for (var i = 0; i < root.moduleSlots.length; i++) {
+        var candidate = root.moduleSlots[i]
+        if (!candidate || candidate === slot || candidate.region !== region || !candidate.contentShown) continue
+        if (candidate.Window.window !== slot.Window.window) continue
+        var index = entries.indexOf(candidate.entry)
+        if (index < 0) index = root.entryIndex(entries, candidate.moduleName)
+        var distance = (index - mine) * step
+        if (distance > 0 && distance < nearestDistance) {
+          nearest = candidate
+          nearestDistance = distance
+        }
+      }
+      return nearest
+    }
+
+    function groupedAcrossAnchor(step) {
+      if (!group || shownNeighbour(step)) return false
+      var other = sectionNeighbour(step)
+      return !!other && other.group === group
     }
 
     // Attached, the side groups meet the screen's left and right edges
@@ -2096,8 +2132,8 @@ Item {
       return !!best && best.ownCapsule === true
     }
     readonly property bool padded: capsuled && contentShown && !ownCapsule && !(activeItem && activeItem.capsulePadded === false)
-    readonly property real padStart: padded && !joinsPrevious ? Style.bar.capsulePadding : 0
-    readonly property real padEnd: padded && !joinsNext ? Style.bar.capsulePadding : 0
+    readonly property real padStart: padded && !continuesPrevious ? Style.bar.capsulePadding : 0
+    readonly property real padEnd: padded && !continuesNext ? Style.bar.capsulePadding : 0
     implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth + gap + padStart + padEnd) : 0
     implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight + (root.vertical ? gap + padStart + padEnd : 0) : 0
     width: implicitWidth
@@ -2125,15 +2161,15 @@ Item {
       anchors.topMargin: root.vertical ? (slot.joinsPrevious ? 0 : end) : (slot.topAttached ? 0 : inset)
       anchors.bottomMargin: root.vertical ? (slot.joinsNext ? 0 : end) : inset
       // A small gap between neighbouring capsules, none inside a group
-      anchors.leftMargin: root.vertical ? inset : (slot.joinsPrevious || slot.atScreenStart ? 0 : end)
-      anchors.rightMargin: root.vertical ? inset : (slot.joinsNext || slot.atScreenEnd ? 0 : end)
+      anchors.leftMargin: root.vertical ? inset : (slot.continuesPrevious || slot.atScreenStart ? 0 : end)
+      anchors.rightMargin: root.vertical ? inset : (slot.continuesNext || slot.atScreenEnd ? 0 : end)
       radius: round
-      topLeftRadius: slot.topAttached || slot.joinsPrevious ? 0 : round
-      topRightRadius: slot.topAttached || (root.vertical ? slot.joinsPrevious : slot.joinsNext) ? 0 : round
+      topLeftRadius: slot.topAttached || slot.continuesPrevious ? 0 : round
+      topRightRadius: slot.topAttached || (root.vertical ? slot.continuesPrevious : slot.continuesNext) ? 0 : round
       // An attached panel flush with the group's inner end runs on from here
       readonly property bool panelBelow: root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion
-      bottomLeftRadius: (root.vertical ? slot.joinsNext : slot.joinsPrevious || slot.atScreenStart || panelBelow && root.openCardFlushStart) ? 0 : round
-      bottomRightRadius: slot.joinsNext || slot.atScreenEnd || panelBelow && root.openCardFlushEnd ? 0 : round
+      bottomLeftRadius: (root.vertical ? slot.continuesNext : slot.continuesPrevious || slot.atScreenStart || panelBelow && root.openCardFlushStart) ? 0 : round
+      bottomRightRadius: slot.continuesNext || slot.atScreenEnd || panelBelow && root.openCardFlushEnd ? 0 : round
       // The media, Pomodoro and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
       property color fill: slot.islandPart && (Island.mode !== "" || Island.settling) ? "transparent"
@@ -2180,8 +2216,8 @@ Item {
       readonly property real capsuleLeft: capsuleRect.x
       readonly property real capsuleRight: capsuleRect.x + capsuleRect.width
       readonly property real capsuleBottom: capsuleRect.y + capsuleRect.height
-      readonly property bool atStart: slot.topAttached && capsuleRect.visible && !slot.joinsPrevious && !slot.atScreenStart && !slot.neighbourWraps(-1)
-      readonly property bool atEnd: slot.topAttached && capsuleRect.visible && !slot.joinsNext && !slot.atScreenEnd && !slot.neighbourWraps(1)
+      readonly property bool atStart: slot.topAttached && capsuleRect.visible && !slot.continuesPrevious && !slot.atScreenStart && !slot.neighbourWraps(-1)
+      readonly property bool atEnd: slot.topAttached && capsuleRect.visible && !slot.continuesNext && !slot.atScreenEnd && !slot.neighbourWraps(1)
       // At the screen's edges they fall down its sides, into the room the bar
       // window keeps below the bar; a panel open from the group covers that
       // corner, so they step aside for it
@@ -2242,12 +2278,12 @@ Item {
     // padding, and a pixel short of a neighbour in a group.
     Rectangle {
       readonly property real inset: Style.bar.capsuleInset + Style.space(2)
-      readonly property real grow: slot.joinsPrevious || slot.joinsNext ? -1 : Style.bar.capsulePadding - Style.space(4)
+      readonly property real grow: slot.continuesPrevious || slot.continuesNext ? -1 : Style.bar.capsulePadding - Style.space(4)
       // Never past the capsule's end: as far inside it as it is from the
       // capsule's top and bottom (a widget without end padding would reach out)
       readonly property real endInside: 2 + slot.gap / 2 + Style.space(2)
-      readonly property real startMargin: slot.joinsPrevious ? slot.padStart - grow : Math.max(slot.padStart - grow, endInside)
-      readonly property real endMargin: slot.joinsNext ? slot.padEnd - grow : Math.max(slot.padEnd - grow, endInside)
+      readonly property real startMargin: slot.continuesPrevious ? slot.padStart - grow : Math.max(slot.padStart - grow, endInside)
+      readonly property real endMargin: slot.continuesNext ? slot.padEnd - grow : Math.max(slot.padEnd - grow, endInside)
 
       visible: opacity > 0
       // Attached, a side group takes its open panel's glass instead, all of
