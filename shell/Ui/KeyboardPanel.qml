@@ -220,18 +220,24 @@ PanelWindow {
   // shoulder on that side, and the group squares its corner there
   readonly property bool flushStart: groupFits && !snappedLeft && Math.abs(cardOrigin.x - groupSpan.left) < 0.5
   readonly property bool flushEnd: groupFits && !snappedRight && Math.abs(cardOrigin.x + contentWidth - groupSpan.right) < 0.5
+  // Wider than its group (a widget on its own), it reaches past the group's
+  // end: the group squares its corner there, a fillet joins the group's
+  // side to the card's top, and that free top corner rounds
+  readonly property bool overhangsStart: attached && !!groupSpan && !snappedLeft && cardOrigin.x < groupSpan.left - 0.5
+  readonly property bool overhangsEnd: attached && !!groupSpan && !snappedRight && cardOrigin.x + contentWidth > groupSpan.right + 0.5
+  readonly property real freeCorner: Style.space(18)
   Binding {
     when: root.attached && root.open && root.bar && root.bar.openCardFlushStart !== undefined
     target: root.bar
     property: "openCardFlushStart"
-    value: root.flushStart
+    value: root.flushStart || root.overhangsStart
     restoreMode: Binding.RestoreValue
   }
   Binding {
     when: root.attached && root.open && root.bar && root.bar.openCardFlushEnd !== undefined
     target: root.bar
     property: "openCardFlushEnd"
-    value: root.flushEnd
+    value: root.flushEnd || root.overhangsEnd
     restoreMode: Binding.RestoreValue
   }
 
@@ -466,13 +472,15 @@ PanelWindow {
     readonly property real cardLeft: card.x
     readonly property real cardRight: card.x + card.width
     readonly property real cardTop: card.y
+    readonly property real groupLeft: root.groupSpan ? root.groupSpan.left : 0
+    readonly property real groupRight: root.groupSpan ? root.groupSpan.right : 0
 
     anchors.fill: parent
     visible: root.attached && root.shownHeight > size
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
-      fillColor: root.snappedLeft || root.flushStart ? "transparent" : root.attachedColor
+      fillColor: root.snappedLeft || root.flushStart || root.overhangsStart ? "transparent" : root.attachedColor
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.cardLeft - shoulders.size
@@ -482,7 +490,7 @@ PanelWindow {
       PathArc { x: shoulders.cardLeft - shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
     }
     ShapePath {
-      fillColor: root.snappedRight || root.flushEnd ? "transparent" : root.attachedColor
+      fillColor: root.snappedRight || root.flushEnd || root.overhangsEnd ? "transparent" : root.attachedColor
       strokeWidth: 0
       strokeColor: "transparent"
       startX: shoulders.cardRight + shoulders.size
@@ -490,6 +498,28 @@ PanelWindow {
       PathLine { x: shoulders.cardRight; y: shoulders.cardTop }
       PathLine { x: shoulders.cardRight; y: shoulders.cardTop + shoulders.size }
       PathArc { x: shoulders.cardRight + shoulders.size; y: shoulders.cardTop; radiusX: shoulders.size; radiusY: shoulders.size }
+    }
+    // Reaching past the group: fillets in the corner between the group's
+    // side and the card's top
+    ShapePath {
+      fillColor: root.overhangsStart ? root.attachedColor : "transparent"
+      strokeWidth: 0
+      strokeColor: "transparent"
+      startX: shoulders.groupLeft
+      startY: shoulders.cardTop - shoulders.size
+      PathLine { x: shoulders.groupLeft; y: shoulders.cardTop }
+      PathLine { x: shoulders.groupLeft - shoulders.size; y: shoulders.cardTop }
+      PathArc { x: shoulders.groupLeft; y: shoulders.cardTop - shoulders.size; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
+    }
+    ShapePath {
+      fillColor: root.overhangsEnd ? root.attachedColor : "transparent"
+      strokeWidth: 0
+      strokeColor: "transparent"
+      startX: shoulders.groupRight
+      startY: shoulders.cardTop - shoulders.size
+      PathLine { x: shoulders.groupRight; y: shoulders.cardTop }
+      PathLine { x: shoulders.groupRight + shoulders.size; y: shoulders.cardTop }
+      PathArc { x: shoulders.groupRight; y: shoulders.cardTop - shoulders.size; radiusX: shoulders.size; radiusY: shoulders.size }
     }
   }
 
@@ -512,8 +542,8 @@ PanelWindow {
       anchors.fill: parent
       visible: root.attached
       color: root.attachedColor
-      topLeftRadius: 0
-      topRightRadius: 0
+      topLeftRadius: root.overhangsStart ? root.freeCorner : 0
+      topRightRadius: root.overhangsEnd ? root.freeCorner : 0
       bottomLeftRadius: root.snappedLeft ? 0 : Style.space(18)
       bottomRightRadius: root.snappedRight ? 0 : Style.space(18)
     }
