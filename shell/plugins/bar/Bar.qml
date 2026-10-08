@@ -445,14 +445,18 @@ Item {
     var window = slot ? slot.QsWindow.window : null
     if (!window) return null
     var first = slot, last = slot
-    while (first.continuesPrevious) {
+    // Never more steps than there are slots: mid-rebuild, the slots and the
+    // layout can disagree, and a walk that comes back on itself would hang
+    var steps = moduleSlots.length
+    while (first.continuesPrevious && steps-- > 0) {
       var previous = first.shownNeighbour(-1) || first.sectionNeighbour(-1)
-      if (!previous) break
+      if (!previous || previous === first) break
       first = previous
     }
-    while (last.continuesNext) {
+    steps = moduleSlots.length
+    while (last.continuesNext && steps-- > 0) {
       var next = last.shownNeighbour(1) || last.sectionNeighbour(1)
-      if (!next) break
+      if (!next || next === last) break
       last = next
     }
     // Read for the binding's sake: mapToItem alone doesn't notice them move
@@ -2230,7 +2234,12 @@ Item {
         root.slotGeometrySerial
         if (root.vertical || slot.joinsPrevious || !slot.joinsNext) return null
         var last = slot
-        while (last.joinsNext && last.shownNeighbour(1)) last = last.shownNeighbour(1)
+        // Bounded, as groupSpan's walk is: stale indexes mid-rebuild could loop
+        for (var steps = slot.siblings ? slot.siblings.count : 0; steps > 0 && last.joinsNext; steps--) {
+          var next = last.shownNeighbour(1)
+          if (!next || next === last) break
+          last = next
+        }
         return last
       }
       visible: capsuleRect.visible && tail !== null
