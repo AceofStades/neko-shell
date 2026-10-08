@@ -33,6 +33,12 @@ hl.layer_rule({ match = { namespace = "^neko-keyboard-panel$" }, blur = true, ig
 -- The bar's panels (audio, network, clock...) are popups of the bar surface
 hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } })
 
+-- The lock screen is part of the shell, so a shell that restarts (or crashes)
+-- while the session is locked leaves the lock to the next one. Without this,
+-- Hyprland refuses the new shell's lock as a protocol error, which kills it,
+-- and every relaunch dies the same way.
+hl.config({ misc = { allow_session_lock_restore = true } })
+
 -- Windows round like the shell: its capsules, shoulders and cards are 14
 -- across, and the shell reads this back for the corners that follow Hyprland
 hl.config({ decoration = { rounding = 14 } })
