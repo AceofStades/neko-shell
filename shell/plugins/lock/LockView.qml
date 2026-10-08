@@ -1,52 +1,53 @@
 import QtQuick
-import QtQuick.Effects
+import Quickshell
 import qs.Commons
 import qs.Ui
 
+// Neko's native session lock: the wallpaper stays recognizable, while the
+// clock and authentication controls form one quiet, screen-edge composition.
 Item {
   id: root
 
   property string backgroundPath: ""
   property string videoPosterPath: ""
   property int backgroundVersion: 0
+  property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME") || "user"
   property bool fingerprintConfigured: false
   property bool fingerprintUnavailable: false
+  property bool fingerprintAuthenticating: false
   property bool authenticatingPassword: false
   property string failureMessage: ""
   property int failedAttempts: 0
   property bool inputEnabled: true
   property bool loadBackground: true
-  // A locked session blanks the displays after a few seconds. Nothing is
-  // visible from then until the user wakes it, so a video must not keep
-  // decoding through what is usually the longest part of a lock.
   property bool displaysBlank: false
   property bool powerSaverActive: false
   property string passwordText: ""
   property bool syncingPasswordText: false
+  property real entranceProgress: 0
+  property real errorShake: 0
 
-  readonly property string placeholderText: "Enter Password"
-  readonly property int fieldWidth: 381
-  readonly property int fieldHeight: 67
-  readonly property int outlineThickness: 3
-  readonly property int fieldFontSize: Math.round(Style.font.heading * 1.125)
-  readonly property int passwordDotFontSize: Math.round(Style.font.heading * 1.33)
-  readonly property int passwordDotLetterSpacing: Math.round(Style.font.heading * 0.19)
-  // Space to keep clear on each side of the field for the fingerprint icon
-  // (icon width plus a gap) so the centered dots never run under it.
-  readonly property real fingerprintReserve: fingerprintConfigured ? Math.round(fingerprintIcon.implicitWidth + 12) : 0
-  // Shrink the dots to fit once the password outgrows the field, so every
-  // keystroke stays visible — otherwise long passwords clip with no feedback.
-  readonly property real passwordDotScale: dotMetrics.advanceWidth > 0
-    ? Math.min(1, (passwordInput.width - 4) / dotMetrics.advanceWidth)
-    : 1
-  readonly property bool showPasswordCursor: inputEnabled && !authenticatingPassword && failureMessage.length === 0
-  readonly property bool errorState: failureMessage.length > 0
-  readonly property var inputBorderSpec: errorState
-    ? Border.surfaceSpec("lock", "border-error", NekoColor.lock.borderError, root.outlineThickness, "border-alpha")
-    : Border.surfaceSpec("lock", "border-active", NekoColor.lock.borderActive, root.outlineThickness, "border-alpha")
-
+  readonly property bool compact: width < 760 || height < 620
   readonly property bool video: Util.isVideoPath(root.backgroundPath)
   readonly property bool feedActive: root.video && root.loadBackground && !root.displaysBlank && !root.powerSaverActive
+  readonly property bool errorState: failureMessage.length > 0
+  readonly property bool fieldActive: passwordInput.activeFocus || passwordText.length > 0 || authenticatingPassword
+  readonly property string timeText: Qt.formatDateTime(clock.date, "HH:mm")
+  readonly property string dateText: Qt.formatDateTime(clock.date, "dddd, d MMMM")
+  readonly property string userInitial: userName.length > 0 ? userName.charAt(0).toUpperCase() : "N"
+  readonly property int fieldFontSize: Math.round(Style.font.heading * 0.94)
+  readonly property int passwordDotFontSize: Math.round(Style.font.heading * 1.12)
+  readonly property int passwordDotLetterSpacing: Math.round(Style.font.heading * 0.15)
+  readonly property real passwordDotScale: dotMetrics.advanceWidth > 0
+    ? Math.min(1, (passwordInput.width - 8) / dotMetrics.advanceWidth)
+    : 1
+  readonly property bool showPasswordCursor: inputEnabled && !authenticatingPassword && !errorState
+  readonly property var islandBorderSpec: Border.surfaceSpec("lock", "border", Util.alpha(NekoColor.lock.border, 0.78), 1, "border-alpha")
+  readonly property var inputBorderSpec: errorState
+    ? Border.surfaceSpec("lock", "border-error", NekoColor.lock.borderError, 2, "border-alpha")
+    : fieldActive
+      ? Border.surfaceSpec("lock", "border-active", NekoColor.lock.borderActive, 2, "border-alpha")
+      : Border.surfaceSpec("lock", "border", Util.alpha(NekoColor.lock.border, 0.50), 1, "border-alpha")
 
   signal submitPassword(string password)
   signal passwordTextEdited(string password)
@@ -54,17 +55,9 @@ Item {
   signal wakeRequested()
 
   function forcePasswordFocus() {
-    passwordInput.forceActiveFocus()
+    if (root.inputEnabled) passwordInput.forceActiveFocus()
   }
 
-  function clearPassword() {
-    passwordTextEdited("")
-  }
-
-  // Waking a DPMS-blanked display can stall the compositor for seconds while
-  // the monitor modesets, so the wake key's release arrives late and client-side
-  // key repeat floods the field with that character. A held key has no business
-  // typing a password; only holding Backspace/Delete to clear stays useful.
   function dropsAutoRepeat(key) {
     return key !== Qt.Key_Backspace && key !== Qt.Key_Delete
   }
@@ -76,17 +69,55 @@ Item {
     syncingPasswordText = false
   }
 
-  onPasswordTextChanged: syncPasswordText()
-  onInputEnabledChanged: {
-    if (inputEnabled) Qt.callLater(forcePasswordFocus)
-  }
-  Component.onCompleted: {
-    syncPasswordText()
+  function startEntrance() {
+    entranceAnimation.stop()
+    entranceProgress = Style.reduceMotion ? 1 : 0
+    if (!Style.reduceMotion) entranceAnimation.start()
     if (inputEnabled) Qt.callLater(forcePasswordFocus)
   }
 
-  // Measures the masked password at full size; passwordDotScale compares this
-  // against the field width to decide how far the dots must shrink to fit.
+  function submitCurrentPassword() {
+    var submitted = root.passwordText
+    root.passwordTextEdited("")
+    if (submitted.length > 0) root.submitPassword(submitted)
+  }
+
+  onPasswordTextChanged: syncPasswordText()
+  onInputEnabledChanged: if (inputEnabled) Qt.callLater(forcePasswordFocus)
+  onLoadBackgroundChanged: if (loadBackground) startEntrance()
+  onFailureMessageChanged: {
+    if (failureMessage.length > 0 && !Style.reduceMotion) errorAnimation.restart()
+  }
+
+  Component.onCompleted: {
+    syncPasswordText()
+    if (loadBackground) startEntrance()
+  }
+
+  NumberAnimation {
+    id: entranceAnimation
+    target: root
+    property: "entranceProgress"
+    from: 0
+    to: 1
+    duration: Style.duration(820)
+    easing.type: Easing.OutCubic
+  }
+
+  SequentialAnimation {
+    id: errorAnimation
+    NumberAnimation { target: root; property: "errorShake"; to: -12; duration: 55; easing.type: Easing.OutQuad }
+    NumberAnimation { target: root; property: "errorShake"; to: 10; duration: 72; easing.type: Easing.InOutQuad }
+    NumberAnimation { target: root; property: "errorShake"; to: -7; duration: 68; easing.type: Easing.InOutQuad }
+    NumberAnimation { target: root; property: "errorShake"; to: 4; duration: 62; easing.type: Easing.InOutQuad }
+    NumberAnimation { target: root; property: "errorShake"; to: 0; duration: 82; easing.type: Easing.OutQuad }
+  }
+
+  SystemClock {
+    id: clock
+    precision: SystemClock.Minutes
+  }
+
   TextMetrics {
     id: dotMetrics
     font.family: Style.font.family
@@ -105,28 +136,12 @@ Item {
       anchors.fill: parent
       path: root.loadBackground ? (root.video ? root.videoPosterPath : root.backgroundPath) : ""
       version: root.backgroundVersion
-      // Decode only once sized, at the lock's own size: an unsized first
-      // request decoded the file at its native resolution, then again once
-      // sized. That size is what the lock service keeps decoded ahead of the
-      // lock, so the first frame has the wallpaper.
       cached: true
       constrainDecode: true
       decodeSize: Qt.size(width, height)
+      scale: 1.025 - 0.025 * root.entranceProgress
     }
 
-    MultiEffect {
-      anchors.fill: wallpaper
-      source: wallpaper
-      autoPaddingEnabled: false
-      blurEnabled: root.loadBackground && wallpaper.ready
-      blur: 1.0
-      blurMax: 128
-      blurMultiplier: 1.25
-      contrast: -0.08
-    }
-
-    // The cached poster stays behind the feed when policy pauses playback,
-    // the module is unavailable, or a new connection has not received a frame.
     Loader {
       id: feedLoader
       objectName: "lockFeedLoader"
@@ -134,143 +149,339 @@ Item {
       active: root.feedActive
       source: "LockFeedSurface.qml"
       visible: status === Loader.Ready
+      scale: wallpaper.scale
     }
 
-    // The feed item cannot be sampled by MultiEffect on every renderer.
-    // Keep video wallpapers visible and darken them slightly for legibility.
+    // Only the screen edges are shaded. The artwork remains crisp and visible
+    // through the center instead of becoming an anonymous blur.
     Rectangle {
-      anchors.fill: feedLoader
-      visible: root.video
-      color: "#22000000"
+      anchors.fill: parent
+      gradient: Gradient {
+        GradientStop { position: 0.0; color: Util.alpha(NekoColor.background, 0.38) }
+        GradientStop { position: 0.19; color: Util.alpha(NekoColor.background, 0.06) }
+        GradientStop { position: 0.68; color: Util.alpha(NekoColor.background, 0.04) }
+        GradientStop { position: 1.0; color: Util.alpha(NekoColor.background, 0.56) }
+      }
     }
 
     MouseArea {
       anchors.fill: parent
       hoverEnabled: true
-      onClicked: { root.wakeRequested(); root.forcePasswordFocus() }
+      onClicked: {
+        root.wakeRequested()
+        root.forcePasswordFocus()
+      }
       onPositionChanged: root.wakeRequested()
     }
 
-    BorderSurface {
-      id: inputField
-      width: root.fieldWidth
-      height: root.fieldHeight
-      anchors.centerIn: parent
-      color: NekoColor.lock.background
-      borderSpec: root.inputBorderSpec
-      radius: Style.cornerRadius
-      clip: true
+    Column {
+      id: clockStage
+      anchors.top: parent.top
+      anchors.topMargin: root.compact ? 44 : Math.max(62, root.height * 0.07)
+      anchors.horizontalCenter: parent.horizontalCenter
+      spacing: root.compact ? -1 : 2
+      opacity: Math.max(0, (root.entranceProgress - 0.01) / 0.70)
+      transform: Translate { y: (1 - root.entranceProgress) * -30 }
 
-      TextInput {
-        id: passwordInput
-        anchors.fill: parent
-        anchors.topMargin: inputField.borderTop
-        // Reserve the fingerprint icon's width on both sides so the centered
-        // dots stay symmetric and never slide under the icon as they grow.
-        anchors.rightMargin: inputField.borderRight + 18 + root.fingerprintReserve
-        anchors.bottomMargin: inputField.borderBottom
-        anchors.leftMargin: inputField.borderLeft + 18 + root.fingerprintReserve
-        verticalAlignment: TextInput.AlignVCenter
-        horizontalAlignment: TextInput.AlignHCenter
-        activeFocusOnPress: true
-        clip: true
-        enabled: root.inputEnabled && !root.authenticatingPassword
-        readOnly: root.authenticatingPassword
-        echoMode: TextInput.Password
-        passwordCharacter: "\u25CF"
-        passwordMaskDelay: 0
-        color: NekoColor.lock.text
-        selectionColor: NekoColor.lock.selection
-        selectedTextColor: NekoColor.lock.text
+      Text {
+        anchors.horizontalCenter: parent.horizontalCenter
+        text: root.dateText.toUpperCase()
+        color: Util.alpha(NekoColor.foreground, 0.78)
         font.family: Style.font.family
-        font.pixelSize: text.length > 0 ? Math.max(1, Math.floor(root.passwordDotFontSize * root.passwordDotScale)) : root.fieldFontSize
-        font.letterSpacing: text.length > 0 ? root.passwordDotLetterSpacing * root.passwordDotScale : 0
-        cursorVisible: activeFocus && root.showPasswordCursor && text.length > 0
-        cursorDelegate: Rectangle {
-          width: 2
-          color: NekoColor.lock.text
-          visible: passwordInput.cursorVisible
-        }
-
-        onTextChanged: {
-          if (!root.syncingPasswordText) root.passwordTextEdited(text)
-          if (text.length > 0) {
-            root.wakeRequested()
-          }
-          if (text.length > 0 && root.failureMessage.length > 0) root.clearFailureRequested()
-        }
-
-        onAccepted: {
-          var submitted = root.passwordText
-          root.passwordTextEdited("")
-          if (submitted.length > 0) root.submitPassword(submitted)
-        }
-
-        Keys.onPressed: function(event) {
-          root.wakeRequested()
-          if (event.isAutoRepeat && root.dropsAutoRepeat(event.key)) {
-            event.accepted = true
-            return
-          }
-          if (event.key === Qt.Key_Escape || (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_U)) {
-            root.passwordTextEdited("")
-            event.accepted = true
-          }
-        }
+        font.pixelSize: root.compact ? Style.font.bodySmall : Style.font.subtitle
+        font.weight: Font.DemiBold
+        font.letterSpacing: 2.0
       }
 
       Text {
-        textFormat: Text.PlainText
-        anchors.fill: passwordInput
-        text: root.authenticatingPassword ? "Checking…" : (root.failureMessage.length > 0 ? root.failureMessage : root.placeholderText)
-        visible: passwordInput.text.length === 0
-        color: root.authenticatingPassword ? NekoColor.lock.text : (root.failureMessage.length > 0 ? NekoColor.lock.textError : NekoColor.lock.placeholder)
+        anchors.horizontalCenter: parent.horizontalCenter
+        text: root.timeText
+        color: NekoColor.foreground
         font.family: Style.font.family
-        font.pixelSize: root.fieldFontSize
-        font.italic: !root.authenticatingPassword && root.failureMessage.length > 0
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideRight
+        font.pixelSize: root.compact ? 76 : Math.min(154, root.height * 0.135)
+        font.weight: Font.ExtraLight
+        font.letterSpacing: -4
+        style: Text.Raised
+        styleColor: Util.alpha(NekoColor.background, 0.22)
       }
 
-      // Fingerprint hint pinned inside the field's right edge when a sensor is
-      // enrolled, so the user knows they can touch to unlock instead of typing.
-      // Matches hyprlock, which draws its fingerprint icon in the same spot.
-      // A reader the shell cannot reach crosses out rather than disappears, so
-      // it stops inviting touches that can never unlock.
-      Text {
-        id: fingerprintIcon
-        objectName: "fingerprintIndicator"
-        textFormat: Text.PlainText
-        anchors.right: parent.right
-        anchors.rightMargin: inputField.borderRight + 18
-        anchors.verticalCenter: parent.verticalCenter
-        visible: root.fingerprintConfigured
-        text: root.fingerprintUnavailable ? "󰺱" : "󰈷"
-        color: root.fingerprintUnavailable ? NekoColor.lock.textError : NekoColor.lock.placeholder
-        font.family: Style.font.family
-        font.pixelSize: Math.round(root.fieldFontSize * 1.1)
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
+      Row {
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: 8
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: "󰌾"
+          color: NekoColor.accent
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+        }
+
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: "NEKO SESSION LOCKED"
+          color: Util.alpha(NekoColor.foreground, 0.66)
+          font.family: Style.font.family
+          font.pixelSize: Style.font.caption
+          font.weight: Font.DemiBold
+          font.letterSpacing: 1.5
+        }
       }
     }
 
-    // The crossed-out icon has no meaning to a user who has never seen it — it
-    // is not intuitive that it signals a broken reader — so the words carry the
-    // explanation and the icon only reinforces it.
+    Item {
+      id: unlockStage
+      width: Math.min(root.compact ? 520 : 680, root.width - 32)
+      height: root.compact ? 82 : 98
+      anchors.bottom: parent.bottom
+      anchors.bottomMargin: root.compact ? 34 : Math.max(52, root.height * 0.055)
+      anchors.horizontalCenter: parent.horizontalCenter
+      opacity: Math.max(0, (root.entranceProgress - 0.16) / 0.84)
+      scale: 0.94 + 0.06 * root.entranceProgress
+      transform: Translate {
+        x: root.errorShake
+        y: (1 - root.entranceProgress) * 46
+      }
+
+      BorderSurface {
+        id: authIsland
+        anchors.fill: parent
+        radius: height / 2
+        color: NekoColor.lock.background
+        borderSpec: root.islandBorderSpec
+
+        Rectangle {
+          anchors.fill: parent
+          anchors.margins: 1
+          radius: authIsland.radius - 1
+          color: Util.alpha(NekoColor.foreground, 0.025)
+        }
+
+        Row {
+          anchors.fill: parent
+          anchors.leftMargin: root.compact ? 13 : 17
+          anchors.rightMargin: root.compact ? 13 : 17
+          anchors.topMargin: root.compact ? 11 : 15
+          anchors.bottomMargin: root.compact ? 11 : 15
+          spacing: root.compact ? 10 : 14
+
+          Rectangle {
+            id: avatar
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.height
+            height: width
+            radius: width / 2
+            color: Util.alpha(NekoColor.accent, 0.16)
+            border.width: 1
+            border.color: Util.alpha(NekoColor.accent, 0.70)
+
+            Text {
+              anchors.centerIn: parent
+              text: root.userInitial
+              color: NekoColor.accent
+              font.family: Style.font.family
+              font.pixelSize: root.compact ? Style.font.title : Style.font.heading
+              font.weight: Font.Bold
+            }
+          }
+
+          Column {
+            anchors.verticalCenter: parent.verticalCenter
+            width: root.compact ? 125 : 158
+            spacing: 2
+
+            Text {
+              width: parent.width
+              text: root.userName
+              color: NekoColor.lock.text
+              elide: Text.ElideRight
+              font.family: Style.font.family
+              font.pixelSize: root.compact ? Style.font.body : Style.font.title
+              font.weight: Font.DemiBold
+            }
+
+            Text {
+              width: parent.width
+              text: root.fingerprintUnavailable ? "Sensor unavailable"
+                : root.fingerprintConfigured ? "Touch or type to unlock"
+                : root.inputEnabled ? "Enter password" : "Lock preview"
+              color: root.fingerprintUnavailable ? NekoColor.lock.textError : NekoColor.lock.placeholder
+              elide: Text.ElideRight
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+            }
+          }
+
+          Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 1
+            height: parent.height * 0.62
+            color: Util.alpha(NekoColor.lock.text, 0.16)
+          }
+
+          BorderSurface {
+            id: inputField
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - avatar.width - (root.compact ? 125 : 158) - 1 - parent.spacing * 3
+            height: parent.height
+            radius: height / 2
+            color: Util.alpha(NekoColor.background, 0.48)
+            borderSpec: root.inputBorderSpec
+            clip: true
+
+            Text {
+              anchors.left: parent.left
+              anchors.leftMargin: root.compact ? 16 : 20
+              anchors.verticalCenter: parent.verticalCenter
+              text: root.errorState ? "󰌾" : "󰌽"
+              color: root.errorState ? NekoColor.lock.textError : (root.fieldActive ? NekoColor.accent : NekoColor.lock.placeholder)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.icon
+              Behavior on color { ColorAnimation { duration: Style.duration(150) } }
+            }
+
+            TextInput {
+              id: passwordInput
+              anchors.fill: parent
+              anchors.leftMargin: root.compact ? 48 : 54
+              anchors.rightMargin: root.compact ? 50 : 58
+              verticalAlignment: TextInput.AlignVCenter
+              horizontalAlignment: TextInput.AlignLeft
+              activeFocusOnPress: true
+              clip: true
+              enabled: root.inputEnabled && !root.authenticatingPassword
+              readOnly: root.authenticatingPassword
+              echoMode: TextInput.Password
+              passwordCharacter: "\u25CF"
+              passwordMaskDelay: 0
+              color: NekoColor.lock.text
+              selectionColor: NekoColor.lock.selection
+              selectedTextColor: NekoColor.lock.text
+              font.family: Style.font.family
+              font.pixelSize: text.length > 0 ? Math.max(1, Math.floor(root.passwordDotFontSize * root.passwordDotScale)) : root.fieldFontSize
+              font.letterSpacing: text.length > 0 ? root.passwordDotLetterSpacing * root.passwordDotScale : 0
+              cursorVisible: activeFocus && root.showPasswordCursor && text.length > 0
+              cursorDelegate: Rectangle {
+                width: 2
+                color: NekoColor.lock.text
+                visible: passwordInput.cursorVisible
+              }
+
+              onTextChanged: {
+                if (!root.syncingPasswordText) root.passwordTextEdited(text)
+                if (text.length > 0) root.wakeRequested()
+                if (text.length > 0 && root.failureMessage.length > 0) root.clearFailureRequested()
+              }
+              onAccepted: root.submitCurrentPassword()
+
+              Keys.onPressed: function(event) {
+                root.wakeRequested()
+                if (event.isAutoRepeat && root.dropsAutoRepeat(event.key)) {
+                  event.accepted = true
+                  return
+                }
+                if (event.key === Qt.Key_Escape || (event.modifiers & Qt.ControlModifier && event.key === Qt.Key_U)) {
+                  root.passwordTextEdited("")
+                  event.accepted = true
+                }
+              }
+            }
+
+            Text {
+              anchors.fill: passwordInput
+              text: root.authenticatingPassword ? "Checking…"
+                : root.errorState ? root.failureMessage
+                : "Password"
+              visible: passwordInput.text.length === 0
+              color: root.errorState ? NekoColor.lock.textError : NekoColor.lock.placeholder
+              font.family: Style.font.family
+              font.pixelSize: root.fieldFontSize
+              verticalAlignment: Text.AlignVCenter
+              elide: Text.ElideRight
+            }
+
+            Rectangle {
+              anchors.right: parent.right
+              anchors.rightMargin: root.compact ? 8 : 10
+              anchors.verticalCenter: parent.verticalCenter
+              width: root.compact ? 34 : 40
+              height: width
+              radius: width / 2
+              color: root.passwordText.length > 0 || root.authenticatingPassword || root.fingerprintConfigured
+                ? Util.alpha(root.fingerprintUnavailable ? NekoColor.lock.textError : NekoColor.accent, 0.16)
+                : "transparent"
+
+              Rectangle {
+                anchors.fill: parent
+                radius: width / 2
+                color: "transparent"
+                border.width: 1
+                border.color: Util.alpha(NekoColor.accent, 0.48)
+                visible: root.fingerprintConfigured && root.fingerprintAuthenticating && root.passwordText.length === 0 && !root.fingerprintUnavailable
+
+                SequentialAnimation on scale {
+                  running: parent.visible && !Style.reduceMotion
+                  loops: Animation.Infinite
+                  NumberAnimation { from: 0.82; to: 1.18; duration: 720; easing.type: Easing.OutCubic }
+                  NumberAnimation { to: 0.82; duration: 720; easing.type: Easing.InCubic }
+                }
+                SequentialAnimation on opacity {
+                  running: parent.visible && !Style.reduceMotion
+                  loops: Animation.Infinite
+                  NumberAnimation { from: 0.9; to: 0.22; duration: 720; easing.type: Easing.OutCubic }
+                  NumberAnimation { to: 0.9; duration: 720; easing.type: Easing.InCubic }
+                }
+              }
+
+              Text {
+                id: actionGlyph
+                anchors.centerIn: parent
+                text: root.authenticatingPassword ? "󰔟"
+                  : root.passwordText.length > 0 ? "→"
+                  : root.fingerprintUnavailable ? "󰺱"
+                  : root.fingerprintConfigured ? "󰈷" : "→"
+                color: root.fingerprintUnavailable ? NekoColor.lock.textError
+                  : root.passwordText.length > 0 || root.authenticatingPassword || root.fingerprintConfigured
+                    ? NekoColor.accent : NekoColor.lock.placeholder
+                font.family: Style.font.family
+                font.pixelSize: root.authenticatingPassword || (root.fingerprintConfigured && root.passwordText.length === 0)
+                  ? Style.font.icon : Style.font.heading
+                font.weight: Font.DemiBold
+
+                RotationAnimation on rotation {
+                  running: root.authenticatingPassword && !Style.reduceMotion
+                  from: 0
+                  to: 360
+                  duration: 800
+                  loops: Animation.Infinite
+                }
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                enabled: root.passwordText.length > 0 && !root.authenticatingPassword
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: {
+                  root.wakeRequested()
+                  root.submitCurrentPassword()
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
     Text {
-      objectName: "fingerprintUnavailableNotice"
-      textFormat: Text.PlainText
-      anchors.top: inputField.bottom
-      anchors.topMargin: 18
-      anchors.horizontalCenter: inputField.horizontalCenter
-      visible: root.fingerprintConfigured && root.fingerprintUnavailable
-      text: "Fingerprint reader unavailable"
-      color: NekoColor.lock.textError
+      anchors.bottom: unlockStage.top
+      anchors.bottomMargin: root.compact ? 10 : 14
+      anchors.horizontalCenter: parent.horizontalCenter
+      text: root.inputEnabled ? "Press Enter to unlock  ·  Esc to clear" : "Preview — click anywhere to close"
+      color: Util.alpha(NekoColor.foreground, 0.62)
       font.family: Style.font.family
-      font.pixelSize: Style.font.heading
-      font.italic: true
-      horizontalAlignment: Text.AlignHCenter
+      font.pixelSize: Style.font.caption
+      font.letterSpacing: 0.6
+      opacity: Math.max(0, (root.entranceProgress - 0.34) / 0.66)
     }
   }
 }
