@@ -34,15 +34,15 @@ BarWidget {
     return playing || spotify || players[0] || null
   }
   readonly property bool spotifyPlayer: !!player && (String(player.identity || "") + " " + String(player.desktopEntry || "") + " " + String(player.dbusName || "")).toLowerCase().indexOf("spotify") >= 0
+  readonly property bool chromePlayer: !!player && /(^|[^a-z])chrome([^a-z]|$)/i.test(String(player.identity || "") + " " + String(player.desktopEntry || "") + " " + String(player.dbusName || ""))
   readonly property bool playing: !!player && player.isPlaying
-  readonly property string iconUrl: player && !spotifyPlayer ? iconFor(player) : ""
+  readonly property string iconUrl: player && !spotifyPlayer && !chromePlayer ? iconFor(player) : ""
 
   function iconFor(player) {
     var identity = String(player.identity || "")
     var desktopEntry = String(player.desktopEntry || "")
     var dbusApp = String(player.dbusName || "").replace(/^org\.mpris\.MediaPlayer2\./, "").replace(/\.instance.*$/, "")
-    var chrome = /(^|[^a-z])chrome([^a-z]|$)/i.test(identity + " " + desktopEntry + " " + dbusApp)
-    var names = chrome ? ["google-chrome", "com.google.Chrome"] : []
+    var names = []
     var raw = [desktopEntry, identity, MediaModel.playerAppLabel(player), dbusApp]
     for (var i = 0; i < raw.length; i++) {
       var name = String(raw[i] || "").trim()
@@ -192,14 +192,35 @@ BarWidget {
         }
 
         Text {
+          id: fallbackIcon
           anchors.centerIn: parent
-          visible: root.spotifyPlayer || appIcon.status !== Image.Ready
+          visible: root.spotifyPlayer || root.chromePlayer || appIcon.status !== Image.Ready
           text: root.spotifyPlayer ? "󰓇" : "󰝚"
           color: root.playing ? (root.spotifyPlayer ? "#1ed760" : NekoColor.accent) : button.foreground
           opacity: root.playing ? 1 : 0.6
+          scale: root.playing && !root.spotifyPlayer ? beatScale : 1
+          rotation: root.playing && !root.spotifyPlayer ? beatTilt : 0
           font.family: button.fontFamily
           font.pixelSize: Style.bar.iconFont
+          property real beatScale: 1
+          property real beatTilt: 0
           Behavior on color { ColorAnimation { duration: Style.duration(200) } }
+
+          SequentialAnimation on beatScale {
+            running: root.playing && !root.spotifyPlayer && fallbackIcon.visible && !Style.reduceMotion
+            loops: Animation.Infinite
+            NumberAnimation { from: 1; to: 1.17; duration: 170; easing.type: Easing.OutCubic }
+            NumberAnimation { to: 1; duration: 220; easing.type: Easing.InOutCubic }
+            PauseAnimation { duration: 170 }
+          }
+
+          SequentialAnimation on beatTilt {
+            running: root.playing && !root.spotifyPlayer && fallbackIcon.visible && !Style.reduceMotion
+            loops: Animation.Infinite
+            NumberAnimation { from: -5; to: 5; duration: 195; easing.type: Easing.InOutSine }
+            NumberAnimation { to: -5; duration: 195; easing.type: Easing.InOutSine }
+            PauseAnimation { duration: 170 }
+          }
         }
       }
 
