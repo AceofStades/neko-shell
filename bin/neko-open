@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# neko:summary=Open a panel or window of the shell (settings, control-center, network...)
+# neko:args=<name> [json]
+# neko:examples=neko open settings | neko open control-center | neko open settings '{"tab":"widgets"}'
+
+set -uo pipefail
+
+name=${1:-}
+[[ -n $name ]] || { echo "Usage: neko open <name> [json]" >&2; exit 1; }
+[[ $name == *.* ]] || name="neko.$name"
+# A bar widget's panel opens through its own target; a window (settings,
+# the menu) through the shell
+if (( $# < 2 )) && neko-shell "$name" open >/dev/null 2>&1; then
+  exit 0
+fi
+neko-shell shell summon "$name" "${2:-"{}"}" >/dev/null

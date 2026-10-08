@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# neko:summary=Close a panel or window of the shell
+# neko:args=<name>
+# neko:examples=neko close settings | neko close control-center
+
+set -uo pipefail
+
+name=${1:-}
+[[ -n $name ]] || { echo "Usage: neko close <name>" >&2; exit 1; }
+[[ $name == *.* ]] || name="neko.$name"
+if neko-shell "$name" close >/dev/null 2>&1; then
+  exit 0
+fi
+neko-shell shell hide "$name" >/dev/null

@@ -64,6 +64,9 @@ GROUP_DESCRIPTIONS[theme]="Theme management"
 GROUP_DESCRIPTIONS[toggle]="Toggle Neko features"
 GROUP_DESCRIPTIONS[weather]="Weather status"
 GROUP_DESCRIPTIONS[lid]="Laptop lid and clamshell handling"
+GROUP_DESCRIPTIONS[lock]="Lock the screen, or bring a crashed lock screen back"
+GROUP_DESCRIPTIONS[open]="Open a panel or window of the shell"
+GROUP_DESCRIPTIONS[close]="Close a panel or window of the shell"
 GROUP_DESCRIPTIONS[session]="Start, stop and restart neko as the session's shell"
 GROUP_DESCRIPTIONS[settings]="Read and change neko's settings"
 GROUP_DESCRIPTIONS[show]="Small display helpers"
@@ -332,17 +335,29 @@ group_has_binary_commands() {
   group_has_child_commands "$group"
 }
 
+# Args may list alternatives (" | "); one that's all optional means the
+# command runs with none (neko settings opens the window)
 command_requires_args() {
   local key="$1"
-  local args="${COMMAND_ARGS[$key]}"
-  local required="$args"
+  local rest="${COMMAND_ARGS[$key]}"
+  local alternatives=()
+  local alternative required
 
-  while [[ $required =~ ^(.*)\[[^][]*\](.*)$ ]]; do
-    required="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+  while [[ $rest == *" | "* ]]; do
+    alternatives+=("${rest%% | *}")
+    rest="${rest#* | }"
   done
+  alternatives+=("$rest")
 
-  required="${required// /}"
-  [[ -n $required ]]
+  for alternative in "${alternatives[@]}"; do
+    required="$alternative"
+    while [[ $required =~ ^(.*)\[[^][]*\](.*)$ ]]; do
+      required="${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
+    done
+    required="${required// /}"
+    [[ -z $required ]] && return 1
+  done
+  return 0
 }
 
 # A command whose documented arguments are all flags can't take a word, so a
@@ -514,12 +529,16 @@ Usage:
   neko <group> <command> --help
 
 Common commands:
+  neko settings            Open the settings window
+  neko open <panel>        Open a panel (control-center, network, settings...)
+  neko lock                Lock the screen; neko lock restart brings a crashed one back
   neko session restart     Reload the shell after changing its code
   neko wallpaper pick      Pick a wallpaper
-  neko wallpaper random    Set a random wallpaper
   neko theme material      Theme neko from the wallpaper
-  neko settings toggle <setting>  Flip a setting (bar.float, bar.capsules, app.gtk...)
   neko menu keybindings    Show the keybindings cheat sheet
+
+Anything else goes to the running shell, as neko <target> <method> [args]:
+  neko pomodoro start, neko network open, neko notifications toggleDnd
 
 Groups:
 EOF
@@ -1008,6 +1027,28 @@ dispatch_fast_or_help() {
   dispatch_or_help "$@"
 }
 
+# What isn't a command goes to the running shell as <target> <method> [args]:
+# neko pomodoro start, or neko network open for a widget's target
+# (neko.network). 0 when the shell ran it, 1 when it refused it (said so),
+# 2 when no target by that name answered.
+ipc_fallback() {
+  (( $# >= 2 )) || return 2
+  local target output status
+  for target in "$1" "neko.$1"; do
+    [[ $target == "neko.$1" && $1 == *.* ]] && continue
+    output=$("$NEKO_BIN_DIR/neko-shell" "$target" "${@:2}" 2>&1)
+    status=$?
+    if (( status == 0 )); then
+      [[ -n $output ]] && printf '%s\n' "$output"
+      return 0
+    fi
+    [[ $output == "Target not found." ]] && continue
+    printf 'neko %s: %s\n' "$*" "$output" >&2
+    return 1
+  done
+  return 2
+}
+
 dispatch_or_help() {
   local args=("$@")
   local remaining=()
@@ -1059,6 +1100,12 @@ dispatch_or_help() {
   if show_prefix_help "neko ${args[*]}"; then
     return 0
   fi
+
+  ipc_fallback "${args[@]}"
+  case $? in
+    0) return 0 ;;
+    1) return 1 ;;
+  esac
 
   echo "Unknown Neko command: neko ${args[*]}" >&2
   suggestion=$(suggest_command "${args[0]}")

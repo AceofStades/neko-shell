@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# neko:summary=Read and change neko's settings (what the Settings menu uses)
-# neko:args=<get|is|set|toggle> <key> [value] | json
-# neko:examples=neko-settings set colors material|neko-settings set bar.style attached|neko-settings toggle bar.capsules|neko-settings is app.btop on
+# neko:summary=Open the settings window, or read and change neko's settings
+# neko:args=[tab] | <get|is|set|toggle> <key> [value] | json
+# neko:examples=neko settings | neko settings widgets | neko settings set colors material | neko settings toggle bar.capsules | neko settings is app.btop on
 
 # Keys:
 #   colors        material (from the wallpaper) | neko (the fixed palette)
@@ -307,7 +307,11 @@ json() {
     }'
 }
 
-case $1 in
+case ${1:-} in
+  # The window, on a tab when one's named
+  "" | appearance | bar | widgets | wallpaper | system | calendars | apps)
+    neko-shell shell summon neko.settings "{\"tab\":\"${1:-appearance}\"}" >/dev/null
+    ;;
   json) json ;;
   get) get "$2" ;;
   is)
