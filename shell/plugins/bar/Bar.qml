@@ -447,16 +447,21 @@ Item {
     var first = slot, last = slot
     // Never more steps than there are slots: mid-rebuild, the slots and the
     // layout can disagree, and a walk that comes back on itself would hang
+    // A slot on its way out mid-rebuild has lost its functions: stop there
+    function live(candidate) {
+      return !!candidate && typeof candidate.shownNeighbour === "function" && typeof candidate.sectionNeighbour === "function"
+    }
+    if (!live(slot)) return null
     var steps = moduleSlots.length
     while (first.continuesPrevious && steps-- > 0) {
       var previous = first.shownNeighbour(-1) || first.sectionNeighbour(-1)
-      if (!previous || previous === first) break
+      if (!live(previous) || previous === first) break
       first = previous
     }
     steps = moduleSlots.length
     while (last.continuesNext && steps-- > 0) {
       var next = last.shownNeighbour(1) || last.sectionNeighbour(1)
-      if (!next || next === last) break
+      if (!live(next) || next === last) break
       last = next
     }
     // Read for the binding's sake: mapToItem alone doesn't notice them move
@@ -2237,7 +2242,7 @@ Item {
         // Bounded, as groupSpan's walk is: stale indexes mid-rebuild could loop
         for (var steps = slot.siblings ? slot.siblings.count : 0; steps > 0 && last.joinsNext; steps--) {
           var next = last.shownNeighbour(1)
-          if (!next || next === last) break
+          if (!next || next === last || typeof next.shownNeighbour !== "function") break
           last = next
         }
         return last
