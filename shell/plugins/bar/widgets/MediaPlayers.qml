@@ -15,9 +15,19 @@ BarWidget {
   readonly property bool integrated: setting("integrated", false) === true
   readonly property bool ownCapsule: !root.integrated
 
+  // A browser plays all sorts; only what a music site describes as music
+  // counts (YouTube Music, Spotify's web player and the like give an album,
+  // a video doesn't), so a YouTube video stays out of it
+  function isBrowser(p) {
+    return /chrom|firefox|brave|vivaldi|opera|edge|zen|librewolf|floorp|qutebrowser|epiphany|falkon/i
+      .test(String(p.identity || "") + " " + String(p.desktopEntry || "") + " " + String(p.dbusName || ""))
+  }
+  function isMusic(p) {
+    return !isBrowser(p) || String(p.trackAlbum || "").trim() !== ""
+  }
   readonly property var players: {
     var all = Mpris.players ? Mpris.players.values : []
-    return all.filter(function(p) { return p && !MediaModel.isProxyPlayer(p) && MediaModel.hasTrackMetadata(p) })
+    return all.filter(function(p) { return p && !MediaModel.isProxyPlayer(p) && MediaModel.hasTrackMetadata(p) && root.isMusic(p) })
   }
   readonly property var player: {
     var playing = null
@@ -65,7 +75,25 @@ BarWidget {
     return ""
   }
 
-  visible: player !== null && !root.vertical
+  // Up while music plays and for a minute after it pauses, so it can be
+  // picked up again; then out of the way until something plays
+  property bool recentlyPlaying: false
+  onPlayingChanged: {
+    if (playing) {
+      pauseGrace.stop()
+      recentlyPlaying = true
+    } else {
+      pauseGrace.restart()
+    }
+  }
+  Timer {
+    id: pauseGrace
+    interval: 60000
+    onTriggered: root.recentlyPlaying = root.playing
+  }
+  readonly property bool inUse: playing || recentlyPlaying || (Island.mode === "media" && Island.mediaPlayer === player)
+
+  visible: player !== null && inUse && !root.vertical
   enabled: Island.mode === "" || Island.mode === "media"
   // Tucked behind the workspaces' capsule while the island is out: it slips
   // in at once as the island takes over, and slides back out from behind
