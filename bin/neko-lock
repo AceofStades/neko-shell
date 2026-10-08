@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# neko:summary=Lock the screen, or bring a crashed lock screen back
+# neko:args=[now|restart|preview|status]
+# neko:examples=neko lock | neko lock restart | neko lock preview | neko lock status
+
+# neko lock restart is the way back from a lock screen that died: Hyprland
+# keeps the session locked behind its failsafe screen, so from a TTY
+# (Ctrl+Alt+F2, log in) this lets a new shell take the lock over and starts
+# one, whose lock screen comes up in its place. It works from inside the
+# session too.
+
+set -uo pipefail
+
+export NEKO_PATH=${NEKO_PATH:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}
+export PATH="$NEKO_PATH/bin:$PATH"
+
+fail() {
+  echo "neko lock: $1" >&2
+  exit 1
+}
+
+# From a TTY nothing says which Hyprland to talk to; take the running one
+find_hyprland() {
+  [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] && return 0
+  local signature
+  signature=$(hyprctl instances -j 2>/dev/null | jq -r '.[0].instance // empty' 2>/dev/null)
+  [[ -n $signature ]] || return 1
+  export HYPRLAND_INSTANCE_SIGNATURE=$signature
+}
+
+restart_lock() {
+  find_hyprland || fail "no running Hyprland found"
+  # Without this Hyprland refuses a lock from anyone but the client that died
+  hyprctl eval 'hl.config({ misc = { allow_session_lock_restore = true } })' >/dev/null ||
+    fail "could not reach Hyprland"
+  if ! neko-hyprland-session-locked; then
+    neko-session restart >/dev/null || fail "the shell did not restart"
+    echo "The session wasn't locked; the shell has been restarted."
+    return 0
+  fi
+  echo "Restarting the shell; its lock screen takes the lock back over..."
+  neko-session restart >/dev/null || fail "the shell did not restart"
+
+  local status=""
+  for _ in {1..40}; do
+    sleep 0.25
+    status=$(neko-shell lock status 2>/dev/null) || continue
+    if [[ $(jq -r '.secure' <<<"$status" 2>/dev/null) == "true" ]]; then
+      echo "Locked again: unlock on screen as usual."
+      return 0
+    fi
+  done
+  fail "the shell is back but its lock screen hasn't taken over; try again, or check 'journalctl --user -t neko-shell'"
+}
+
+case ${1:-now} in
+  now)
+    exec neko-system-lock
+    ;;
+  restart)
+    restart_lock
+    ;;
+  preview | status)
+    exec neko-shell lock "$1"
+    ;;
+  -h | --help)
+    echo "Usage: neko lock [now|restart|preview|status]"
+    ;;
+  *)
+    fail "unknown action: $1 (now, restart, preview or status)"
+    ;;
+esac

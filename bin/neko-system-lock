@@ -7,14 +7,10 @@
 
 lock_reply=$(neko-shell lock lock 2>/dev/null) || lock_reply="unavailable"
 if [[ $lock_reply != "ok" ]]; then
-  # Keep a real lock as the failure mode while the migration PAM profile or
-  # the shell itself is unavailable. The normal path never launches hyprlock.
-  if command -v hyprlock >/dev/null 2>&1; then
-    hyprlock >/dev/null 2>&1 &
-  else
-    echo "Neko could not secure the session ($lock_reply), and no fallback lock screen is available." >&2
-    exit 1
-  fi
+  # No other lock screen stands in: neko's is the lock. If the shell is down,
+  # neko lock restart brings it, and its lock, back.
+  echo "Neko could not lock the session ($lock_reply). Run 'neko lock restart' to bring the shell and its lock back." >&2
+  exit 1
 fi
 
 # Set keyboard layout to default (first layout)
