@@ -497,6 +497,10 @@ Panel {
     if (selectedIndex < 0) selectedIndex = 0
   }
 
+  // For an embedding host: the contents' height and what takes the keys
+  readonly property real embedHeight: column.implicitHeight
+  readonly property Item embedFocusItem: keyCatcher
+
   visible: adapter !== null
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -639,6 +643,7 @@ Panel {
 
   ShellIpc {
     target: "neko.bluetooth"
+    enabled: !root.embedded
 
     function open() { root.open() }
     function close() { root.close() }
@@ -667,13 +672,14 @@ Panel {
     anchorItem: button
     owner: root
     bar: root.bar
-    open: root.opened
+    open: root.opened && !root.embedded
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
     contentHeight: panel.fittedContentHeight(column.implicitHeight)
 
     PanelKeyCatcher {
       id: keyCatcher
+      parent: root.embedded ? root.embedHost : panel.contentHost
       anchors.fill: parent
       onMoveRequested: function(dx, dy) {
         if (!root.cursorActive) { root.cursorActive = true; return }

@@ -18,9 +18,17 @@ Panel {
 
   // Centralized close so callers can't forget to drop the passphrase prompt.
   function close() {
+    if (root.embedded) { root.embeddedCloseRequested(); return }
     root.controller.hide()
     cancelPasswordPrompt()
   }
+  function hideEmbedded() {
+    root.controller.hide()
+    cancelPasswordPrompt()
+  }
+  // For an embedding host: the contents' height and what takes the keys
+  readonly property real embedHeight: column.implicitHeight
+  readonly property Item embedFocusItem: keyCatcher
 
   function cancelPasswordPrompt() {
     passwordSsid = ""
@@ -209,6 +217,7 @@ Panel {
 
   ShellIpc {
     target: "neko.network"
+    enabled: !root.embedded
 
     function open() { root.open() }
     function close() { root.close() }
@@ -1137,7 +1146,7 @@ Panel {
     anchorItem: button
     owner: root
     bar: root.bar
-    open: root.opened
+    open: root.opened && !root.embedded
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
     contentHeight: panel.fittedContentHeight(column.implicitHeight)
@@ -1147,6 +1156,7 @@ Panel {
     // first; only events the focused subtree ignores bubble back here.
     PanelKeyCatcher {
       id: keyCatcher
+      parent: root.embedded ? root.embedHost : panel.contentHost
       anchors.fill: parent
       // Freeze the cursor model while the inline password prompt is open;
       // the TextField inside owns input until Esc/Enter/Cancel.
@@ -1248,6 +1258,7 @@ Panel {
 
     Column {
       id: column
+      parent: root.embedded ? root.embedHost : panel.contentHost
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.top: parent.top

@@ -64,6 +64,8 @@ PanelWindow {
   property Item focusTarget: null
 
   default property alias contentItem: contentHolder.children
+  // Where the contents sit, for a panel that moves them to an embedding host
+  readonly property Item contentHost: contentHolder
 
   readonly property var coordinatorKey: owner || root
   readonly property var anchorWindow: anchorItem ? anchorItem.QsWindow.window : null

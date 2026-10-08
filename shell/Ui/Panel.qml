@@ -21,8 +21,22 @@ Item {
   readonly property bool opened: panelController.open
   readonly property color barForeground: bar ? bar.barForeground : NekoColor.foreground
 
+  // Embedded in another widget's panel (the Connections widget shows Wi-Fi
+  // and Bluetooth side by side): the host shows this panel's contents in its
+  // own card and opens and closes it with showEmbedded/hideEmbedded, and
+  // what this panel would do to a popup of its own goes to the host instead
+  property Item embedHost: null
+  readonly property bool embedded: embedHost !== null
+  signal embeddedCloseRequested()
+  signal embeddedSwitchRequested(int direction)
+  function showEmbedded() { panelController.show() }
+  function hideEmbedded() { panelController.hide() }
+
   function open() { panelController.show() }
-  function close() { panelController.hide() }
+  function close() {
+    if (embedded) { embeddedCloseRequested(); return }
+    panelController.hide()
+  }
   function closeForPopoutSwitch() {
     popoutSwitchClosing = true
     close()
@@ -30,6 +44,7 @@ Item {
   }
   function toggle() { opened ? close() : open() }
   function switchPanel(direction) {
+    if (embedded) { embeddedSwitchRequested(direction); return true }
     if (bar && typeof bar.switchPanelFrom === "function") return bar.switchPanelFrom(root, direction)
     return false
   }
@@ -46,7 +61,7 @@ Item {
   }
 
   ShellIpc {
-    enabled: root.manageIpc && root.ipcTarget !== ""
+    enabled: root.manageIpc && root.ipcTarget !== "" && !root.embedded
     target: root.ipcTarget
 
     function open(): void { root.open() }
