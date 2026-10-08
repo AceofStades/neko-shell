@@ -1,0 +1,55 @@
+# What neko needs, as Arch Linux packages. install.sh reads this file to say
+# what's missing; it installs no packages itself.
+#
+# Columns: package, need, command that shows it's there, what it's for.
+#   need is "required" (neko won't run right without it), "recommended" (a
+#   core feature needs it) or "optional" (one feature needs it).
+#   A package name starting with "aur:" comes from the AUR. The check is a
+#   command, or font:<family> (underscores for spaces), or lang:<code> (some
+#   font covers that language).
+
+# The desktop
+hyprland                required     hyprctl              The compositor (0.56 or newer, with a Lua config)
+aur:quickshell-git      required     qs                   The runtime the shell is written for (a recent build)
+bash                    required     bash                 The neko-* commands
+jq                      required     jq                   Reading and writing JSON settings
+python                  required     python3              Calendars, face unlock watcher, agent usage
+ttf-nerd-fonts-symbols  required     font:Symbols_Nerd_Font The icons in the bar and panels
+ttf-dejavu              required     font:monospace       A monospace font for the shell (any will do)
+
+# Core features
+pipewire                recommended  pipewire             Audio
+wireplumber             recommended  wpctl                Volume and microphone controls
+networkmanager          recommended  nmcli                The Wi-Fi panel
+bluez-utils             recommended  bluetoothctl         The Bluetooth panel
+brightnessctl           recommended  brightnessctl        Screen and keyboard brightness
+upower                  recommended  upower               Battery status
+libnotify               recommended  notify-send          Notifications from neko's commands
+curl                    recommended  curl                 Weather and calendar feeds
+socat                   recommended  socat                Fast calls to the running shell (falls back to qs ipc)
+imagemagick             recommended  magick               Wallpaper colors and thumbnails
+matugen                 recommended  matugen              Colors from the wallpaper (Material You)
+grim                    recommended  grim                 Screenshots
+slurp                   recommended  slurp                Picking a region to capture
+wl-clipboard            recommended  wl-copy              Copying captures and the clipboard manager
+noto-fonts-cjk          recommended  lang:ja              The kanji workspace names
+
+# One feature each
+power-profiles-daemon   optional     powerprofilesctl     Power profiles (asusctl works instead on ASUS laptops)
+gpu-screen-recorder     optional     gpu-screen-recorder  Screen recording
+hyprpicker              optional     hyprpicker           The color picker
+hyprsunset              optional     hyprsunset           Night light
+tesseract               optional     tesseract            Copying text out of a screenshot (also install tesseract-data-eng)
+zbar                    optional     zbarimg              Reading QR codes off the screen
+qrencode                optional     qrencode             Sharing Wi-Fi as a QR code
+speedtest-cli           optional     speedtest            The network speed test
+ffmpeg                  optional     ffmpeg               Webcam overlay while recording
+v4l-utils               optional     v4l2-ctl             Finding webcams
+libvips                 optional     vipsthumbnail        Faster wallpaper thumbnails
+ddcutil                 optional     ddcutil              Brightness of external monitors
+iw                      optional     iw                   Wi-Fi band details
+inotify-tools           optional     inotifywait          Reloading user plugins as they change
+gum                     optional     gum                  Prompts in some neko commands
+aur:howdy-git           optional     howdy                Face unlock (lock screen and sudo)
+fprintd                 optional     fprintd-list         Fingerprint unlock
+tailscale               optional     tailscale            The Tailscale panel
