@@ -37,6 +37,12 @@ USAGE
 fi
 
 (( $# >= 2 )) || fail "Usage: neko-shell <target> <method> [args...]"
+# From a terminal the session's settings aren't in the environment; the
+# Quickshell build to call is one of them
+if [[ -z ${NEKO_QUICKSHELL:-} && -f $HOME/.config/neko/env ]]; then
+  NEKO_QUICKSHELL=$(set -a; source "$HOME/.config/neko/env" >/dev/null 2>&1; echo "${NEKO_QUICKSHELL:-}")
+  [[ -n $NEKO_QUICKSHELL ]] && export NEKO_QUICKSHELL
+fi
 [[ -n ${NEKO_PATH:-} ]] || fail "NEKO_PATH is not set"
 [[ -f $NEKO_PATH/shell/shell.qml ]] || fail "neko-shell config not found: $NEKO_PATH/shell/shell.qml"
 
