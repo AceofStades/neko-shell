@@ -29,6 +29,7 @@ Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. 
 ## Changing things
 
 - Settings: `neko-settings get|set|toggle <key>` with `colors` (material|neko), `bar.style` (docked|floating|attached), `bar.float`, `bar.capsules`, `bar.glass`, `app.<kitty|btop|tmux|gtk>`; `neko-settings json` reads everything the settings window shows. The same options are in the menu under Settings, and in the settings window's tabs (`neko-shell shell summon neko.settings '{"tab":"system"}'` opens it on a tab).
+- Bar widgets: `neko-bar put|move|remove|set <id> ...` places, moves, removes and configures them (`--from-section`/`--from-index` pick one of several); `neko-bar json` describes the layout, the widgets that can go on the bar with the options their manifests declare (`barWidget.schema`), and the saved layouts. The settings window's Widgets tab does the same by dragging.
 - Calendars: `neko-calendars list|add <name> <url>|remove <n>` manages the iCal feeds (in `~/.config/neko/calendars`, kept private) whose events the control center's calendar shows.
 - Theme: `neko-theme-material` re-themes from the wallpaper; `neko-session theme` re-applies the current theme.
 - Wallpaper: `neko-wallpaper pick|random|set <image>|auto <minutes|off>`.
