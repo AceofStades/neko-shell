@@ -2,7 +2,7 @@
 
 # neko:summary=Configure the bar and its widget layout
 # neko:group=bar
-# neko:args=use <id> | reset | defaults | layout <list|save|use|delete> [name] | position <top|bottom|left|right> | transparent <true|false|toggle> | put <id> [placement] | move <id> [placement] | set <id> <key> <value> [--json] [placement]
+# neko:args=use <id> | reset | defaults | layout <list|save|use|delete> [name] | position <top|bottom|left|right> | transparent <true|false|toggle> | put <id> [placement] | move <id> [placement] | remove <id> [--from-section <s> --from-index <n>] | set <id> <key> <value> [--json] [placement] | json
 # neko:examples=neko bar use local.neon-bar | neko bar put neko.keyboard-layout --after neko.clock | neko bar move neko.clock --section center --index 0 | neko bar set neko.clock format HH:mm
 
 set -euo pipefail
@@ -25,8 +25,13 @@ Usage: neko bar <command> [args...]
   put <id> [placement]                 Put a widget on the bar, leaving one
                                        that is already there where it is
   move <id> [placement]                Move a widget within or between sections
+  remove <id> [placement]              Take a widget off the bar (the one at
+                                       --from-section/--from-index if given)
   set <id> <key> <value> [--json] [placement]
                                        Set a per-widget option
+  json                                 The layout, the widgets that can go on
+                                       the bar (with their options) and the
+                                       saved layouts, for the settings window
 
 Placement:
   --section <left|center|right>        Target section
@@ -421,6 +426,58 @@ cmd_move() {
   echo "Moved $id"
 }
 
+cmd_remove() {
+  local id="${1:-}"
+  [[ -n $id ]] || fail "remove requires a widget id"
+  shift
+  parse_placement "$@"
+  [[ -z $PLACEMENT_BEFORE && -z $PLACEMENT_AFTER && -z $PLACEMENT_INDEX ]] ||
+    fail "remove takes only --from-section and --from-index"
+  local result
+  result=$(neko-shell shell removeBarWidget "$id" "$(placement_json)")
+  [[ $result == "ok" ]] || fail "$result"
+  echo "Removed $id"
+}
+
+cmd_json() {
+  (( $# == 0 )) || fail "json does not take arguments"
+  local presets="[]" name source file
+  while IFS=$'\t' read -r name source; do
+    [[ -n $name ]] || continue
+    file=$(layout_file "$name") || continue
+    presets=$(jq -c --arg name "$name" --arg source "$source" --slurpfile preset "$file" \
+      '. + [{ name: $name, source: $source, style: ($preset[0].style // "floating"), layout: ($preset[0].layout // {}) }]' <<<"$presets")
+  done < <(cmd_layout_list)
+
+  jq -c \
+    --argjson presets "$presets" \
+    --argjson catalog "$(neko-plugin-catalog 2>/dev/null || echo '[]')" '
+      .bar as $bar
+      | {
+          layout: {
+            left: ($bar.layout.left // []),
+            center: ($bar.layout.center // []),
+            right: ($bar.layout.right // [])
+          },
+          style: ($bar.style // "floating"),
+          position: ($bar.position // "top"),
+          widgets: [
+            $catalog[] | select(.kinds | index("bar-widget"))
+            | {
+                id,
+                name: (.barWidget.displayName // .name),
+                description: (.barWidget.description // .description // ""),
+                category: (.barWidget.category // ""),
+                allowMultiple: (.barWidget.allowMultiple == true),
+                defaultSection: (.barWidget.defaultSection // "center"),
+                schema: (.barWidget.schema // [])
+              }
+          ],
+          presets: $presets
+        }
+    ' "$(source_file)"
+}
+
 cmd_set() {
   local id="${1:-}"
   local key="${2:-}"
@@ -486,6 +543,12 @@ case "$command" in
     ;;
   set)
     cmd_set "$@"
+    ;;
+  remove)
+    cmd_remove "$@"
+    ;;
+  json)
+    cmd_json "$@"
     ;;
   -h | --help | help | "")
     usage

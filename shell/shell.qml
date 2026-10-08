@@ -1777,6 +1777,15 @@ ShellRoot {
       }
     }
 
+    function removeBarWidget(id: string, selectorJson: string): string {
+      try {
+        var error = shell.pluginRegistry.removeBarWidget(id, JSON.parse(selectorJson || "{}"))
+        return error ? error : "ok"
+      } catch (e) {
+        return "invalid selector: " + e
+      }
+    }
+
     function setBarWidget(id: string, key: string, valueJson: string, selectorJson: string): string {
       try {
         var value = JSON.parse(valueJson)

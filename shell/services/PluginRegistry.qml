@@ -316,6 +316,43 @@ QtObject {
     return ""
   }
 
+  // Takes one widget off the bar: the one at fromSection/fromIndex when given,
+  // else the first by that id. The plugin stays installed and can go back.
+  function removeBarWidget(id, selector) {
+    var error = ""
+    shellConfigMutator(function(config) {
+      ensureConfigShape(config)
+      var key = Util.canonicalWidgetId(String(id))
+      var requested = selector || {}
+      var location
+      if (requested.fromIndex !== undefined && requested.fromIndex !== null) {
+        var section = String(requested.fromSection || "")
+        var entries = config.bar.layout[section]
+        var index = Math.floor(Number(requested.fromIndex))
+        if (!Array.isArray(entries) || index < 0 || index >= entries.length) {
+          error = "no widget at " + section + "[" + index + "]"
+          return
+        }
+        if (barEntryId(entries[index]) !== key) {
+          error = "widget at " + section + "[" + index + "] is not " + key
+          return
+        }
+        location = { found: true, section: section, index: index }
+      } else {
+        location = findBarLocation(config, key, String(requested.fromSection || ""))
+      }
+      if (!location.found) {
+        error = "could not find widget " + key
+        return
+      }
+      config.bar.layout[location.section].splice(location.index, 1)
+    })
+    if (error) return error
+    registryRevision++
+    pluginsChanged()
+    return ""
+  }
+
   // put is the unattended verb: where enable errors, it falls back, and it
   // leaves a widget that is already on the bar where its owner put it.
   function putBarWidget(id, placement) {
