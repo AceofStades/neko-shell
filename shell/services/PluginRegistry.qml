@@ -409,6 +409,11 @@ QtObject {
         return
       }
       var entry = config.bar.layout[location.section][location.index]
+      // A bare id gains an object to hold its options
+      if (typeof entry === "string") {
+        entry = { id: entry }
+        config.bar.layout[location.section][location.index] = entry
+      }
       if (!Util.isPlainObject(entry)) {
         error = "widget entry must be an object"
         return
