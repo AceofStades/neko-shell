@@ -43,6 +43,7 @@
   "learn.arch": {"icon":"󰣇","label":"Arch","action":"neko-launch-webapp 'https://wiki.archlinux.org/title/Main_page'"},
 
   "trigger.emoji": {"icon":"","label":"Emoji","aliases":["emoji","emojis"],"action":"neko-menu-emoji"},
+  "trigger.pomodoro": {"icon":"󰔛","label":"Pomodoro","aliases":["pomodoro","focus","timer"],"action":"neko-shell pomodoro toggle"},
   "trigger.capture": {"icon":"","label":"Capture","aliases":["capture","screenshot","screenrecord","screen-record","screenrecording"]},
   "trigger.capture.screenshot": {"icon":"","label":"Screenshot","action":"neko-capture-screenshot"},
   "trigger.capture.screenrecord.stop": {"icon":"","label":"Stop Screenrecording","when":"pgrep -f '^gpu-screen-recorder'","action":"neko-capture-screenrecording --stop-recording"},

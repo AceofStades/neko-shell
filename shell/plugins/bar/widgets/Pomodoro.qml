@@ -15,7 +15,8 @@ BarWidget {
   readonly property bool sessionRunning: Island.pomodoroRunning
   readonly property string clock: Island.pomodoroClock(Island.pomodoroRemaining)
 
-  visible: !root.vertical
+  // Only while a session is on; the control center and the menu start one
+  visible: !root.vertical && (root.sessionActive || Island.mode === "pomodoro")
   enabled: Island.mode === "" || Island.mode === "pomodoro"
   // Tucked behind the workspaces' capsule while the island is out: it slips
   // in at once as the island takes over, and slides back out from behind

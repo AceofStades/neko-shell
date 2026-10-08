@@ -300,9 +300,17 @@ Panel {
             active: root.stayAwake
             onClicked: root.act("neko-toggle-idle toggle")
           }
+          // The bar's Pomodoro shows only while a session is on: start one here
+          QuickTile {
+            icon: "󰔛"
+            label: "Pomodoro"
+            subtitle: Island.pomodoroActive ? Island.pomodoroTitle + " · " + Island.pomodoroClock(Island.pomodoroRemaining) + (Island.pomodoroRunning ? "" : " paused") : "Start a focus session"
+            active: Island.pomodoroActive
+            Layout.columnSpan: root.recorderInstalled ? 1 : 2
+            onClicked: Island.togglePomodoro()
+          }
           QuickTile {
             visible: root.recorderInstalled
-            Layout.columnSpan: 2
             icon: "󰑊"
             label: "Screen record"
             subtitle: root.recording ? "Recording" : "Off"
