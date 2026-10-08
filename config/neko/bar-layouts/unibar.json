@@ -41,13 +41,13 @@
         "id": "neko.connections"
       },
       {
+        "group": "unibar",
+        "id": "neko.audio"
+      },
+      {
         "id": "neko.power",
         "group": "unibar",
         "showPercentage": false
-      },
-      {
-        "id": "neko.audio",
-        "group": "unibar"
       }
     ],
     "right": []
