@@ -15,6 +15,15 @@
     "displayName": "Network",
     "description": "Wi-Fi list and connection state",
     "category": "Network",
-    "allowMultiple": false
+    "allowMultiple": false,
+    "schema": [
+      {
+        "key": "showSsid",
+        "type": "boolean",
+        "label": "Show network name",
+        "description": "The Wi-Fi network's name beside the icon",
+        "defaultValue": true
+      }
+    ]
   }
 }

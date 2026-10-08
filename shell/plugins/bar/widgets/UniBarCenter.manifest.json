@@ -15,6 +15,15 @@
     "displayName": "UniBar center",
     "description": "Centered clock and dynamic island host",
     "category": "Time",
-    "allowMultiple": false
+    "allowMultiple": false,
+    "schema": [
+      {
+        "key": "format",
+        "type": "string",
+        "label": "Format",
+        "description": "Qt time format, like HH:mm",
+        "defaultValue": "HH:mm"
+      }
+    ]
   }
 }

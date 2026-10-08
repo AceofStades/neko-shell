@@ -15,6 +15,15 @@
     "displayName": "Power",
     "description": "Battery, power profile, and system stats",
     "category": "System",
-    "allowMultiple": false
+    "allowMultiple": false,
+    "schema": [
+      {
+        "key": "showPercentage",
+        "type": "boolean",
+        "label": "Show percentage",
+        "description": "The battery's charge as a number",
+        "defaultValue": true
+      }
+    ]
   }
 }

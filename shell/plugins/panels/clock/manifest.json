@@ -15,6 +15,22 @@
     "displayName": "Clock",
     "description": "Date/time label with a calendar popup",
     "category": "Time",
-    "allowMultiple": false
+    "allowMultiple": false,
+    "schema": [
+      {
+        "key": "format",
+        "type": "string",
+        "label": "Format",
+        "description": "Qt date format, like dddd HH:mm or HH:mm:ss",
+        "defaultValue": "dddd HH:mm"
+      },
+      {
+        "key": "formatAlt",
+        "type": "string",
+        "label": "Second format",
+        "description": "The format scrolling the clock switches to",
+        "defaultValue": "d MMMM 'W'ww yyyy"
+      }
+    ]
   }
 }

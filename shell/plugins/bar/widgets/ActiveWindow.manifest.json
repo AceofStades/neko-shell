@@ -16,6 +16,15 @@
     "description": "The focused app in bold, then its window title",
     "category": "Compositor",
     "allowMultiple": false,
-    "defaultSection": "left"
+    "defaultSection": "left",
+    "schema": [
+      {
+        "key": "maxWidth",
+        "type": "integer",
+        "label": "Widest",
+        "description": "How wide the title may grow, in pixels",
+        "defaultValue": 420
+      }
+    ]
   }
 }

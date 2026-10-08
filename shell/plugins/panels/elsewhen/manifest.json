@@ -72,6 +72,13 @@
         "type": "boolean",
         "label": "Drop labels and detail while the globe moves",
         "defaultValue": true
+      },
+      {
+        "key": "hideButton",
+        "type": "boolean",
+        "label": "Hide the button",
+        "description": "Take no space on the bar; open it from the clock instead",
+        "defaultValue": false
       }
     ]
   }

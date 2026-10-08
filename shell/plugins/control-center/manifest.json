@@ -16,6 +16,15 @@
     "description": "Quick toggles, sliders, weather and wallpaper behind the cat button",
     "category": "System",
     "allowMultiple": false,
-    "defaultSection": "right"
+    "defaultSection": "right",
+    "schema": [
+      {
+        "key": "hideButton",
+        "type": "boolean",
+        "label": "Hide the button",
+        "description": "Take no space on the bar; open it from the clock instead",
+        "defaultValue": false
+      }
+    ]
   }
 }
