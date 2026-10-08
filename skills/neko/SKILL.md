@@ -9,14 +9,14 @@ description: >
 
 # neko desktop
 
-Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. The neko checkout is `~/Code/neko-shell`; its commands are `neko-*` in `bin/`, all reachable through one `neko` (run it to list groups): `neko <group> <command>`, the shortcuts `neko settings [tab]`, `neko open|close <panel>` and `neko lock` (`neko lock restart` brings back a lock screen that crashed, from a TTY too), and `neko <target> <method> [args]` for anything the running shell answers (`neko pomodoro start`).
+Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. The neko checkout is wherever it was cloned (`$NEKO_PATH`; `install.sh` set it up); its commands are `neko-*` in `bin/`, all reachable through one `neko` (run it to list groups): `neko <group> <command>`, the shortcuts `neko settings [tab]`, `neko open|close <panel>` and `neko lock` (`neko lock restart` brings back a lock screen that crashed, from a TTY too), and `neko <target> <method> [args]` for anything the running shell answers (`neko pomodoro start`).
 
 ## Where things live
 
 | What | File |
 |---|---|
 | Hyprland config | `~/.config/hypr/hyprland.lua`, split into `configs/{env,monitors,autostart,settings,rules,keybinds}.lua` |
-| neko's Hyprland side (blur rules, media keys, lid, SUPER+W, SUPER+/, SUPER+ALT+SPACE) | `~/Code/neko-shell/default/hypr/neko.lua`, loaded at the end of `hyprland.lua` |
+| neko's Hyprland side (blur rules, media keys, lid, SUPER+W, SUPER+/, SUPER+ALT+SPACE) | `$NEKO_PATH/default/hypr/neko.lua`, loaded at the end of `hyprland.lua` |
 | Shell layout and enabled plugins | `~/.config/neko/shell.json` |
 | Live look overrides (bar float, capsules...) | `~/.config/neko/shell.toml` |
 | Display settings from the control center (they override `monitors.lua`) | `~/.config/neko/displays.json`, written out as `displays.lua` for `neko.lua` to load |

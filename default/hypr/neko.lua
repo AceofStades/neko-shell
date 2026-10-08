@@ -3,8 +3,8 @@
 -- shell through its global shortcuts, so a keypress spawns nothing.
 --
 -- neko-session start loads this at runtime. To keep it across config reloads,
--- load it at the end of your own config:
---   dofile(os.getenv("HOME") .. "/Code/neko-shell/default/hypr/neko.lua")
+-- load it at the end of your own config (install.sh adds this for you):
+--   dofile("<your neko-shell checkout>/default/hypr/neko.lua")
 
 local neko_path = os.getenv("NEKO_PATH")
 if not neko_path and debug and debug.getinfo then
