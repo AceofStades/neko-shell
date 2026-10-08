@@ -21,7 +21,8 @@ Item {
   property bool pendingSessionLock: false
   property bool authenticatingPassword: false
   property bool fingerprintAuthenticating: false
-  property bool passwordPamConfigured: false
+  property bool nativePasswordPamConfigured: false
+  property bool fallbackPasswordPamConfigured: false
   property bool fingerprintConfigured: false
   property int fingerprintUnreachedStreak: 0
   property bool fingerprintAttemptReachedDevice: false
@@ -57,6 +58,9 @@ Item {
 
   readonly property bool locked: lockRequested || sessionLock.locked || sessionLock.secure
   readonly property bool authenticating: authenticatingPassword || fingerprintAuthenticating
+  readonly property string passwordPamConfig: nativePasswordPamConfigured
+    ? "neko-lock-password" : fallbackPasswordPamConfigured ? "hyprlock" : ""
+  readonly property bool passwordPamConfigured: passwordPamConfig !== ""
   readonly property var batteryService: shell && shell.services ? shell.firstPartyServiceFor("neko.battery") : null
   readonly property bool powerSaverActive: batteryService ? batteryService.powerSaverOnBattery : false
   // A prompt clears the unavailable notice before the attempt finishes.
@@ -533,7 +537,7 @@ Item {
 
   PamContext {
     id: passwordPam
-    config: "neko-lock-password"
+    config: root.passwordPamConfig || "neko-lock-password"
     user: root.userName
 
     onResponseRequiredChanged: root.respondToPasswordPrompt()
@@ -706,6 +710,15 @@ Item {
     command: ["bash", "-c", "neko-brightness-keyboard off; neko-brightness-display off"]
   }
 
+  // Hold logind's delay inhibitor while the shell is alive. On a suspend
+  // request the watcher asks this service to secure the session, waits for the
+  // compositor to confirm it, then releases the inhibitor so sleep can proceed.
+  Process {
+    id: sleepWatchProcess
+    command: ["setpriv", "--pdeathsig", "TERM", "--", "neko-system-sleep-watch"]
+    running: root.passwordPamConfigured
+  }
+
   // Quickshell exposes no DPMS signal, so the panel state is polled while a
   // video is the locked wallpaper. A wake or blank request drops the last
   // answer, so its optimistic state applies until the next poll confirms it.
@@ -809,8 +822,19 @@ Item {
     path: "/etc/pam.d/neko-lock-password"
     watchChanges: true
     printErrors: false
-    onLoaded: root.passwordPamConfigured = true
-    onLoadFailed: root.passwordPamConfigured = false
+    onLoaded: root.nativePasswordPamConfigured = true
+    onLoadFailed: root.nativePasswordPamConfigured = false
+    onFileChanged: reload()
+  }
+
+  // During migration, the already installed hyprlock PAM profile is a secure
+  // password/face-auth fallback. The lock binary and daemon are never invoked.
+  FileView {
+    path: "/etc/pam.d/hyprlock"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.fallbackPasswordPamConfigured = true
+    onLoadFailed: root.fallbackPasswordPamConfigured = false
     onFileChanged: reload()
   }
 
@@ -853,6 +877,7 @@ Item {
         secure: sessionLock.secure,
         realScreens: root.realScreenCount(),
         passwordPam: root.passwordPamConfigured,
+        passwordPamConfig: root.passwordPamConfig,
         fingerprint: root.fingerprintConfigured,
         fingerprintUnavailable: root.fingerprintUnavailable,
         authenticating: root.authenticating,

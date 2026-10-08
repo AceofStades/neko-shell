@@ -82,7 +82,7 @@ if flag then
     "XF86MonBrightnessUp", "XF86MonBrightnessDown", "SUPER + XF86MonBrightnessUp", "SUPER + XF86MonBrightnessDown",
     "XF86KbdBrightnessUp", "XF86KbdBrightnessDown",
     "XF86AudioPlay", "XF86AudioPause",
-    "SUPER + ALT + SPACE", "SUPER + SLASH", "SUPER + W",
+    "SUPER + ALT + SPACE", "SUPER + SLASH", "SUPER + W", "CTRL + ALT + L",
     "switch:on:Lid Switch", "switch:off:Lid Switch",
   }
   for _, key in ipairs(keys) do
@@ -107,6 +107,7 @@ if flag then
   hl.bind("SUPER + ALT + SPACE", hl.dsp.global("neko:menu.root"), { description = "Neko menu" })
   hl.bind("SUPER + SLASH", hl.dsp.exec_cmd(run .. "neko-menu-keybindings"), { description = "Keybindings cheat sheet" })
   hl.bind("SUPER + W", hl.dsp.exec_cmd(run .. "neko-wallpaper pick"), { description = "Pick a wallpaper" })
+  hl.bind("CTRL + ALT + L", hl.dsp.exec_cmd(run .. "neko-system-lock"), { description = "Lock screen" })
 
   -- Lid: with an external monitor the laptop screen goes off instead of the
   -- machine suspending; without one, logind's default suspend still applies.

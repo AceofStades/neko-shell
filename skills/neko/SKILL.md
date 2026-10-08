@@ -24,7 +24,7 @@ Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. 
 | Your own themes (the wallpaper Material theme is `material`) | `~/.config/neko/themes/<name>/` |
 | Rendered current theme | `~/.local/state/neko/current/theme/` (generated; don't edit) |
 | Hooks | `~/.config/neko/hooks/{theme-set,wallpaper-set,session-start,font-set,battery-low}` |
-| Idle, lock, screen off | `~/.config/hypr/hypridle.conf` (hyprlock locks; neko's own idle/lock/polkit plugins are off) |
+| Idle, lock, screen off | Neko's `neko.idle` and `neko.lock` services; timeouts are `idle.screensaver` and `idle.lock` in `~/.config/neko/shell.json` |
 
 ## Changing things
 

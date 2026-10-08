@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# neko:summary=Secure the Neko session before logind suspends it
+# neko:hidden=true
+
+# systemd-inhibit keeps the delay lock for the lifetime of the inner shell.
+# That shell exits only after neko-system-sleep-lock has confirmed the Wayland
+# session lock is secure. The outer loop survives suspend and acquires a fresh
+# inhibitor after resume.
+child_pid=""
+
+stop() {
+  trap - HUP INT TERM
+  if [[ -n $child_pid ]] && kill -0 "$child_pid" 2>/dev/null; then
+    # setsid below makes the inhibitor and every monitor in its pipeline one
+    # private process group. A shell restart must not leave any of them behind.
+    kill -TERM -- "-$child_pid" 2>/dev/null || true
+    wait "$child_pid" 2>/dev/null || true
+  fi
+  exit 0
+}
+trap stop HUP INT TERM
+
+while true; do
+  setsid systemd-inhibit \
+    --what=sleep \
+    --mode=delay \
+    --who=neko \
+    --why="Secure the Neko session before sleep" \
+    bash -c '
+      while IFS= read -r event; do
+        case $event in
+          *"org.freedesktop.login1.Session.Lock ()"*)
+            neko-system-lock
+            ;;
+          *"PrepareForSleep (true"*)
+            neko-system-sleep-lock
+            break
+            ;;
+        esac
+      done < <(gdbus monitor --system --dest org.freedesktop.login1 2>/dev/null)
+    ' &
+  child_pid=$!
+  wait "$child_pid" || true
+  child_pid=""
+
+  # The machine normally sleeps before this runs and resumes into the delay.
+  # A rejected suspend can return immediately, so avoid a tight reacquire loop.
+  sleep 1
+done

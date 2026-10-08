@@ -255,7 +255,7 @@ Panel {
             iconText: "󰌾"
             tooltipText: "Lock"
             foreground: root.foreground
-            onClicked: root.runAndClose("loginctl lock-session")
+            onClicked: root.runAndClose("neko-system-lock")
           }
           PanelActionButton {
             iconText: "󰐥"

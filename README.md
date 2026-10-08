@@ -41,7 +41,7 @@ Machine settings go in `~/.config/neko/env`, which `neko-session` sources:
 | `NEKO_REPLACES` | Command that stops the shell neko takes over from |
 | `NEKO_RESTORES` | Command that brings that shell back on stop |
 
-Layout and plugins live in `~/.config/neko/shell.json`; turn off services another tool already handles with `"disabledPlugins": ["neko.idle", "neko.lock", "neko.polkit"]`.
+Layout and plugins live in `~/.config/neko/shell.json`; turn off a service only when another tool handles the same job, for example `"disabledPlugins": ["neko.idle", "neko.lock"]` while using an external idle daemon and lock screen.
 
 ## Hooks
 
