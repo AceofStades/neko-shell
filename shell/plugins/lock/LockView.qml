@@ -334,79 +334,102 @@ Item {
           width: root.compact ? 54 : 62
           height: width
 
-          Rectangle {
-            id: faceRipple
-            anchors.centerIn: parent
-            width: parent.width - 2
-            height: width
-            radius: width / 2
-            color: "transparent"
-            border.width: 1
-            border.color: root.faceStateColor
-            visible: root.faceScanning || root.faceApproved
+          // Match the regular Howdy indicator: the unboxed face breathes while
+          // looking, then gives way to a check and an expanding approval ring.
+          property string shownState: "scanning"
+          readonly property string state: root.faceAuthState
+          readonly property real glyphSize: root.compact ? 38 : 44
+          transform: Translate { id: faceShake }
 
-            SequentialAnimation on scale {
-              running: faceRipple.visible && !Style.reduceMotion
-              loops: Animation.Infinite
-              NumberAnimation { from: 0.88; to: 1.18; duration: Style.duration(900); easing.type: Easing.OutCubic }
-              NumberAnimation { to: 0.88; duration: Style.duration(20) }
-            }
-
-            SequentialAnimation on opacity {
-              running: faceRipple.visible && !Style.reduceMotion
-              loops: Animation.Infinite
-              NumberAnimation { from: 0.78; to: 0.05; duration: Style.duration(900); easing.type: Easing.OutCubic }
-              NumberAnimation { to: 0.78; duration: Style.duration(20) }
+          onStateChanged: {
+            if (state === "") return
+            shownState = state
+            faceApprovedAnimation.stop()
+            faceFailedAnimation.stop()
+            if (state === "scanning") {
+              faceGlyph.opacity = 1
+              faceGlyph.scale = 1
+              faceGlyph.color = NekoColor.lock.text
+              faceResultGlyph.opacity = 0
+              faceApprovalRing.opacity = 0
+              faceShake.x = 0
+            } else if (state === "approved") {
+              faceApprovedAnimation.restart()
+            } else if (state === "failed") {
+              faceFailedAnimation.restart()
             }
           }
 
           Rectangle {
-            id: avatar
+            id: faceApprovalRing
             anchors.centerIn: parent
-            width: parent.width - 8
+            width: avatarFrame.glyphSize
             height: width
             radius: width / 2
-            color: Util.alpha(root.faceStateColor, root.faceFailed ? 0.14 : 0.16)
-            border.width: 1
-            border.color: Util.alpha(root.faceStateColor, 0.72)
-            clip: true
+            color: "transparent"
+            border.width: 2
+            border.color: NekoColor.accent
+            opacity: 0
+          }
 
-            Text {
-              id: faceGlyph
-              anchors.centerIn: parent
-              text: root.faceApproved ? "\u{F012C}"
-                : root.faceFailed ? "\u{F0156}"
-                : root.faceConfigured ? "\u{F0C7B}"
-                : root.userName.charAt(0).toUpperCase()
-              color: root.faceStateColor
-              font.family: Style.font.family
-              font.pixelSize: root.faceConfigured ? Math.round(parent.width * 0.56) : Math.round(parent.width * 0.42)
-              font.weight: Font.DemiBold
+          Text {
+            id: faceGlyph
+            anchors.centerIn: parent
+            text: root.faceConfigured ? "\u{F0C7B}" : root.userName.charAt(0).toUpperCase()
+            color: NekoColor.lock.text
+            font.family: Style.font.family
+            font.pixelSize: root.faceConfigured ? avatarFrame.glyphSize : Math.round(avatarFrame.glyphSize * 0.62)
+            font.weight: root.faceConfigured ? Font.Normal : Font.DemiBold
 
-              SequentialAnimation on opacity {
-                running: root.faceScanning && !Style.reduceMotion
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.42; duration: Style.duration(620); easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1.0; duration: Style.duration(620); easing.type: Easing.InOutSine }
-              }
+            SequentialAnimation on opacity {
+              running: root.faceScanning && avatarFrame.shownState === "scanning" && !Style.reduceMotion
+              loops: Animation.Infinite
+              onRunningChanged: if (!running && avatarFrame.shownState === "scanning") faceGlyph.opacity = 1
+              NumberAnimation { to: 0.4; duration: Style.duration(650); easing.type: Easing.InOutSine }
+              NumberAnimation { to: 1; duration: Style.duration(650); easing.type: Easing.InOutSine }
             }
+          }
 
-            Rectangle {
-              id: scanBeam
-              x: 7
-              width: parent.width - 14
-              height: 2
-              radius: 1
-              color: Util.alpha(NekoColor.accent, 0.92)
-              visible: root.faceScanning
-              opacity: visible ? 1 : 0
+          Text {
+            id: faceResultGlyph
+            anchors.centerIn: parent
+            text: avatarFrame.shownState === "failed" ? "\u{F0156}" : "\u{F012C}"
+            color: avatarFrame.shownState === "failed" ? NekoColor.urgent : NekoColor.accent
+            font.family: Style.font.family
+            font.pixelSize: avatarFrame.glyphSize
+            opacity: 0
+          }
 
-              SequentialAnimation on y {
-                running: scanBeam.visible && !Style.reduceMotion
-                loops: Animation.Infinite
-                NumberAnimation { from: 9; to: avatar.height - 11; duration: Style.duration(1050); easing.type: Easing.InOutSine }
-                NumberAnimation { to: 9; duration: Style.duration(1050); easing.type: Easing.InOutSine }
-              }
+          SequentialAnimation {
+            id: faceApprovedAnimation
+            ParallelAnimation {
+              NumberAnimation { target: faceGlyph; property: "opacity"; to: 0; duration: Style.duration(140); easing.type: Easing.InCubic }
+              NumberAnimation { target: faceGlyph; property: "scale"; to: 0.6; duration: Style.duration(140); easing.type: Easing.InCubic }
+            }
+            ParallelAnimation {
+              NumberAnimation { target: faceResultGlyph; property: "opacity"; from: 0; to: 1; duration: Style.duration(120) }
+              NumberAnimation { target: faceResultGlyph; property: "scale"; from: 0.4; to: 1; duration: Style.duration(380); easing.type: Easing.OutBack; easing.overshoot: 2.2 }
+              NumberAnimation { target: faceApprovalRing; property: "scale"; from: 0.7; to: 2.1; duration: Style.duration(560); easing.type: Easing.OutCubic }
+              NumberAnimation { target: faceApprovalRing; property: "opacity"; from: 0.9; to: 0; duration: Style.duration(560); easing.type: Easing.OutCubic }
+            }
+          }
+
+          SequentialAnimation {
+            id: faceFailedAnimation
+            ColorAnimation { target: faceGlyph; property: "color"; to: NekoColor.urgent; duration: Style.duration(90) }
+            SequentialAnimation {
+              NumberAnimation { target: faceShake; property: "x"; to: -9; duration: Style.duration(50); easing.type: Easing.OutSine }
+              NumberAnimation { target: faceShake; property: "x"; to: 8; duration: Style.duration(90); easing.type: Easing.InOutSine }
+              NumberAnimation { target: faceShake; property: "x"; to: -6; duration: Style.duration(80); easing.type: Easing.InOutSine }
+              NumberAnimation { target: faceShake; property: "x"; to: 4; duration: Style.duration(70); easing.type: Easing.InOutSine }
+              NumberAnimation { target: faceShake; property: "x"; to: -2; duration: Style.duration(60); easing.type: Easing.InOutSine }
+              NumberAnimation { target: faceShake; property: "x"; to: 0; duration: Style.duration(50); easing.type: Easing.OutSine }
+            }
+            ParallelAnimation {
+              NumberAnimation { target: faceGlyph; property: "opacity"; to: 0; duration: Style.duration(140) }
+              NumberAnimation { target: faceGlyph; property: "scale"; to: 0.7; duration: Style.duration(140) }
+              NumberAnimation { target: faceResultGlyph; property: "opacity"; from: 0; to: 1; duration: Style.duration(160) }
+              NumberAnimation { target: faceResultGlyph; property: "scale"; from: 0.6; to: 1; duration: Style.duration(260); easing.type: Easing.OutBack }
             }
           }
         }

@@ -719,7 +719,7 @@ Item {
   // accident because PAM succeeds before the camera watcher paints a verdict.
   Timer {
     id: faceApprovedTimer
-    interval: 650
+    interval: 820
     repeat: false
     onTriggered: if (root.lockRequested) root.finishUnlock()
   }
