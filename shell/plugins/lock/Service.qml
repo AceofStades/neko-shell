@@ -20,9 +20,13 @@ Item {
   property bool lockRequested: false
   property bool pendingSessionLock: false
   property bool authenticatingPassword: false
+  property bool faceAuthenticating: false
+  property bool facePamConfigured: false
+  property string faceVisualState: ""
   property bool fingerprintAuthenticating: false
   property bool nativePasswordPamConfigured: false
   property bool fallbackPasswordPamConfigured: false
+  property bool legacyPasswordPamConfigured: false
   property bool fingerprintConfigured: false
   property int fingerprintUnreachedStreak: 0
   property bool fingerprintAttemptReachedDevice: false
@@ -57,10 +61,13 @@ Item {
   property bool strandedLockResolved: false
 
   readonly property bool locked: lockRequested || sessionLock.locked || sessionLock.secure
-  readonly property bool authenticating: authenticatingPassword || fingerprintAuthenticating
+  readonly property bool authenticating: authenticatingPassword || faceAuthenticating || fingerprintAuthenticating
   readonly property string passwordPamConfig: nativePasswordPamConfigured
-    ? "neko-lock-password" : fallbackPasswordPamConfigured ? "hyprlock" : ""
+    ? "neko-lock-password"
+    : fallbackPasswordPamConfigured ? "vlock"
+    : legacyPasswordPamConfigured ? "hyprlock" : ""
   readonly property bool passwordPamConfigured: passwordPamConfig !== ""
+  readonly property string faceAuthState: faceVisualState !== "" ? faceVisualState : Island.faceAuth
   readonly property var batteryService: shell && shell.services ? shell.firstPartyServiceFor("neko.battery") : null
   readonly property bool powerSaverActive: batteryService ? batteryService.powerSaverOnBattery : false
   // A prompt clears the unavailable notice before the attempt finishes.
@@ -146,6 +153,10 @@ Item {
     if (!fingerprintCheckProc.running) fingerprintCheckProc.running = true
   }
 
+  function refreshFaceAuthStatus() {
+    if (!faceAuthCheckProc.running) faceAuthCheckProc.running = true
+  }
+
   // Only definitive enrollment results may disable authentication.
   function applyFingerprintProbe(text) {
     var status = FingerprintModel.classifyProbe(text)
@@ -185,6 +196,8 @@ Item {
     failureMessage = ""
     failedAttempts = 0
     authenticatingPassword = false
+    faceAuthenticating = false
+    faceVisualState = ""
     fingerprintAuthenticating = false
     fingerprintUnreachedStreak = 0
     fingerprintAttemptFastError = false
@@ -196,7 +209,10 @@ Item {
     fingerprintRecheckTimer.stop()
     fingerprintRetryTimer.stop()
     fingerprintReachTimer.stop()
+    faceRetryTimer.stop()
+    faceApprovedTimer.stop()
     if (passwordPam.active) passwordPam.abort()
+    if (facePam.active) facePam.abort()
     if (fingerprintPam.active) fingerprintPam.abort()
   }
 
@@ -214,6 +230,7 @@ Item {
 
     Qt.callLater(function() {
       root.refreshBackground()
+      root.refreshFaceAuthStatus()
       root.refreshFingerprintStatus()
     })
 
@@ -244,7 +261,55 @@ Item {
     root.monitorDpmsKnown = false
     if (!wakeProcess.running) wakeProcess.running = true
     if (lockRequested) armBlankTimer()
+    nudgeFaceAuth()
     nudgeFingerprint()
+  }
+
+  function startFaceAuth() {
+    if (!lockRequested || !sessionLock.secure || !facePamConfigured) return
+    if (authenticatingPassword || enteredPassword.length > 0) return
+    if (facePam.active || faceAuthenticating || faceApprovedTimer.running) return
+
+    faceRetryTimer.stop()
+    faceVisualState = "scanning"
+    faceAuthenticating = true
+    if (!facePam.start()) settleFaceAuth(true, true)
+  }
+
+  function stopFaceAuth(retry) {
+    if (facePam.active) facePam.abort()
+    faceAuthenticating = false
+    faceVisualState = ""
+    faceApprovedTimer.stop()
+    if (retry && lockRequested && facePamConfigured && enteredPassword.length === 0) faceRetryTimer.restart()
+    else faceRetryTimer.stop()
+  }
+
+  function settleFaceAuth(showFailure, retry) {
+    if (!faceAuthenticating && !facePam.active) return
+    faceAuthenticating = false
+    if (facePam.active) facePam.abort()
+    faceVisualState = showFailure ? "failed" : ""
+    if (retry && lockRequested && facePamConfigured && enteredPassword.length === 0) faceRetryTimer.restart()
+  }
+
+  function handleFaceFinished(result) {
+    if (!lockRequested) return
+    if (result === PamResult.Success) {
+      faceAuthenticating = false
+      faceRetryTimer.stop()
+      faceVisualState = "approved"
+      faceApprovedTimer.restart()
+    } else {
+      settleFaceAuth(true, true)
+    }
+  }
+
+  function nudgeFaceAuth() {
+    if (!lockRequested || !sessionLock.secure || !facePamConfigured) return
+    if (authenticatingPassword || enteredPassword.length > 0 || facePam.active || faceAuthenticating || faceApprovedTimer.running) return
+    faceRetryTimer.interval = 350
+    faceRetryTimer.restart()
   }
 
   // User activity advances retries without recreating a busy retry loop.
@@ -329,10 +394,11 @@ Item {
     var password = String(value || "")
     if (!lockRequested || authenticatingPassword || password.length === 0) return
 
-    runWake()
+    stopFaceAuth(false)
     pendingPassword = password
     failureMessage = ""
     authenticatingPassword = true
+    runWake()
 
     if (!passwordPam.start()) {
       handlePasswordFailure()
@@ -356,6 +422,12 @@ Item {
     failedAttempts += 1
     failureMessage = "Authentication failed (" + failedAttempts + ")"
     runWake()
+  }
+
+  onEnteredPasswordChanged: {
+    if (!lockRequested || !facePamConfigured) return
+    if (enteredPassword.length > 0) stopFaceAuth(false)
+    else if (!authenticatingPassword) nudgeFaceAuth()
   }
 
   function startFingerprint() {
@@ -446,6 +518,7 @@ Item {
         root.pendingSessionLock = false
         sessionLockStabilizeTimer.stop()
         pendingSessionLockTimer.stop()
+        root.startFaceAuth()
         root.startFingerprint()
       }
     }
@@ -480,6 +553,9 @@ Item {
         videoPosterPath: root.videoPosterPath
         backgroundVersion: root.backgroundVersion
         userName: root.userName
+        faceConfigured: root.facePamConfigured
+        faceAuthenticating: root.faceAuthenticating
+        faceAuthState: root.faceAuthState
         fingerprintConfigured: root.fingerprintConfigured || root.fingerprintUnavailable
         fingerprintUnavailable: root.fingerprintUnavailable
         fingerprintAuthenticating: root.fingerprintAuthenticating
@@ -516,6 +592,9 @@ Item {
       videoPosterPath: root.videoPosterPath
       backgroundVersion: root.backgroundVersion
       userName: root.userName
+      faceConfigured: root.facePamConfigured
+      faceAuthenticating: root.facePamConfigured
+      faceAuthState: root.facePamConfigured ? "scanning" : ""
       fingerprintConfigured: root.fingerprintConfigured || root.fingerprintUnavailable
       fingerprintUnavailable: root.fingerprintUnavailable
       fingerprintAuthenticating: false
@@ -555,6 +634,23 @@ Item {
     onError: function(error) {
       root.handlePasswordFailure()
     }
+  }
+
+  // Howdy gets its own PAM conversation. Once its module has finished, the
+  // system-auth stack asks for a password; that prompt is the boundary at
+  // which this face-only attempt stops and leaves the visible password field
+  // ready. Password checks use vlock's plain pam_unix profile below instead.
+  PamContext {
+    id: facePam
+    config: "system-auth"
+    user: root.userName
+
+    onResponseRequiredChanged: {
+      if (responseRequired) Qt.callLater(function() { root.settleFaceAuth(true, true) })
+    }
+
+    onCompleted: function(result) { root.handleFaceFinished(result) }
+    onError: function(error) { root.settleFaceAuth(true, true) }
   }
 
   PamContext {
@@ -606,6 +702,26 @@ Item {
     interval: FingerprintModel.MATCH_RETRY_MS
     repeat: false
     onTriggered: root.startFingerprint()
+  }
+
+  Timer {
+    id: faceRetryTimer
+    interval: 1900
+    repeat: false
+    onTriggered: {
+      interval = 1900
+      root.startFaceAuth()
+    }
+  }
+
+  // Keep the approved check visible for one short beat before releasing the
+  // session lock. Face unlock otherwise feels like the screen disappeared by
+  // accident because PAM succeeds before the camera watcher paints a verdict.
+  Timer {
+    id: faceApprovedTimer
+    interval: 650
+    repeat: false
+    onTriggered: if (root.lockRequested) root.finishUnlock()
   }
 
   // Detect resume both during an active attempt and during backoff.
@@ -827,15 +943,38 @@ Item {
     onFileChanged: reload()
   }
 
-  // During migration, the already installed hyprlock PAM profile is a secure
-  // password/face-auth fallback. The lock binary and daemon are never invoked.
+  // vlock is a plain pam_unix profile on this system, which keeps password
+  // checks immediate and independent from the automatic Howdy conversation.
   FileView {
-    path: "/etc/pam.d/hyprlock"
+    path: "/etc/pam.d/vlock"
     watchChanges: true
     printErrors: false
     onLoaded: root.fallbackPasswordPamConfigured = true
     onLoadFailed: root.fallbackPasswordPamConfigured = false
     onFileChanged: reload()
+  }
+
+  // Last-resort compatibility for machines without vlock. This retains the
+  // old secure path until a dedicated Neko PAM profile is installed.
+  FileView {
+    path: "/etc/pam.d/hyprlock"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.legacyPasswordPamConfigured = true
+    onLoadFailed: root.legacyPasswordPamConfigured = false
+    onFileChanged: reload()
+  }
+
+  Process {
+    id: faceAuthCheckProc
+    command: ["bash", "-c", "if [[ -r /usr/lib/security/pam_howdy.so && -r /etc/howdy/config.ini ]] && grep -q '^[[:space:]]*auth.*pam_howdy\\.so' /etc/pam.d/system-auth; then echo yes; else echo no; fi"]
+    stdout: SplitParser {
+      onRead: function(line) {
+        root.facePamConfigured = String(line).trim() === "yes"
+        if (root.lockRequested && root.facePamConfigured) root.nudgeFaceAuth()
+        else if (!root.facePamConfigured) root.stopFaceAuth(false)
+      }
+    }
   }
 
   // No lock before PAM is known good. An answer from before then may be stale --
@@ -851,6 +990,7 @@ Item {
 
   Component.onCompleted: {
     refreshBackground()
+    refreshFaceAuthStatus()
     refreshFingerprintStatus()
     checkStrandedLock()
   }
@@ -878,6 +1018,9 @@ Item {
         realScreens: root.realScreenCount(),
         passwordPam: root.passwordPamConfigured,
         passwordPamConfig: root.passwordPamConfig,
+        face: root.facePamConfigured,
+        faceAuthenticating: root.faceAuthenticating,
+        faceState: root.faceAuthState,
         fingerprint: root.fingerprintConfigured,
         fingerprintUnavailable: root.fingerprintUnavailable,
         authenticating: root.authenticating,
