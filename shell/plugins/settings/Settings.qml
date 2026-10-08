@@ -162,33 +162,31 @@ Item {
       focus: true
       Keys.onEscapePressed: root.close()
 
-      // The card's shoulders, hanging from the top edge as the island's do
+      // Hanging from the top edge, the card and its shoulders are one shape:
+      // drawn apart, they'd meet between pixels and leave a seam
       Shape {
-        id: shoulders
-        readonly property real size: Style.space(16)
+        id: hanging
+        readonly property real round: Math.min(Style.space(26), card.height / 2)
+        // Shoulders curve the card's sides into the edge, as the island's do
+        readonly property real shoulder: Math.max(0, Math.min(Style.space(16), card.height - round))
         anchors.fill: parent
-        visible: card.fromIsland && card.attached && card.height > size
+        visible: card.attached && card.height > 1
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
-          fillColor: cardFill.color
+          fillColor: Island.panelGlass
           strokeWidth: 0
           strokeColor: "transparent"
-          startX: card.x - shoulders.size
+          startX: card.x - hanging.shoulder
           startY: card.y
-          PathLine { x: card.x; y: card.y }
-          PathLine { x: card.x; y: card.y + shoulders.size }
-          PathArc { x: card.x - shoulders.size; y: card.y; radiusX: shoulders.size; radiusY: shoulders.size; direction: PathArc.Counterclockwise }
-        }
-        ShapePath {
-          fillColor: cardFill.color
-          strokeWidth: 0
-          strokeColor: "transparent"
-          startX: card.x + card.width + shoulders.size
-          startY: card.y
-          PathLine { x: card.x + card.width; y: card.y }
-          PathLine { x: card.x + card.width; y: card.y + shoulders.size }
-          PathArc { x: card.x + card.width + shoulders.size; y: card.y; radiusX: shoulders.size; radiusY: shoulders.size }
+          PathLine { x: card.x + card.width + hanging.shoulder; y: card.y }
+          PathArc { x: card.x + card.width; y: card.y + hanging.shoulder; radiusX: hanging.shoulder; radiusY: hanging.shoulder; direction: PathArc.Counterclockwise }
+          PathLine { x: card.x + card.width; y: card.y + card.height - hanging.round }
+          PathArc { x: card.x + card.width - hanging.round; y: card.y + card.height; radiusX: hanging.round; radiusY: hanging.round }
+          PathLine { x: card.x + hanging.round; y: card.y + card.height }
+          PathArc { x: card.x; y: card.y + card.height - hanging.round; radiusX: hanging.round; radiusY: hanging.round }
+          PathLine { x: card.x; y: card.y + hanging.shoulder }
+          PathArc { x: card.x - hanging.shoulder; y: card.y; radiusX: hanging.shoulder; radiusY: hanging.shoulder; direction: PathArc.Counterclockwise }
         }
       }
 
@@ -284,9 +282,11 @@ Item {
         onWidthChanged: checkClosed()
         onHeightChanged: checkClosed()
 
+        // Off the top edge (a floating bar, or no island) it's a card of its own
         Rectangle {
           id: cardFill
           anchors.fill: parent
+          visible: !card.attached
           color: card.fromIsland ? Island.panelGlass : NekoColor.popups.background
           topLeftRadius: card.attached ? 0 : Math.min(Style.space(26), height / 2)
           topRightRadius: card.attached ? 0 : Math.min(Style.space(26), height / 2)
