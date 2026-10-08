@@ -37,13 +37,8 @@
         "integrated": true
       },
       {
-        "id": "neko.network",
         "group": "unibar",
-        "showSsid": false
-      },
-      {
-        "id": "neko.bluetooth",
-        "group": "unibar"
+        "id": "neko.connections"
       },
       {
         "id": "neko.power",
