@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.connections",
+  "name": "Connections",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Wi-Fi and Bluetooth as one icon, with both panels side by side",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Connections",
+    "description": "Wi-Fi and Bluetooth as one icon, with both panels side by side",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
