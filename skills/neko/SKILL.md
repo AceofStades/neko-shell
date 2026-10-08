@@ -9,7 +9,7 @@ description: >
 
 # neko desktop
 
-Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. The neko checkout is `~/Code/neko-shell`; its commands are `neko-*` in `bin/`, also reachable as `neko <group> <command>` (run `neko` to list groups).
+Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. The neko checkout is `~/Code/neko-shell`; its commands are `neko-*` in `bin/`, all reachable through one `neko` (run it to list groups): `neko <group> <command>`, the shortcuts `neko settings [tab]`, `neko open|close <panel>` and `neko lock` (`neko lock restart` brings back a lock screen that crashed, from a TTY too), and `neko <target> <method> [args]` for anything the running shell answers (`neko pomodoro start`).
 
 ## Where things live
 
@@ -28,7 +28,7 @@ Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. 
 
 ## Changing things
 
-- Settings: `neko-settings get|set|toggle <key>` with `colors` (material|neko), `bar.style` (docked|floating|attached), `bar.float`, `bar.capsules`, `bar.glass`, `app.<kitty|btop|tmux|gtk>`; `neko-settings json` reads everything the settings window shows. The same options are in the menu under Settings, and in the settings window's tabs (`neko-shell shell summon neko.settings '{"tab":"system"}'` opens it on a tab).
+- Settings: `neko-settings get|set|toggle <key>` with `colors` (material|neko), `bar.style` (docked|floating|attached), `bar.float`, `bar.capsules`, `bar.glass`, `app.<kitty|btop|tmux|gtk>`; `neko-settings json` reads everything the settings window shows. The same options are in the menu under Settings, and in the settings window's tabs (`neko settings system` opens it on a tab).
 - Bar widgets: `neko-bar put|move|remove|set <id> ...` places, moves, removes and configures them (`--from-section`/`--from-index` pick one of several); `neko-bar json` describes the layout, the widgets that can go on the bar with the options their manifests declare (`barWidget.schema`), and the saved layouts. The settings window's Widgets tab does the same by dragging.
 - Calendars: `neko-calendars list|add <name> <url>|remove <n>` manages the iCal feeds (in `~/.config/neko/calendars`, kept private) whose events the control center's calendar shows.
 - Theme: `neko-theme-material` re-themes from the wallpaper; `neko-session theme` re-applies the current theme.

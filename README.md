@@ -12,6 +12,7 @@ A Quickshell desktop for Hyprland: a bar, panels, menus, notifications, on-scree
 - [x] Wallpaper picker, randomizer and rotation (`neko-wallpaper`, the control center's Wallpaper tile, Style > Wallpaper, `SUPER+W`)
 - [x] Settings in the menu: colors, bar, themed apps (`neko-settings`)
 - [x] A settings window in tabs (appearance, bar, widgets, wallpaper, system, calendars, apps) that grows out of the bar's dynamic island (Settings > Open settings window); the bar's layouts, style and position drawn as little screens to pick from, and its widgets dragged between sections, joined into capsules and configured
+- [x] One command, `neko`: `neko settings`, `neko open <panel>`, `neko lock` (`neko lock restart` brings a crashed lock screen back), and `neko <target> <method>` for anything the running shell offers
 - [x] Calendar events from iCal feeds, Google Calendar's secret address included, in the control center's calendar (`neko-calendars`, `neko-calendar-events`)
 - [x] Keybindings with descriptions and a searchable cheat sheet (`SUPER+/`; add `{ description = "..." }` to a bind to name it)
 - [x] Media keys through global shortcuts instead of a process per keypress (`default/hypr/neko.lua`)
@@ -58,4 +59,4 @@ Scripts in `~/.config/neko/hooks/` run on events; `<name>.d/` folders run every 
 
 ## Inspiration
 
-neko-shell was inspired by many projects in the Linux desktop community, including Omarchy and Noctalia. See [LICENSE](LICENSE) for copyright notices.
+neko-shell was inspired by many projects in the Linux desktop community. See [LICENSE](LICENSE) for copyright notices.
