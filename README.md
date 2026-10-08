@@ -25,7 +25,7 @@ neko is developed on Arch Linux, and `deps.txt` names Arch packages; on other di
 ## Install
 
 ```bash
-git clone <this repository> ~/.local/share/neko-shell
+git clone https://github.com/AceofStades/neko-shell ~/.local/share/neko-shell
 cd ~/.local/share/neko-shell
 ./install.sh
 ```
