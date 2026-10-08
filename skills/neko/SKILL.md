@@ -28,7 +28,8 @@ Hyprland with a Lua config, and neko-shell (a Quickshell desktop) as the shell. 
 
 ## Changing things
 
-- Settings: `neko-settings get|set|toggle <key>` with `colors` (material|neko), `bar.float`, `bar.capsules`, `app.<kitty|btop|tmux|gtk>`. The same options are in the menu under Settings.
+- Settings: `neko-settings get|set|toggle <key>` with `colors` (material|neko), `bar.style` (docked|floating|attached), `bar.float`, `bar.capsules`, `bar.glass`, `app.<kitty|btop|tmux|gtk>`; `neko-settings json` reads everything the settings window shows. The same options are in the menu under Settings, and in the settings window's tabs (`neko-shell shell summon neko.settings '{"tab":"system"}'` opens it on a tab).
+- Calendars: `neko-calendars list|add <name> <url>|remove <n>` manages the iCal feeds (in `~/.config/neko/calendars`, kept private) whose events the control center's calendar shows.
 - Theme: `neko-theme-material` re-themes from the wallpaper; `neko-session theme` re-applies the current theme.
 - Wallpaper: `neko-wallpaper pick|random|set <image>|auto <minutes|off>`.
 - Displays: `neko-display set <output> key=value...` for any `hl.monitor` field (`key=` clears it), `--trial` to undo after 15 seconds unless `neko-display keep`, `neko-display place <output>=<XxY>...` to move several at once, `neko-display reset <output>` to go back to `monitors.lua`.

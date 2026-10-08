@@ -95,6 +95,27 @@ Singleton {
     onTriggered: root.osdShown = false
   }
 
+  // ---------- Settings ----------
+  // The settings window grows out of the island on the screen it opens on,
+  // from where the island rests. While it's up the island there clears its
+  // own pill and steps the center group aside, as for any card, and the
+  // window draws the card itself (it needs the keyboard, which the island
+  // never takes). Islands report where they rest, by screen name:
+  // { x, y, width, height, attached } in screen coordinates.
+  property bool settingsOpen: false
+  property string settingsScreen: ""
+  property var restRects: ({})
+  // The glass an attached bar's panels are made of, for the card to match
+  property color panelGlass: Qt.rgba(0.02, 0.02, 0.03, 0.62)
+
+  function reportRest(screenName, rect) {
+    if (!screenName) return
+    var next = {}
+    for (var key in restRects) next[key] = restRects[key]
+    next[screenName] = rect
+    restRects = next
+  }
+
   // ---------- Face unlock ----------
   // Howdy looking for a face (sudo, a polkit prompt, the lock screen): a
   // watcher asleep on its IR camera's opens and closes (it polls nothing)
@@ -390,9 +411,10 @@ Singleton {
 
   Component.onCompleted: Qt.callLater(function() { pomodoroStateFile.reload() })
 
-  // What the island shows: "faceauth", "osd", "pomodoro", "media",
-  // "notification" or "" (the workspaces). Face unlock, asking for you,
-  // outranks all; a passing OSD outranks the card the pointer asked for,
-  // which outranks a notification.
-  readonly property string mode: !active ? "" : faceAuth !== "" ? "faceauth" : osdShown ? "osd" : pomodoroShown ? "pomodoro" : mediaShown ? "media" : current ? "notification" : ""
+  // What the island shows: "settings", "faceauth", "osd", "pomodoro",
+  // "media", "notification" or "" (the workspaces). The settings window,
+  // grown out of it, holds it while open; then face unlock, asking for you;
+  // a passing OSD outranks the card the pointer asked for, which outranks a
+  // notification.
+  readonly property string mode: !active ? "" : settingsOpen ? "settings" : faceAuth !== "" ? "faceauth" : osdShown ? "osd" : pomodoroShown ? "pomodoro" : mediaShown ? "media" : current ? "notification" : ""
 }

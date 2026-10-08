@@ -64,7 +64,9 @@ BarWidget {
   // ---------- The island ----------
   readonly property bool islandUp: !root.vertical && root.visible && !!root.bar && !root.bar.barHidden
   property bool islandCounted: false
-  readonly property string islandMode: Island.mode
+  // The settings window grows out of one screen's island; the others rest
+  readonly property string screenName: root.QsWindow.window && root.QsWindow.window.screen ? root.QsWindow.window.screen.name : ""
+  readonly property string islandMode: Island.mode === "settings" && Island.settingsScreen !== root.screenName ? "" : Island.mode
 
   function countIsland() {
     if (root.islandUp === root.islandCounted) return
@@ -104,6 +106,28 @@ BarWidget {
     var point = root.mapToItem(null, 0, 0)
     // Attached, the bar meets the screen's sides; floating, it's in by the margin
     root.islandLeft = Math.round((root.topAttached ? 0 : Style.bar.floatMargin) + point.x + (root.width - island.implicitWidth) / 2)
+    reportRest()
+  }
+
+  // Where the pill rests, for the settings window to grow out of
+  function reportRest() {
+    if (!root.islandUp) return
+    Island.reportRest(root.screenName, {
+      x: root.islandLeft + (island.implicitWidth - root.restWidth) / 2,
+      y: (root.topAttached ? 0 : Style.bar.floatMargin) + root.restTopInset,
+      width: root.restWidth,
+      height: root.restHeight,
+      attached: root.topAttached
+    })
+  }
+  onRestWidthChanged: reportRest()
+  onRestHeightChanged: reportRest()
+  onTopAttachedChanged: placeIsland()
+  Binding {
+    target: Island
+    property: "panelGlass"
+    value: root.bar ? root.bar.attachedPanelColor : Qt.rgba(0.02, 0.02, 0.03, 0.62)
+    when: root.islandUp && !!root.bar && root.bar.attachedPanelColor !== undefined
   }
 
   onIslandModeChanged: {
@@ -165,7 +189,8 @@ BarWidget {
     anchors.left: true
     margins.top: root.topAttached ? 0 : Style.bar.floatMargin
     margins.left: root.islandLeft
-    mask: Region { item: root.islandMode !== "" ? pill : null }
+    // The settings window takes the pointer over its own card
+    mask: Region { item: root.islandMode !== "" && root.islandMode !== "settings" ? pill : null }
 
     // The shoulders of a card attached to the screen's top edge: beside its
     // top corners, each fills the corner between the edge and the card's side
@@ -255,7 +280,8 @@ BarWidget {
       bottomRightRadius: targetRadius
       color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
       // Held while it shrinks back into the capsule, then swapped out
-      opacity: root.islandMode !== "" || Island.settling ? 1 : 0
+      // The settings window draws its own card where the pill would be
+      opacity: root.islandMode !== "" && root.islandMode !== "settings" || Island.settling ? 1 : 0
       clip: true
 
       // A soft spring between shapes, so a change of width and height at

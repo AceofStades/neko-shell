@@ -4,10 +4,11 @@
   "name": "Settings",
   "version": "1.0.0",
   "author": "Neko",
-  "description": "A window for neko's settings: colors, bar, wallpaper, themed apps and the default agent",
+  "description": "neko's settings in tabs (appearance, bar, wallpaper, system, calendars, apps), grown out of the bar's island",
   "kinds": [
     "panel"
   ],
+  "keepLoaded": true,
   "entryPoints": {
     "panel": "Settings.qml"
   }
