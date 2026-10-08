@@ -194,11 +194,61 @@ Item {
   }
 
   // ----------------------------------------------------------------- clock
-  Column {
+  // The time in big block letters (figlet's ANSI Shadow): the blocks in the
+  // text color, the shadow they cast in the accent, two layers of the same
+  // monospace text. A cat sits on it and blinks now and then.
+  readonly property var glyphs: ({"0": [" ██████╗ ", "██╔═████╗", "██║██╔██║", "████╔╝██║", "╚██████╔╝", " ╚═════╝ "],
+    "1": [" ██╗", "███║", "╚██║", " ██║", " ██║", " ╚═╝"],
+    "2": ["██████╗ ", "╚════██╗", " █████╔╝", "██╔═══╝ ", "███████╗", "╚══════╝"],
+    "3": ["██████╗ ", "╚════██╗", " █████╔╝", " ╚═══██╗", "██████╔╝", "╚═════╝ "],
+    "4": ["██╗  ██╗", "██║  ██║", "███████║", "╚════██║", "     ██║", "     ╚═╝"],
+    "5": ["███████╗", "██╔════╝", "███████╗", "╚════██║", "███████║", "╚══════╝"],
+    "6": [" ██████╗ ", "██╔════╝ ", "███████╗ ", "██╔═══██╗", "╚██████╔╝", " ╚═════╝ "],
+    "7": ["███████╗", "╚════██║", "    ██╔╝", "   ██╔╝ ", "   ██║  ", "   ╚═╝  "],
+    "8": [" █████╗ ", "██╔══██╗", "╚█████╔╝", "██╔══██╗", "╚█████╔╝", " ╚════╝ "],
+    "9": [" █████╗ ", "██╔══██╗", "╚██████║", " ╚═══██║", " █████╔╝", " ╚════╝ "],
+    ":": ["   ", "██╗", "╚═╝", "██╗", "╚═╝", "   "]})
+  readonly property var clockRows: {
+    var time = Qt.formatDateTime(clock.date, "HH:mm")
+    var rows = []
+    for (var row = 0; row < 6; row++) {
+      var parts = []
+      for (var i = 0; i < time.length; i++) parts.push((glyphs[time.charAt(i)] || glyphs["0"])[row])
+      rows.push(parts.join(" "))
+    }
+    return rows
+  }
+  readonly property string clockSolid: clockRows.map(function(r) { return r.replace(/[^█\n]/g, " ") }).join("\n")
+  readonly property string clockShadow: clockRows.map(function(r) { return r.replace(/█/g, " ") }).join("\n")
+  readonly property int clockColumns: clockRows.length > 0 ? clockRows[0].length : 1
+
+  FontMetrics {
+    id: cellMetrics
+    font.family: root.fontFamily
+    font.pixelSize: 100
+  }
+  // As wide as about three fifths of the screen, at most
+  readonly property int clockPixelSize: Math.max(8, Math.floor(Math.min(root.width * (root.compact ? 0.8 : 0.6), 1150)
+    / (clockColumns * Math.max(0.3, cellMetrics.advanceWidth("█") / 100))))
+
+  // At the clock's size: the full block's height, so the rows meet without
+  // a seam between them
+  FontMetrics {
+    id: blockMetrics
+    font.family: root.fontFamily
+    font.pixelSize: root.clockPixelSize
+  }
+  readonly property real clockLine: Math.max(1, Math.floor(blockMetrics.ascent + blockMetrics.descent))
+
+  Item {
+    id: clockBlock
+    // Room above the digits for the cat; the shadow layer clips to this item
+    readonly property real catRoom: cat.implicitHeight * 0.72
     anchors.horizontalCenter: parent.horizontalCenter
-    y: Math.round(root.height * 0.36 - height / 2 + (1 - root.entrance) * Style.space(24))
+    width: clockText.implicitWidth
+    height: catRoom + clockText.implicitHeight + dateLine.height + Style.space(18)
+    y: Math.round(root.height * 0.42 - height / 2 + (1 - root.entrance) * Style.space(24))
     opacity: root.entrance
-    spacing: Style.space(4)
     // A soft shadow keeps it legible over a light wallpaper
     layer.enabled: true
     layer.effect: MultiEffect {
@@ -210,20 +260,71 @@ Item {
     }
 
     Text {
-      anchors.horizontalCenter: parent.horizontalCenter
-      text: Qt.formatDateTime(clock.date, "HH:mm")
-      color: root.text
+      id: clockShadowText
+      y: clockBlock.catRoom
+      text: root.clockShadow
+      textFormat: Text.PlainText
+      lineHeightMode: Text.FixedHeight
+      lineHeight: root.clockLine
+      color: Util.alpha(root.accent, 0.85)
       font.family: root.fontFamily
-      font.pixelSize: Math.round(Math.min(root.height * 0.15, root.width * 0.12, 168))
-      font.weight: Font.Light
-      font.letterSpacing: -2
+      font.pixelSize: root.clockPixelSize
     }
     Text {
+      id: clockText
+      y: clockBlock.catRoom
+      text: root.clockSolid
+      textFormat: Text.PlainText
+      lineHeightMode: Text.FixedHeight
+      lineHeight: root.clockLine
+      color: root.text
+      font.family: root.fontFamily
+      font.pixelSize: root.clockPixelSize
+    }
+
+    // The cat, on the last digit
+    Text {
+      id: cat
+      property bool blink: false
+      anchors.right: clockText.right
+      anchors.rightMargin: root.clockPixelSize * 1.2
+      anchors.bottom: clockText.top
+      anchors.bottomMargin: -root.clockPixelSize * 0.35
+      text: " /\\_/\\\n( " + (blink ? "-.-" : "o.o") + " )\n > ^ <"
+      textFormat: Text.PlainText
+      color: root.text
+      font.family: root.fontFamily
+      font.pixelSize: Math.round(root.clockPixelSize * 1.15)
+      lineHeight: 0.95
+
+      Timer {
+        interval: 4200
+        repeat: true
+        running: root.entrance >= 1 && !root.displaysBlank && !Style.reduceMotion
+        onTriggered: {
+          cat.blink = true
+          catOpen.restart()
+          interval = 3000 + Math.floor(Math.random() * 4000)
+        }
+      }
+      Timer {
+        id: catOpen
+        interval: 170
+        onTriggered: cat.blink = false
+      }
+    }
+
+    Text {
+      id: dateLine
       anchors.horizontalCenter: parent.horizontalCenter
-      text: Qt.formatDateTime(clock.date, "dddd d MMMM")
+      anchors.top: clockText.bottom
+      anchors.topMargin: Style.space(18)
+      text: "──  " + Qt.formatDateTime(clock.date, "dddd, d MMMM").toLowerCase() + "  ──"
+      textFormat: Text.PlainText
       color: root.dim
       font.family: root.fontFamily
       font.pixelSize: root.compact ? Style.font.body : Style.font.title
+      font.letterSpacing: 1
     }
   }
 
