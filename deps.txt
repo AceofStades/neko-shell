@@ -26,6 +26,7 @@ brightnessctl           recommended  brightnessctl        Screen and keyboard br
 upower                  recommended  upower               Battery status
 libnotify               recommended  notify-send          Notifications from neko's commands
 curl                    recommended  curl                 Weather and calendar feeds
+rust                    recommended  cargo                Builds neko-core, the fast versions of neko's helpers (Python ones run otherwise)
 socat                   recommended  socat                Fast calls to the running shell (falls back to qs ipc)
 imagemagick             recommended  magick               Wallpaper colors and thumbnails
 matugen                 recommended  matugen              Colors from the wallpaper (Material You)

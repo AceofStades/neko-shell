@@ -18,6 +18,7 @@ A desktop shell for Hyprland, built on Quickshell: a bar that hangs from the top
 
 - [Hyprland](https://hyprland.org) 0.56 or newer, with a Lua config (`~/.config/hypr/hyprland.lua`)
 - [Quickshell](https://quickshell.org), a recent build (`quickshell-git` on the AUR)
+- Rust (`cargo`), recommended: `install.sh` builds `neko-core`, the fast versions of neko's helpers, from `core/`; without it the slower Python versions run
 - The packages in [`deps.txt`](deps.txt): a handful are required, most add one feature each
 
 neko is developed on Arch Linux, and `deps.txt` names Arch packages; on other distributions it serves as a list of what to look for.
@@ -107,6 +108,7 @@ If the shell ever crashes while locked, Hyprland keeps the session locked behind
 ```bash
 cd ~/.local/share/neko-shell
 git pull
+./install.sh              # rebuilds neko-core; leaves your settings alone
 neko session restart
 ```
 

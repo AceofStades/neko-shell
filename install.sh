@@ -10,6 +10,7 @@
 # It installs no packages and never uses root: for anything missing it prints
 # the command to run, from deps.txt. What it changes, all under your home:
 #   ~/.local/bin/neko          a small launcher for the neko command
+#   core/target/               neko-core, built from core/ when Rust is there
 #   ~/.config/neko/env         machine settings (which Quickshell to run)
 #   ~/.config/neko/shell.json  the bar and plugin layout (the default one)
 #   your Hyprland Lua config   a marked block that loads neko and starts it,
@@ -197,6 +198,23 @@ find_quickshell() {
   return 1
 }
 
+# neko-core (core/) is the Rust side of neko's helpers; without a toolchain
+# the bin/ wrappers run the Python versions in legacy/ instead. Building as
+# you installs nothing; an update rebuilds it.
+build_core() {
+  step "Building neko-core"
+  if ! command -v cargo > /dev/null 2>&1; then
+    say "  No Rust toolchain (cargo), so the slower Python versions of its helpers run instead."
+    return 0
+  fi
+  say "  ${dim}cargo build --release (a minute or two the first time)${reset}"
+  if cargo build --release --quiet --manifest-path "$NEKO_PATH/core/Cargo.toml"; then
+    say "  $NEKO_PATH/core/target/release/neko-core"
+  else
+    warn "neko-core didn't build; the Python versions of its helpers run instead"
+  fi
+}
+
 install_launcher() {
   step "Installing the neko command"
   if [[ -e $LAUNCHER ]] && ! grep -qF "$LAUNCHER_MARK" "$LAUNCHER" 2> /dev/null; then
@@ -377,6 +395,7 @@ case $MODE in
       }
     fi
     install_launcher
+    build_core
     install_config
     install_hyprland
     check_lock
