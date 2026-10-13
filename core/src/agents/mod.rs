@@ -4,6 +4,7 @@
 //! times written the way the records always carried them, and the stats every
 //! local scan adds up.
 
+pub mod claude;
 pub mod fireworks;
 pub mod grok;
 
@@ -298,7 +299,7 @@ use chrono::Datelike;
 // ------------------------------------------------------------------ stats
 
 /// Token totals by kind, as every record's modelUsage holds them
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, PartialEq)]
 pub struct Bucket {
     pub input: i64,
     pub output: i64,
@@ -371,7 +372,11 @@ impl Tally {
 
     /// `prompts` messages of one model, on one day, in one session
     pub fn add(&mut self, day: &str, session: &str, model: &str, usage: Bucket, prompts: i64) {
-        let total = usage.total();
+        self.add_with_total(day, session, model, usage, usage.total(), prompts);
+    }
+
+    /// The same, the day counting `total` tokens whatever the kinds add up to
+    pub fn add_with_total(&mut self, day: &str, session: &str, model: &str, usage: Bucket, total: i64, prompts: i64) {
         self.sessions.insert(session.to_string());
         self.active_days.insert(day.to_string());
         self.prompts += prompts;
@@ -496,7 +501,7 @@ pub fn registered_accounts(provider: &str) -> Vec<Map<String, Value>> {
         active = text(accounts[0].get("id"));
     }
     let threshold = match registry.get("threshold") {
-        Some(v) if !text(Some(v)).is_empty() => v.clone(),
+        Some(v) if truthy(Some(v)) => v.clone(),
         _ => json!(95),
     };
     let switch = json!({
@@ -516,33 +521,29 @@ pub fn safe_key(raw: &str) -> String {
     raw.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-').collect()
 }
 
-/// Every file under `root` whose name ends with `suffix`, depth first in
-/// directory order (files of a directory before its subdirectories)
+/// Every file under `root` whose name ends with `suffix`, in the order
+/// Python's rglob finds them: a directory's matches in directory order, then
+/// the directories it holds, the last found walked first. Symlinked
+/// directories aren't followed; hidden names count unless `skip_hidden`.
 pub fn files_under(root: &Path, suffix: &str, skip_hidden: bool) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];
     while let Some(dir) = stack.pop() {
         let Ok(entries) = fs::read_dir(&dir) else { continue };
-        let mut subdirs = Vec::new();
         for entry in entries.flatten() {
             let name = entry.file_name();
             let name = name.to_string_lossy();
             if skip_hidden && name.starts_with('.') {
                 continue;
             }
-            let path = entry.path();
-            match entry.file_type() {
-                Ok(kind) if kind.is_dir() => subdirs.push(path),
-                Ok(kind) if (kind.is_file() || kind.is_symlink()) && name.ends_with(suffix) => {
-                    if path.is_file() {
-                        out.push(path)
-                    }
-                }
-                _ => {}
+            let is_dir = entry.file_type().is_ok_and(|kind| kind.is_dir());
+            if !is_dir && name.ends_with(suffix) {
+                out.push(entry.path());
+            }
+            if is_dir {
+                stack.push(entry.path());
             }
         }
-        // Visited in the order found, so the first found is walked first
-        stack.extend(subdirs.into_iter().rev());
     }
     out
 }
@@ -593,6 +594,80 @@ pub fn flags(args: &[String], with_values: &[&str]) -> Result<Flags, String> {
         }
     }
     Ok(parsed)
+}
+
+/// A path as Python's Path(expandvars(expanduser(raw))).resolve() gives it:
+/// absolute, with every symlink of the part that exists resolved
+pub fn expand_path(raw: &str) -> PathBuf {
+    let user = match raw.strip_prefix('~') {
+        Some(rest) if rest.is_empty() || rest.starts_with('/') => format!("{}{rest}", home().display()),
+        _ => raw.to_string(),
+    };
+    resolve(Path::new(&expand_vars(&user)))
+}
+
+/// $NAME and ${NAME} replaced where NAME is set, left alone where it isn't
+pub fn expand_vars(raw: &str) -> String {
+    let mut out = String::new();
+    let mut rest = raw;
+    while let Some(at) = rest.find('$') {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + 1..];
+        let (name, used) = if let Some(braced) = after.strip_prefix('{') {
+            match braced.find('}') {
+                Some(end) => (&braced[..end], end + 2),
+                None => ("", 0),
+            }
+        } else {
+            let end = after.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).unwrap_or(after.len());
+            (&after[..end], end)
+        };
+        match std::env::var(name) {
+            Ok(value) if !name.is_empty() => {
+                out.push_str(&value);
+                rest = &after[used..];
+            }
+            _ => {
+                out.push('$');
+                rest = after;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+pub fn resolve(path: &Path) -> PathBuf {
+    let absolute = if path.is_absolute() { path.to_path_buf() } else { std::env::current_dir().unwrap_or_default().join(path) };
+    if let Ok(real) = fs::canonicalize(&absolute) {
+        return real;
+    }
+    // The longest part that exists, resolved, and the rest as written
+    let mut resolved = PathBuf::from("/");
+    let mut missing = false;
+    for part in absolute.components() {
+        match part {
+            std::path::Component::RootDir | std::path::Component::CurDir | std::path::Component::Prefix(_) => {}
+            std::path::Component::ParentDir => {
+                resolved.pop();
+            }
+            std::path::Component::Normal(name) => {
+                resolved.push(name);
+                if !missing {
+                    match fs::canonicalize(&resolved) {
+                        Ok(real) => resolved = real,
+                        Err(_) => missing = true,
+                    }
+                }
+            }
+        }
+    }
+    resolved
+}
+
+pub fn sha1_hex(text: &str) -> String {
+    use sha1::Digest;
+    hex::encode(sha1::Sha1::digest(text.as_bytes()))
 }
 
 pub fn print_compact(value: &Value) {

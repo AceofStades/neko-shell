@@ -19,6 +19,7 @@ fn main() -> ExitCode {
         "calendar-events" => calendar::run(rest),
         "faceauth-watch" => faceauth::run(rest),
         "file-select" => filepick::run(rest),
+        "agent-usage-claude" => agents::claude::run(rest),
         "agent-usage-fireworks" => agents::fireworks::run(rest),
         "agent-usage-grok" => agents::grok::run(rest),
         other => Err(format!("unknown subcommand: {other}")),

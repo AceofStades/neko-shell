@@ -163,19 +163,18 @@ fn local_stats(home: &Path) -> Value {
     })
 }
 
-/// The visible directories two levels down, as the glob sessions/*/*/ finds
+/// The directories two levels down, as the glob sessions/*/*/ finds them
 fn session_dirs(root: &Path) -> Vec<PathBuf> {
-    let visible_dirs = |dir: &Path| -> Vec<PathBuf> {
+    let dirs = |dir: &Path| -> Vec<PathBuf> {
         fs::read_dir(dir)
             .into_iter()
             .flatten()
             .flatten()
-            .filter(|e| !e.file_name().to_string_lossy().starts_with('.'))
             .map(|e| e.path())
             .filter(|p| p.is_dir())
             .collect()
     };
-    visible_dirs(root).iter().flat_map(|folder| visible_dirs(folder)).collect()
+    dirs(root).iter().flat_map(|folder| dirs(folder)).collect()
 }
 
 /// A scan from before midnight would count yesterday's sessions as today's
