@@ -15,6 +15,10 @@ Two helpers can change system settings, and only when you set them up yourself:
 - `neko-dns` (the DNS choice in Settings and the Wi-Fi panel) and `neko-theme-set-browser-policy` (browser colors) need root. They never run as root from the checkout, which you can write to: they run only from a root-owned copy you install, for example `sudo install -Dm755 bin/neko-dns /usr/local/bin/neko-dns`, and ask through sudo or polkit. As root they ignore your `PATH`.
 - A few commands run a system tool through `sudo` and ask for your password in the terminal (`neko-menu-timezone` runs `timedatectl`).
 
+### neko-core
+
+`neko-core` is the compiled side of neko's helpers, built from `core/`. With Rust installed, `install.sh` builds it on your machine. Without Rust, it downloads the build published with your version's release: GitHub Actions makes it from the tagged source (`.github/workflows/release.yml`), and `install.sh` fetches it over HTTPS and uses it only if it matches the release's `SHA256SUMS`. The checksums come from the same release, so they catch a damaged download, not a compromised repository; install Rust to depend on the source alone.
+
 ### The lock screen
 
 The lock is part of the shell and uses Wayland's session lock (ext-session-lock), so the compositor keeps the screen covered whatever the shell does. Passwords are checked through PAM, with the first profile of `/etc/pam.d/neko-lock-password`, `/etc/pam.d/vlock` (from Arch's base `kbd` package) or `/etc/pam.d/hyprlock`. Face unlock (Howdy) and fingerprint (fprintd) use their own PAM conversations. Typed passwords stay in memory only until PAM answers.
@@ -38,3 +42,4 @@ If the shell dies while the screen is locked, Hyprland keeps the session locked 
 - Calendars: the iCal feeds you add.
 - Speed test: `fast.com`, when you run it.
 - Agent usage: the AI providers' APIs (Anthropic, OpenAI, xAI, Fireworks), with your own credentials, only for the agents you use.
+- Installing without Rust: `github.com`, for the `neko-core` release build.

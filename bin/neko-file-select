@@ -4,11 +4,10 @@
 # neko:args=[--title <title>] [--multiple] [--directory] [--extensions "<ext ext...>"]
 # neko:examples=neko file select --title "Send with Tailscale" --multiple | neko file select --title "Pick image" --extensions "png svg" | neko file select --title "Share folder" --directory
 
-# neko-core's file-select (core/), or, until that's built, the Python version
-# it replaces (legacy/). Exit codes: 0 picked, 1 nothing picked, 2 the chooser
-# didn't run.
+# neko-core's file-select (core/), which install.sh builds or downloads
 root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
-if [[ -x $root/core/target/release/neko-core ]]; then
-  exec "$root/core/target/release/neko-core" file-select "$@"
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
 fi
-exec "$root/legacy/neko-file-select" "$@"
+exec "$root/core/target/release/neko-core" file-select "$@"

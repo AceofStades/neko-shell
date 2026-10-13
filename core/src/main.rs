@@ -16,6 +16,11 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     };
     let result = match command.as_str() {
+        // What install.sh compares against the checkout's version
+        "version" | "--version" => {
+            println!("{}", env!("CARGO_PKG_VERSION"));
+            Ok(())
+        }
         "calendar-events" => calendar::run(rest),
         "faceauth-watch" => faceauth::run(rest),
         "file-select" => filepick::run(rest),

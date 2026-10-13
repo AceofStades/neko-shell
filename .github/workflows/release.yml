@@ -1,0 +1,80 @@
+# Builds neko-core and publishes a release for every v<version> tag: the
+# static neko-core install.sh downloads when there's no Rust, the whole of
+# neko with neko-core already built in, and the checksums of both.
+#
+# Run it by hand (Actions > Release > Run workflow) to build and test without
+# publishing; the files are kept as the run's artifact.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      TARGET: x86_64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag names core/Cargo.toml's version
+        if: github.event_name == 'push'
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"$/\1/p' core/Cargo.toml | head -n 1)
+          if [[ $GITHUB_REF_NAME != "v$version" ]]; then
+            echo "::error::The tag is $GITHUB_REF_NAME but core/Cargo.toml says $version"
+            exit 1
+          fi
+
+      # musl-tools brings the C compiler the bundled SQLite and rustls's ring
+      # are built with, so the binary links statically and runs on any distro
+      - name: Set up Rust for a static build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add "$TARGET"
+
+      - name: Test
+        run: cargo test --release --locked --manifest-path core/Cargo.toml --target "$TARGET"
+
+      - name: Build
+        run: cargo build --release --locked --manifest-path core/Cargo.toml --target "$TARGET"
+
+      - name: Package
+        run: |
+          name=neko-shell-${GITHUB_REF_NAME//\//-}-x86_64-linux
+          core=core/target/$TARGET/release/neko-core
+          file "$core"
+          "$core" version
+          mkdir -p dist "staging/$name/core/target/release"
+          cp "$core" dist/neko-core-x86_64-linux
+          # The tracked files as of this commit, and neko-core where
+          # install.sh looks for it
+          git archive --format=tar --prefix="$name/" -o "dist/$name.tar" HEAD
+          cp "$core" "staging/$name/core/target/release/neko-core"
+          tar -rf "dist/$name.tar" -C staging --owner=0 --group=0 "$name/core/target/release/neko-core"
+          gzip -9 "dist/$name.tar"
+          cd dist
+          sha256sum neko-core-x86_64-linux "$name.tar.gz" > SHA256SUMS
+          cat SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: neko-shell
+          path: dist/
+
+      - name: Publish the release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag \
+            --title "neko-shell $GITHUB_REF_NAME" \
+            --generate-notes

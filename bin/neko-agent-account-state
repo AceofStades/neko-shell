@@ -4,10 +4,10 @@
 # neko:args=<registry|home|homes|list|refresh|begin|register|use|rename|remove|mode|link|autoswitch> [provider] [args...]
 # neko:hidden=true
 
-# neko-core's agent-account-state (core/), or, until that's built, the Python
-# version it replaces (legacy/)
+# neko-core's agent-account-state (core/), which install.sh builds or downloads
 root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
-if [[ -x $root/core/target/release/neko-core ]]; then
-  exec "$root/core/target/release/neko-core" agent-account-state "$@"
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
 fi
-exec "$root/legacy/neko-agent-account-state" "$@"
+exec "$root/core/target/release/neko-core" agent-account-state "$@"

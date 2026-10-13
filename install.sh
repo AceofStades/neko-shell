@@ -10,11 +10,15 @@
 # It installs no packages and never uses root: for anything missing it prints
 # the command to run, from deps.txt. What it changes, all under your home:
 #   ~/.local/bin/neko          a small launcher for the neko command
-#   core/target/               neko-core, built from core/ when Rust is there
+#   core/target/               neko-core, built from core/ with Rust, or else
+#                              this version's release build, checksum verified
 #   ~/.config/neko/env         machine settings (which Quickshell to run)
 #   ~/.config/neko/shell.json  the bar and plugin layout (the default one)
 #   your Hyprland Lua config   a marked block that loads neko and starts it,
 #                              after a backup of the file next to it
+#
+# A fork publishing its own releases sets NEKO_RELEASES to its download URL
+# (https://github.com/<owner>/<repo>/releases/download).
 
 set -uo pipefail
 
@@ -26,6 +30,8 @@ LAUNCHER=$HOME/.local/bin/neko
 MARK_BEGIN="-- >>> neko-shell >>>"
 MARK_END="-- <<< neko-shell <<<"
 LAUNCHER_MARK="# Installed by neko-shell's install.sh"
+CORE=$NEKO_PATH/core/target/release/neko-core
+NEKO_RELEASES=${NEKO_RELEASES:-https://github.com/AceofStades/neko-shell/releases/download}
 
 ASSUME_YES=0
 MODE=install
@@ -76,7 +82,7 @@ done
 
 (( EUID != 0 )) || fail "run this as yourself, not root: neko lives in your home"
 [[ -f $NEKO_PATH/shell/shell.qml && -x $NEKO_PATH/bin/neko ]] ||
-  fail "run install.sh from a neko-shell checkout (git clone, then ./install.sh)"
+  fail "run install.sh from a neko-shell folder: a git clone, or an unpacked release"
 
 # ------------------------------------------------------------- dependencies
 
@@ -198,20 +204,66 @@ find_quickshell() {
   return 1
 }
 
-# neko-core (core/) is the Rust side of neko's helpers; without a toolchain
-# the bin/ wrappers run the Python versions in legacy/ instead. Building as
-# you installs nothing; an update rebuilds it.
-build_core() {
-  step "Building neko-core"
-  if ! command -v cargo > /dev/null 2>&1; then
-    say "  No Rust toolchain (cargo), so the slower Python versions of its helpers run instead."
+# neko-core (core/) is the Rust side of neko's helpers, which the bin/
+# commands run. With Rust it's built here, as you; without it, the build
+# published with this version's release is downloaded and used only if it
+# matches the release's checksums. An update does the same again.
+core_version() {
+  sed -n 's/^version = "\(.*\)"$/\1/p' "$NEKO_PATH/core/Cargo.toml" | head -n 1
+}
+
+download_core() {
+  local version=$1 asset=neko-core-x86_64-linux tmp
+  if [[ $(uname -m) != x86_64 ]]; then
+    warn "There's no prebuilt neko-core for $(uname -m); install Rust (cargo) and run ./install.sh again"
+    return 1
+  fi
+  if ! command -v curl > /dev/null 2>&1; then
+    warn "Downloading neko-core needs curl; install it (or Rust) and run ./install.sh again"
+    return 1
+  fi
+  local url=$NEKO_RELEASES/v$version
+  tmp=$(mktemp -d) || return 1
+  say "  ${dim}$url/$asset${reset}"
+  # Redirects (GitHub hands downloads to its storage) stay on HTTPS
+  if ! curl -fsSL --proto-redir '=https' -o "$tmp/$asset" "$url/$asset" \
+    || ! curl -fsSL --proto-redir '=https' -o "$tmp/SHA256SUMS" "$url/SHA256SUMS"; then
+    warn "Couldn't download neko-core $version from $url"
+    rm -rf "$tmp"
+    return 1
+  fi
+  if ! (cd "$tmp" && grep -E "^[0-9a-f]{64}  $asset\$" SHA256SUMS | sha256sum --check --status --strict); then
+    warn "The downloaded neko-core doesn't match the release's checksum, so it isn't used"
+    rm -rf "$tmp"
+    return 1
+  fi
+  mkdir -p "$(dirname "$CORE")"
+  install -m 755 "$tmp/$asset" "$CORE.new" && mv -f "$CORE.new" "$CORE"
+  local status=$?
+  rm -rf "$tmp"
+  return $status
+}
+
+install_core() {
+  step "Setting up neko-core"
+  local version
+  version=$(core_version)
+  if command -v cargo > /dev/null 2>&1; then
+    say "  ${dim}cargo build --release (a minute or two the first time)${reset}"
+    if cargo build --release --quiet --manifest-path "$NEKO_PATH/core/Cargo.toml"; then
+      say "  Built $CORE"
+      return 0
+    fi
+    warn "neko-core didn't build; trying the release build instead"
+  fi
+  if [[ -x $CORE && $("$CORE" version 2> /dev/null) == "$version" ]]; then
+    say "  neko-core $version is already there"
     return 0
   fi
-  say "  ${dim}cargo build --release (a minute or two the first time)${reset}"
-  if cargo build --release --quiet --manifest-path "$NEKO_PATH/core/Cargo.toml"; then
-    say "  $NEKO_PATH/core/target/release/neko-core"
+  if download_core "$version"; then
+    say "  Downloaded neko-core $version; its checksum matches the release's"
   else
-    warn "neko-core didn't build; the Python versions of its helpers run instead"
+    warn "Without neko-core, the agents panel, calendars, face unlock and file pickers don't work"
   fi
 }
 
@@ -395,7 +447,7 @@ case $MODE in
       }
     fi
     install_launcher
-    build_core
+    install_core
     install_config
     install_hyprland
     check_lock

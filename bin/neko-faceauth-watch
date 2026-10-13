@@ -4,10 +4,10 @@
 # neko:args=
 # neko:hidden=true
 
-# neko-core's faceauth-watch (core/), or, until that's built, the Python
-# version it replaces (legacy/)
+# neko-core's faceauth-watch (core/), which install.sh builds or downloads
 root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
-if [[ -x $root/core/target/release/neko-core ]]; then
-  exec "$root/core/target/release/neko-core" faceauth-watch "$@"
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
 fi
-exec "$root/legacy/neko-faceauth-watch" "$@"
+exec "$root/core/target/release/neko-core" faceauth-watch "$@"

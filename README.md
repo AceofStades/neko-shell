@@ -18,7 +18,7 @@ A desktop shell for Hyprland, built on Quickshell: a bar that hangs from the top
 
 - [Hyprland](https://hyprland.org) 0.56 or newer, with a Lua config (`~/.config/hypr/hyprland.lua`)
 - [Quickshell](https://quickshell.org), a recent build (`quickshell-git` on the AUR)
-- Rust (`cargo`), recommended: `install.sh` builds `neko-core`, the fast versions of neko's helpers, from `core/`; without it the slower Python versions run
+- Optionally Rust (`cargo`): `install.sh` builds `neko-core`, the compiled side of neko's helpers, from `core/`. Without Rust it downloads the release's prebuilt `neko-core` (x86_64) instead
 - The packages in [`deps.txt`](deps.txt): a handful are required, most add one feature each
 
 neko is developed on Arch Linux, and `deps.txt` names Arch packages; on other distributions it serves as a list of what to look for.
@@ -31,13 +31,16 @@ cd ~/.local/share/neko-shell
 ./install.sh
 ```
 
-`install.sh` works from wherever you cloned to, as your user (never root), and installs no packages. It:
+Or download `neko-shell-<version>-x86_64-linux.tar.gz` from the [Releases](https://github.com/AceofStades/neko-shell/releases) page, which has `neko-core` already built, unpack it where you want neko to live, and run `./install.sh` in it.
+
+`install.sh` works from wherever neko is, as your user (never root), and installs no packages. It:
 
 1. checks the dependencies in `deps.txt` and prints the `pacman` (and AUR helper) command for whatever is missing;
 2. puts a `neko` launcher in `~/.local/bin`;
-3. writes `~/.config/neko/env` and the default `~/.config/neko/shell.json`, if they aren't there yet;
-4. adds a marked block to your `hyprland.lua` (after backing it up next to it) that loads neko's Hyprland module and starts neko at login;
-5. checks that a PAM profile exists for the lock screen, and offers to start neko right away.
+3. builds `neko-core` with Rust, or else downloads the build published with this version's release and uses it only if it matches the release's checksums;
+4. writes `~/.config/neko/env` and the default `~/.config/neko/shell.json`, if they aren't there yet;
+5. adds a marked block to your `hyprland.lua` (after backing it up next to it) that loads neko's Hyprland module and starts neko at login;
+6. checks that a PAM profile exists for the lock screen, and offers to start neko right away.
 
 Run it again any time; it leaves what's already set up alone. `./install.sh --check` only reports dependencies; `./install.sh --yes` takes the defaults without asking.
 
@@ -108,7 +111,7 @@ If the shell ever crashes while locked, Hyprland keeps the session locked behind
 ```bash
 cd ~/.local/share/neko-shell
 git pull
-./install.sh              # rebuilds neko-core; leaves your settings alone
+./install.sh              # rebuilds (or downloads) neko-core; leaves your settings alone
 neko session restart
 ```
 
