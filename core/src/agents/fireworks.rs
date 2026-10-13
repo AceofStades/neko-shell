@@ -30,7 +30,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             std::env::var(env).ok().filter(|v| !v.is_empty()).unwrap_or_else(|| default.to_string())
         })
     };
-    let auth_path = expand_user(&option("--auth-path", "FIREWORKS_AUTH_PATH", "~/.fireworks/auth.ini"));
+    let auth_path = super::expand_user(&option("--auth-path", "FIREWORKS_AUTH_PATH", "~/.fireworks/auth.ini"));
     let base_url = option("--api-base-url", "FIREWORKS_API_BASE_URL", API_BASE_URL);
 
     let record = match scan(&base_url, &auth_path) {
@@ -54,13 +54,6 @@ enum Failure {
 
 fn fail<T>(message: &str) -> Result<T, Failure> {
     Err(Failure::Fireworks(message.to_string()))
-}
-
-fn expand_user(raw: &str) -> PathBuf {
-    match raw.strip_prefix('~') {
-        Some(rest) if rest.is_empty() || rest.starts_with('/') => PathBuf::from(format!("{}{rest}", home().display())),
-        _ => PathBuf::from(raw),
-    }
 }
 
 // ------------------------------------------------------------------ money

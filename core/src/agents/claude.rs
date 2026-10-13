@@ -297,7 +297,7 @@ fn parse_usage_records(path: &Path, entry: Option<&Entry>) -> std::io::Result<En
         line_number += 1;
 
         // A cheap filter before parsing keeps files of unrelated lines cheap
-        if !contains(&raw, b"\"usage\":") {
+        if !super::bytes_contain(&raw, b"\"usage\":") {
             continue;
         }
         let Ok(Value::Object(parsed)) = serde_json::from_str::<Value>(&String::from_utf8_lossy(&raw)) else { continue };
@@ -352,10 +352,6 @@ fn parse_usage_records(path: &Path, entry: Option<&Entry>) -> std::io::Result<En
     }
 
     Ok(Entry { size, file, mtime, head: read_digest(path, offset)?, offset, lines: line_number, records })
-}
-
-fn contains(haystack: &[u8], needle: &[u8]) -> bool {
-    haystack.windows(needle.len()).any(|w| w == needle)
 }
 
 fn scan_projects(projects: &Path, index_file: &Path) -> Value {

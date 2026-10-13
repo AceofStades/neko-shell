@@ -5,6 +5,7 @@
 //! local scan adds up.
 
 pub mod claude;
+pub mod codex;
 pub mod fireworks;
 pub mod grok;
 
@@ -230,12 +231,6 @@ where
 
 pub fn iso_now_utc() -> String {
     iso(&Utc::now())
-}
-
-pub fn utc_from_secs(secs: f64) -> DateTime<Utc> {
-    let whole = secs.floor();
-    let nanos = ((secs - whole) * 1e9).round() as u32;
-    Utc.timestamp_opt(whole as i64, nanos.min(999_999_999)).single().unwrap_or_default()
 }
 
 pub fn today() -> NaiveDate {
@@ -596,14 +591,22 @@ pub fn flags(args: &[String], with_values: &[&str]) -> Result<Flags, String> {
     Ok(parsed)
 }
 
+/// ~ or ~/... as the home directory
+pub fn expand_user(raw: &str) -> PathBuf {
+    match raw.strip_prefix('~') {
+        Some(rest) if rest.is_empty() || rest.starts_with('/') => PathBuf::from(format!("{}{rest}", home().display())),
+        _ => PathBuf::from(raw),
+    }
+}
+
+pub fn bytes_contain(haystack: &[u8], needle: &[u8]) -> bool {
+    haystack.windows(needle.len()).any(|w| w == needle)
+}
+
 /// A path as Python's Path(expandvars(expanduser(raw))).resolve() gives it:
 /// absolute, with every symlink of the part that exists resolved
 pub fn expand_path(raw: &str) -> PathBuf {
-    let user = match raw.strip_prefix('~') {
-        Some(rest) if rest.is_empty() || rest.starts_with('/') => format!("{}{rest}", home().display()),
-        _ => raw.to_string(),
-    };
-    resolve(Path::new(&expand_vars(&user)))
+    resolve(Path::new(&expand_vars(&expand_user(raw).to_string_lossy())))
 }
 
 /// $NAME and ${NAME} replaced where NAME is set, left alone where it isn't
