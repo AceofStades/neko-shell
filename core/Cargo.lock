@@ -415,6 +415,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "hex",
+ "libc",
  "rrule",
  "serde_json",
  "sha2",

@@ -3,17 +3,19 @@
 //! `neko-core <subcommand>`, so nothing else in neko notices the switch.
 
 mod calendar;
+mod faceauth;
 
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some((command, rest)) = args.split_first() else {
-        eprintln!("Usage: neko-core <calendar-events> [args...]");
+        eprintln!("Usage: neko-core <calendar-events|faceauth-watch> [args...]");
         return ExitCode::from(2);
     };
     let result = match command.as_str() {
         "calendar-events" => calendar::run(rest),
+        "faceauth-watch" => faceauth::run(rest),
         other => Err(format!("unknown subcommand: {other}")),
     };
     match result {
