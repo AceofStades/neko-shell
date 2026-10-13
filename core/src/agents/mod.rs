@@ -4,6 +4,7 @@
 //! times written the way the records always carried them, and the stats every
 //! local scan adds up.
 
+pub mod accounts;
 pub mod claude;
 pub mod codex;
 pub mod fireworks;
