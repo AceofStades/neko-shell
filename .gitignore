@@ -2,3 +2,6 @@
 *.qmlc
 *.jsc
 .qmlls.ini
+
+# neko-core build output
+/core/target/
