@@ -13,7 +13,7 @@ hyprland                required     hyprctl              The compositor (0.56 o
 aur:quickshell-git      required     qs                   The runtime the shell is written for (a recent build)
 bash                    required     bash                 The neko-* commands
 jq                      required     jq                   Reading and writing JSON settings
-python                  required     python3              Calendars, face unlock watcher, agent usage
+python                  required     python3              The agents panel (usage and accounts), and neko-core's commands until it's built
 ttf-nerd-fonts-symbols  required     font:Symbols_Nerd_Font The icons in the bar and panels
 ttf-dejavu              required     font:monospace       A monospace font for the shell (any will do)
 

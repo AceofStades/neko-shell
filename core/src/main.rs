@@ -4,18 +4,20 @@
 
 mod calendar;
 mod faceauth;
+mod filepick;
 
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some((command, rest)) = args.split_first() else {
-        eprintln!("Usage: neko-core <calendar-events|faceauth-watch> [args...]");
+        eprintln!("Usage: neko-core <calendar-events|faceauth-watch|file-select> [args...]");
         return ExitCode::from(2);
     };
     let result = match command.as_str() {
         "calendar-events" => calendar::run(rest),
         "faceauth-watch" => faceauth::run(rest),
+        "file-select" => filepick::run(rest),
         other => Err(format!("unknown subcommand: {other}")),
     };
     match result {
