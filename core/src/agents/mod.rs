@@ -4,6 +4,7 @@
 //! times written the way the records always carried them, and the stats every
 //! local scan adds up.
 
+pub mod fireworks;
 pub mod grok;
 
 use std::collections::{BTreeMap, BTreeSet};
