@@ -216,7 +216,8 @@ BarWidget {
   implicitHeight: root.vertical ? trayContent.implicitHeight : root.barSize
 
   Behavior on revealProgress {
-    NumberAnimation { duration: Style.duration(root.animationDuration); easing.type: Easing.OutCubic }
+    enabled: !Style.reduceMotion
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
 
   Loader {
@@ -401,7 +402,8 @@ BarWidget {
         color: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
-        font.bold: true
+        font.weight: Font.DemiBold
+        font.letterSpacing: Style.spaceReal(0.5)
       }
 
       Text {

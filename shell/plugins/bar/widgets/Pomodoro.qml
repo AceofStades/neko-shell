@@ -23,22 +23,19 @@ BarWidget {
   // the capsule once the island has shrunk into it again
   readonly property bool shownBeside: Island.mode === "" && !Island.settling
   property real reveal: 1
-  // Started by hand: a Behavior would read its duration before the change
-  // and slide out at the quick speed it slips in at
-  onShownBesideChanged: {
-    revealAnimation.stop()
-    revealAnimation.to = shownBeside ? 1 : 0
-    revealAnimation.duration = Style.duration(shownBeside ? 280 : 60)
-    revealAnimation.easing.type = shownBeside ? Easing.OutCubic : Easing.InCubic
-    revealAnimation.start()
+  // Reveal/hide uses a spring so it feels like the UniBar island's enter/exit.
+  Behavior on reveal {
+    enabled: !Style.reduceMotion
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
-  NumberAnimation { id: revealAnimation; target: root; property: "reveal" }
+  onShownBesideChanged: root.reveal = shownBeside ? 1 : 0
   opacity: root.integrated ? 1 : reveal
   transform: Translate { x: root.integrated ? 0 : (1 - root.reveal) * Style.space(16) * -1 }
   implicitWidth: sessionActive ? Style.space(92) : Style.space(40)
   implicitHeight: root.barSize
   Behavior on implicitWidth {
-    NumberAnimation { duration: Style.duration(300); easing.type: Easing.OutCubic }
+    enabled: !Style.reduceMotion
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
 
   readonly property bool topAttached: !!root.bar && root.bar.centerTopAttached === true
@@ -224,6 +221,7 @@ BarWidget {
         font.family: button.fontFamily
         font.pixelSize: Style.bar.fontSize
         font.weight: Font.DemiBold
+        font.letterSpacing: Style.spaceReal(0.7)
         font.features: { "tnum": 1 }
       }
     }

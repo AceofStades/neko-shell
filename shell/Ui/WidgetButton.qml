@@ -28,6 +28,10 @@ Item {
   property bool labelVisible: true
   // Off for icon-font labels, whose figure metrics say nothing about the glyph.
   property bool centerFigures: true
+  // True when the label is a single Nerd Font glyph (private-use BMP U+E000–U+F8FF or
+  // supplementary-plane U+F0000+ via surrogate pairs). Such labels must not be letter-
+  // spaced or bolded, or the glyph shifts off-center and Qt synthesizes a fatter glyph.
+  readonly property bool glyphLabel: /[-]|[\uDB80-\uDBFF]/.test(root.text)
   property bool hasVisualContent: text !== ""
   property var revealHost: bar
   property string tooltipText: ""
@@ -76,6 +80,16 @@ Item {
     NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
   }
 
+  // A soft pill behind the label while the pointer is on it
+  Rectangle {
+    anchors.fill: parent
+    anchors.margins: Style.space(2)
+    radius: height / 2
+    color: Util.alpha(root.foreground, 0.12)
+    opacity: root.hoverActive && root.pressable && root.interactive ? 1 : 0
+    Behavior on opacity { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
+  }
+
   Text {
     id: label
     textFormat: root.textFormat
@@ -91,6 +105,8 @@ Item {
     color: root.active && root.useActiveColor ? root.activeColor : root.foreground
     font.family: root.fontFamily
     font.pixelSize: root.fontSize
+    font.weight: root.glyphLabel ? Font.Normal : Font.DemiBold
+    font.letterSpacing: root.glyphLabel ? 0 : Style.spaceReal(0.7)
     renderType: Text.NativeRendering
     rotation: root.textRotation
     horizontalAlignment: Text.AlignHCenter
@@ -107,6 +123,24 @@ Item {
     font: label.font
   }
 
+  property bool hoverActive: false
+  property bool pressActive: false
+  property real feedbackScale: root.pressActive ? 0.93 : root.hoverActive ? 1.05 : 1
+
+  Behavior on feedbackScale {
+    enabled: !Style.reduceMotion
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
+  }
+
+  // Subtle scale feedback for hover and press, using the shared spring so
+  // every bar button feels like the UniBar island.
+  transform: Scale {
+    origin.x: root.width / 2
+    origin.y: root.height / 2
+    xScale: root.feedbackScale
+    yScale: root.feedbackScale
+  }
+
   MouseArea {
     id: mouseArea
     anchors.fill: parent
@@ -115,6 +149,7 @@ Item {
     hoverEnabled: true
     cursorShape: root.pressable ? Qt.PointingHandCursor : Qt.ArrowCursor
     onEntered: {
+      root.hoverActive = true
       if (root.bar) {
         root.bar.showTooltip(root, root.tooltipText)
       }
@@ -122,11 +157,19 @@ Item {
         root.revealHost.setIndicatorItemHovered(true)
     }
     onExited: {
+      root.hoverActive = false
+      root.pressActive = false
       if (root.bar) {
         root.bar.hideTooltip(root)
       }
       if (root.maintainIndicatorReveal && root.revealHost && root.revealHost.setIndicatorItemHovered)
         root.revealHost.setIndicatorItemHovered(false)
+    }
+    onPressed: {
+      if (root.pressable) root.pressActive = true
+    }
+    onReleased: {
+      root.pressActive = false
     }
     onClicked: function(mouse) { if (root.pressable) root.triggerPress(mouse.button) }
     onWheel: function(wheel) { root.wheelMoved(wheel.angleDelta.y) }

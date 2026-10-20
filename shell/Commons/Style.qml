@@ -375,6 +375,16 @@ QtObject {
     return reduceMotion ? 0 : ms
   }
 
+  // Spring animation parameters used across the shell (UniBar island, bar
+  // widgets, panels). Centralized here so every spring-driven motion shares
+  // the same feel and respects reduceMotion via Behavior.enabled guards.
+  // Use: spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon
+  readonly property QtObject spring: QtObject {
+    readonly property real stiffness: 3.2
+    readonly property real damping: 0.36
+    readonly property real epsilon: 0.25
+  }
+
   function refresh() {
     hyprctlProc.running = true
     gapsOutProc.running = true

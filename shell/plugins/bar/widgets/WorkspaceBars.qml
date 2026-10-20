@@ -62,10 +62,20 @@ BarWidget {
           color: workspaceButton.focused ? NekoColor.accent : workspaceButton.foreground
           opacity: workspaceButton.focused ? 1 : workspaceButton.occupied ? 0.72 : 0.3
 
-          Behavior on width { NumberAnimation { duration: Style.duration(150); easing.type: Easing.OutCubic } }
-          Behavior on height { NumberAnimation { duration: Style.duration(190); easing.type: Easing.OutCubic } }
-          Behavior on color { ColorAnimation { duration: Style.duration(150) } }
-          Behavior on opacity { NumberAnimation { duration: Style.duration(150) } }
+          Behavior on width {
+            enabled: !Style.reduceMotion
+            SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
+          }
+          Behavior on height {
+            enabled: !Style.reduceMotion
+            SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
+          }
+          Behavior on color {
+            ColorAnimation { duration: Style.duration(150) }
+          }
+          Behavior on opacity {
+            NumberAnimation { duration: Style.duration(150); easing.type: Easing.OutCubic }
+          }
         }
       }
     }

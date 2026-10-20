@@ -34,7 +34,8 @@ BarWidget {
   implicitHeight: barSize
 
   Behavior on implicitWidth {
-    NumberAnimation { duration: Style.duration(180); easing.type: Easing.OutCubic }
+    enabled: !Style.reduceMotion
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
 
   Item {
@@ -57,7 +58,8 @@ BarWidget {
         color: NekoColor.accent
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
         font.pixelSize: Style.bar.fontSize
-        font.weight: Font.Bold
+        font.weight: Font.DemiBold
+        font.letterSpacing: Style.spaceReal(0.7)
       }
 
       Text {
@@ -69,6 +71,8 @@ BarWidget {
         color: root.bar ? root.bar.barForeground : NekoColor.foreground
         font.family: root.bar ? root.bar.fontFamily : Style.font.family
         font.pixelSize: Style.bar.fontSize
+        font.weight: Font.DemiBold
+        font.letterSpacing: Style.spaceReal(0.7)
         elide: Text.ElideRight
         opacity: 0.6
       }
