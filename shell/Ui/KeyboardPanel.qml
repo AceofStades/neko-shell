@@ -64,6 +64,17 @@ PanelWindow {
   property Item focusTarget: null
 
   default property alias contentItem: contentHolder.children
+  // Islands beside the card, for what is better a step away from the main
+  // contents (the control center's music and quick-start islands). Set the
+  // width to show one; its size is the owner's to give.
+  // The island's own inset, which the side islands keep around their contents
+  readonly property int islandInset: Style.space(16)
+  property alias sideContent: rightIsland.content
+  property int sideWidth: 0
+  property int sideHeight: Style.space(200)
+  property alias leftContent: leftIsland.content
+  property int leftWidth: 0
+  property int leftHeight: Style.space(200)
   // Where the contents sit, for a panel that moves them to an embedding host
   readonly property Item contentHost: contentHolder
 
@@ -211,8 +222,13 @@ PanelWindow {
   // screen's side when it comes near it. Floating, it's a card of its own.
   readonly property bool attached: !!bar && bar.centerTopAttached === true && barPos === "top" && !centerOnBar
   readonly property color attachedColor: bar && bar.attachedPanelColor !== undefined ? bar.attachedPanelColor : NekoColor.popups.background
-  readonly property bool islandMorph: attached && bar && typeof bar.isIslandMorphItem === "function"
+  // A panel opened from the UniBar's island grows out of it, on an attached
+  // bar and on a floating one alike: the card starts as the island and springs
+  // to its size. `grown` covers both that and the attached bar's own panels,
+  // which grow down out of their group.
+  readonly property bool islandMorph: !!bar && barPos === "top" && !centerOnBar && typeof bar.isIslandMorphItem === "function"
     && bar.isIslandMorphItem(anchorItem)
+  readonly property bool grown: attached || islandMorph
   readonly property color surfaceColor: islandMorph && bar && bar.glassIslandCapsule !== undefined
     ? bar.glassIslandCapsule : attachedColor
   readonly property real snapReach: Style.space(40)
@@ -222,24 +238,36 @@ PanelWindow {
   // group's ends when it comes near them
   readonly property var groupSpan: {
     anchorWatcher.transform
-    return attached && typeof bar.groupSpan === "function" ? bar.groupSpan(anchorItem) : null
+    return grown && bar && typeof bar.groupSpan === "function" ? bar.groupSpan(anchorItem) : null
   }
   readonly property bool groupFits: !!groupSpan && groupSpan.right - groupSpan.left >= contentWidth
-  readonly property real islandRestX: groupSpan ? groupSpan.left : anchorScreenPos.x
+  // A floating bar sits barInset in from the screen's edges (none attached)
+  readonly property real islandRestX: barInset + (groupSpan ? groupSpan.left : anchorScreenPos.x)
   readonly property real islandRestWidth: groupSpan
     ? Math.max(1, groupSpan.right - groupSpan.left) : Math.max(1, anchorW)
-  readonly property real islandRestHeight: Math.max(1, barH - Style.bar.capsuleInset)
+  // Attached, the island runs from the screen's top edge; floating, it is the
+  // capsule alone, inset from the edge, and the card grows down from there
+  readonly property real islandRestY: attached ? 0 : barInsetAcross + Style.bar.capsuleInset
+  readonly property real islandRestHeight: attached
+    ? Math.max(1, barH - Style.bar.capsuleInset)
+    : Math.max(1, (bar ? bar.barSize : barH) - 2 * Style.bar.capsuleInset)
+  // Floating, the island is a pill that rounds off to a card as it opens
+  property real islandRadius: islandExpanded ? Style.space(26) : islandRestHeight / 2
+  Behavior on islandRadius {
+    enabled: root.islandMorph && !root.attached && !Style.reduceMotion
+    NumberAnimation { duration: Style.duration(260); easing.type: Easing.OutCubic }
+  }
   readonly property real islandTargetX: Math.round(Math.max(0, Math.min(screenW - contentWidth, screenW / 2 - contentWidth / 2)))
   property real islandCardX: islandMorph ? (islandExpanded ? islandTargetX : islandRestX) : cardOrigin.x
   property real islandCardWidth: islandMorph ? (islandExpanded ? contentWidth : islandRestWidth) : contentWidth
 
   Behavior on islandCardX {
     enabled: root.islandMorph && !Style.reduceMotion
-    SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
   Behavior on islandCardWidth {
     enabled: root.islandMorph && !Style.reduceMotion
-    SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
   // Flush with the group's inner end, it runs straight down from it: no
   // shoulder on that side, and the group squares its corner there
@@ -268,22 +296,22 @@ PanelWindow {
 
   // How far it has grown: a spring to the card's height as it opens, back to
   // nothing as it closes; the contents, at their full size, are clipped to it
-  property real shownHeight: attached
+  property real shownHeight: grown
     ? (islandMorph ? (islandExpanded ? contentHeight : islandRestHeight) : open ? contentHeight : 0)
     : contentHeight
   Behavior on shownHeight {
-    enabled: root.attached && !Style.reduceMotion
-    SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.5 }
+    enabled: root.grown && !Style.reduceMotion
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: 0.5 }
   }
 
   // The contents come in once the card is mostly there, and go at once
-  property bool contentShown: !attached
+  property bool contentShown: !grown
   function syncAttachedContent() {
-    if (!attached) return
+    if (!grown) return
     if (open) contentIn.restart()
     else { contentIn.stop(); contentShown = false }
   }
-  onAttachedChanged: contentShown = !attached || open
+  onGrownChanged: contentShown = !grown || open
   Timer {
     id: contentIn
     interval: Style.duration(110)
@@ -300,7 +328,9 @@ PanelWindow {
 
   Timer {
     id: islandMorphOut
-    interval: Style.duration(700)
+    // The card is back in the capsule's shape well before the spring stops
+    // ringing; hold the bar's group aside only that long
+    interval: Style.duration(420)
     onTriggered: {
       if (root.open) return
       root.islandSurfaceShown = false
@@ -452,13 +482,22 @@ PanelWindow {
       return Qt.point(px - inset, py - root.barInsetAcross)
     }
 
+    // A target the pointer can't see: it, or anything it sits in, is clear
+    // or off. The island's hidden workspace buttons span the whole UniBar, so
+    // without this a click on the clock lands on one of them.
+    function targetShown(target) {
+      for (var it = target; it; it = it.parent)
+        if (it.visible === false || it.enabled === false || it.opacity === 0) return false
+      return true
+    }
+
     function pressTargetAt(px, py) {
       if (!root.anchorWindow || !root.anchorWindow.contentItem || !root.bar || !root.bar.clickTargets) return null
       var p = barPoint(px, py)
       var targets = root.bar.clickTargets
       for (var i = targets.length - 1; i >= 0; i--) {
         var target = targets[i]
-        if (!target || !target.triggerPress || target.visible === false || target.opacity === 0 || !target.mapToItem) continue
+        if (!target || !target.triggerPress || !target.mapToItem || !targetShown(target)) continue
         if (root.bar.targetBelongsToWindow && !root.bar.targetBelongsToWindow(target, root.anchorWindow)) continue
         var pos = root.anchorWindow.itemPosition(target)
         if (p.x >= pos.x && p.x <= pos.x + target.width && p.y >= pos.y && p.y <= pos.y + target.height) return target
@@ -593,28 +632,30 @@ PanelWindow {
   BorderSurface {
     id: card
     x: root.islandMorph ? root.islandCardX : root.cardOrigin.x
-    y: root.islandMorph ? 0 : root.cardOrigin.y
+    y: root.islandMorph ? root.islandRestY : root.cardOrigin.y
     width: root.islandMorph ? root.islandCardWidth : root.contentWidth
-    height: root.attached ? root.shownHeight : root.contentHeight
-    clip: root.attached
-    color: root.attached ? "transparent" : NekoColor.popups.background
-    borderSpec: root.attached ? Border.none() : root.borderSpec
+    height: root.grown ? root.shownHeight : root.contentHeight
+    clip: root.grown
+    color: root.grown ? "transparent" : NekoColor.popups.background
+    borderSpec: root.grown ? Border.none() : root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
     opacity: root.islandMorph ? (root.islandSurfaceShown ? 1.0 : 0)
-      : root.attached ? (root.open || root.shownHeight > 0.5 ? 1.0 : 0)
+      : root.grown ? (root.open || root.shownHeight > 0.5 ? 1.0 : 0)
       : (root.open || root.popoutSwitching ? 1.0 : 0)
 
     // Attached: flat on top, joined to the group; rounded below, square
     // where it meets the screen's side
     Rectangle {
       anchors.fill: parent
-      visible: root.attached
+      visible: root.grown
       color: root.surfaceColor
-      topLeftRadius: root.islandMorph ? 0 : root.overhangsStart ? root.freeCorner : 0
-      topRightRadius: root.islandMorph ? 0 : root.overhangsEnd ? root.freeCorner : 0
-      bottomLeftRadius: root.islandMorph ? Style.space(26) : root.snappedLeft ? 0 : Style.space(18)
-      bottomRightRadius: root.islandMorph ? Style.space(26) : root.snappedRight ? 0 : Style.space(18)
+      // Floating, the island is a pill all round that rounds off to a card;
+      // attached, it hangs flat from the screen's edge
+      topLeftRadius: root.islandMorph ? (root.attached ? 0 : root.islandRadius) : root.overhangsStart ? root.freeCorner : 0
+      topRightRadius: root.islandMorph ? (root.attached ? 0 : root.islandRadius) : root.overhangsEnd ? root.freeCorner : 0
+      bottomLeftRadius: root.islandMorph ? (root.attached ? Style.space(26) : root.islandRadius) : root.snappedLeft ? 0 : Style.space(18)
+      bottomRightRadius: root.islandMorph ? (root.attached ? Style.space(26) : root.islandRadius) : root.snappedRight ? 0 : Style.space(18)
     }
 
     Behavior on opacity {
@@ -640,11 +681,177 @@ PanelWindow {
       anchors.rightMargin: card.contentRightInset
       anchors.leftMargin: card.contentLeftInset
       height: root.contentHeight - card.contentTopInset - card.contentBottomInset
-      opacity: root.attached ? (root.contentShown ? 1.0 : 0) : root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
+      opacity: root.grown ? (root.contentShown ? 1.0 : 0) : root.popoutSwitching ? (root.open ? 1.0 : 0) : 1.0
 
       Behavior on opacity {
-        enabled: root.popoutSwitching || root.attached
-        NumberAnimation { duration: Style.duration(root.attached && !root.contentShown ? 80 : 140); easing.type: Easing.OutCubic }
+        enabled: root.popoutSwitching || root.grown
+        NumberAnimation { duration: Style.duration(root.grown && !root.contentShown ? 80 : 140); easing.type: Easing.OutCubic }
+      }
+    }
+  }
+
+  // An island beside the card slides out from behind it once the card is
+  // there, and tucks back as it goes; it keeps the island's glass and sits
+  // below the bar's line rather than against the top of the screen
+  component SideIsland: Item {
+    id: island
+    // 1 to the card's right, -1 to its left
+    property int side: 1
+    property int islandWidth: 0
+    property int islandHeight: Style.space(200)
+    default property alias content: holder.data
+    readonly property bool shown: islandWidth > 0 && root.open && (!root.grown || root.contentShown)
+
+    x: side > 0 ? card.x + card.width + Style.space(10) : card.x - Style.space(10) - width
+    y: root.islandMorph ? root.islandRestY + root.islandRestHeight + Style.space(12) : card.y
+    width: islandWidth
+    height: islandHeight
+    opacity: shown ? 1 : 0
+    visible: opacity > 0.01
+    transform: Translate {
+      x: island.shown ? 0 : -island.side * Style.space(28)
+      Behavior on x {
+        enabled: !Style.reduceMotion
+        SpringAnimation { spring: Style.spring.stiffness; damping: 0.55; epsilon: Style.spring.epsilon }
+      }
+    }
+    Behavior on opacity {
+      NumberAnimation { duration: Style.duration(island.shown ? 200 : 90); easing.type: Easing.OutCubic }
+    }
+
+    Rectangle {
+      anchors.fill: parent
+      radius: Style.space(26)
+      color: root.grown ? root.surfaceColor : NekoColor.popups.background
+    }
+
+    // Swallow clicks on the island so they don't reach the dismissal area
+    MouseArea {
+      anchors.fill: parent
+      acceptedButtons: Qt.AllButtons
+    }
+
+    Item {
+      id: holder
+      anchors.fill: parent
+      anchors.margins: root.islandInset
+    }
+  }
+
+  SideIsland {
+    id: rightIsland
+    side: 1
+    islandWidth: root.sideWidth
+    islandHeight: root.sideHeight
+  }
+
+  SideIsland {
+    id: leftIsland
+    side: -1
+    islandWidth: root.leftWidth
+    islandHeight: root.leftHeight
+  }
+
+  // An OSD that comes up while the panel is open. The island's own pill is
+  // drawn by the bar, under this window's card, so it is drawn here too,
+  // above everything, from the same state.
+  Item {
+    id: osdPill
+    readonly property var osd: Island.osd
+    readonly property bool shown: root.open && Island.osdShown && !!osd
+    readonly property var rest: root.screen ? Island.restRects[root.screen.name] : null
+    readonly property real pillWidth: Math.max(Style.space(240), rest ? (rest.coreWidth || rest.width) : Style.space(300))
+
+    anchors.horizontalCenter: parent.horizontalCenter
+    anchors.bottom: parent.bottom
+    anchors.bottomMargin: Style.space(56) + (shown ? 0 : -Style.space(8))
+    width: pillWidth
+    height: Style.font.iconLarge + Style.space(24)
+    opacity: shown ? 1 : 0
+    visible: opacity > 0.01
+    Behavior on opacity { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
+    Behavior on anchors.bottomMargin { NumberAnimation { duration: Style.duration(200); easing.type: Easing.OutCubic } }
+
+    Rectangle {
+      anchors.fill: parent
+      radius: height / 2
+      color: NekoColor.osd.background
+      border.width: 1
+      border.color: NekoColor.osd.border
+    }
+
+    Row {
+      anchors.centerIn: parent
+      spacing: Style.space(12)
+
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        text: osdPill.osd ? osdPill.osd.icon : ""
+        color: NekoColor.osd.icon
+        font.family: Style.font.family
+        font.pixelSize: Style.font.iconLarge
+      }
+      // A meter: one bar, or sixteen steps when it reports 64 ticks, the fine
+      // steps filling one as they come
+      Item {
+        id: osdMeter
+        visible: !!osdPill.osd && osdPill.osd.hasProgress
+        anchors.verticalCenter: parent.verticalCenter
+        width: Math.max(Style.space(60), osdPill.pillWidth - Style.space(150))
+        height: Style.space(6)
+        readonly property bool stepped: !!osdPill.osd && osdPill.osd.maxValue === 64
+        readonly property real fraction: osdPill.osd && osdPill.osd.maxValue > 0 ? Math.max(0, Math.min(1, osdPill.osd.value / osdPill.osd.maxValue)) : 0
+
+        Rectangle {
+          visible: !osdMeter.stepped
+          anchors.fill: parent
+          radius: height / 2
+          color: NekoColor.osd.track
+
+          Rectangle {
+            height: parent.height
+            radius: height / 2
+            width: osdMeter.fraction > 0 ? Math.max(height, parent.width * osdMeter.fraction) : 0
+            color: NekoColor.osd.fill
+            Behavior on width {
+              enabled: osdPill.shown
+              NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
+            }
+          }
+        }
+
+        Row {
+          visible: osdMeter.stepped
+          anchors.fill: parent
+          spacing: Style.space(2)
+
+          Repeater {
+            model: osdMeter.stepped ? 16 : 0
+            Rectangle {
+              required property int index
+              width: Math.max(Style.space(3), (osdMeter.width - 15 * Style.space(2)) / 16)
+              height: osdMeter.height
+              radius: height / 2
+              color: NekoColor.osd.track
+
+              Rectangle {
+                height: parent.height
+                radius: height / 2
+                width: parent.width * Math.max(0, Math.min(1, osdMeter.fraction * 16 - parent.index))
+                color: NekoColor.osd.fill
+              }
+            }
+          }
+        }
+      }
+      Text {
+        anchors.verticalCenter: parent.verticalCenter
+        visible: !!osdPill.osd && osdPill.osd.message !== ""
+        text: osdPill.osd ? osdPill.osd.message : ""
+        color: NekoColor.osd.text
+        font.family: Style.font.family
+        font.weight: Font.Medium
+        font.pixelSize: Style.font.body
       }
     }
   }

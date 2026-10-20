@@ -12,6 +12,7 @@ import "../panels/monitor/Model.js" as MonitorModel
 import "../panels/weather/Model.js" as WeatherModel
 import "../panels/clock/Model.js" as ClockModel
 import "../../services/BrightnessModel.js" as BrightnessModel
+import "../../services/VolumeModel.js" as VolumeModel
 
 // The cat button and its control center: quick toggles, volume and
 // brightness, weather and wallpaper in one popup. Left click opens it,
@@ -116,7 +117,7 @@ Panel {
       "echo colors=$(neko-settings get colors)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
       "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
-      "echo brightness=$(brightnessctl -m | awk -F, '{print $3","$5}')",
+      "echo brightness=$(brightnessctl -m | awk -F, '{print $3\",\"$5}')",
       "echo displays=$(neko-display json)"
     ].join("; ")]
     stdout: StdioCollector {
@@ -200,8 +201,30 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(root.preferredPanelWidth))
-    contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight
-      : root.page === "display" ? displayPage.implicitHeight : column.implicitHeight)
+    // The display page keeps the card the size the control panel is, and
+    // scrolls inside it, so opening it doesn't resize the card
+    contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight : column.implicitHeight)
+    // Two islands beside the card while the main page is showing and there
+    // is room for them either side: the music on the left, the quick-start
+    // timer on the right
+    readonly property real islandSpan: quickIsland.implicitWidth + panel.islandInset * 2
+    readonly property bool roomForIslands: root.page === "" && panel.screenW - panel.contentWidth >= (islandSpan + Style.space(10)) * 2
+    sideWidth: roomForIslands ? islandSpan : 0
+    sideHeight: quickIsland.implicitHeight + panel.islandInset * 2
+    sideContent: QuickIsland {
+      id: quickIsland
+      bar: root.bar
+      surface: panel.grown ? panel.surfaceColor : NekoColor.popups.background
+      cardEdge: panel.islandInset
+      anchors.fill: parent
+    }
+    leftWidth: roomForIslands ? islandSpan : 0
+    leftHeight: mediaIsland.implicitHeight + panel.islandInset * 2
+    leftContent: MediaIsland {
+      id: mediaIsland
+      bar: root.bar
+      anchors.fill: parent
+    }
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -209,557 +232,636 @@ Panel {
       onCloseRequested: if (root.page) root.page = ""; else root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
-      ColumnLayout {
+      // Two columns, so the panel reads wide rather than tall: the weather and
+      // the calendar on the left, the clock, the account and the controls on
+      // the right
+      RowLayout {
         id: column
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: Style.space(12)
+        spacing: Style.space(14)
         visible: root.page === ""
 
-        // Header: who and how long, with settings, lock and power
-        RowLayout {
+        ColumnLayout {
           Layout.fillWidth: true
-          spacing: Style.space(10)
+          Layout.preferredWidth: 1
+          Layout.alignment: Qt.AlignTop
+          spacing: Style.space(12)
 
-          Text {
-            text: "󰄛"
-            color: root.accent
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.display
-          }
-          ColumnLayout {
-            spacing: 0
-            Text {
-              text: Quickshell.env("USER") || "neko"
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.title
-              font.weight: Font.DemiBold
-            }
-            Text {
-              text: root.uptime ? "up " + root.uptime : ""
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-            }
-          }
-          // Takes the free space so the buttons sit at the right edge
-          Item { Layout.fillWidth: true }
-          PanelActionButton {
-            iconText: "󰒓"
-            tooltipText: "Settings"
-            foreground: root.foreground
-            onClicked: root.runAndClose("neko-shell shell summon neko.settings '{}'")
-          }
-          PanelActionButton {
-            iconText: "󰌾"
-            tooltipText: "Lock"
-            foreground: root.foreground
-            onClicked: root.runAndClose("neko-system-lock")
-          }
-          PanelActionButton {
-            iconText: "󰐥"
-            tooltipText: "Power"
-            foreground: root.foreground
-            onClicked: root.runAndClose("neko-menu summon system")
-          }
-        }
-
-        // Quick toggles
-        GridLayout {
-          Layout.fillWidth: true
-          columns: 2
-          rowSpacing: Style.space(8)
-          columnSpacing: Style.space(8)
-
-          QuickTile {
-            icon: Networking.wifiEnabled ? "󰖩" : "󰖪"
-            label: "Wi-Fi"
-            subtitle: Networking.wifiEnabled ? (root.ssid || "On") : "Off"
-            active: Networking.wifiEnabled
-            onClicked: { Networking.wifiEnabled = !Networking.wifiEnabled; root.refresh() }
-          }
-          QuickTile {
-            icon: root.adapter && root.adapter.enabled ? "󰂯" : "󰂲"
-            label: "Bluetooth"
-            subtitle: root.adapter ? (root.adapter.enabled ? "On" : "Off") : "No adapter"
-            active: !!root.adapter && root.adapter.enabled
-            onClicked: if (root.adapter) root.adapter.enabled = !root.adapter.enabled
-          }
-          QuickTile {
-            icon: root.dnd ? "󰂛" : "󰂚"
-            label: "Do not disturb"
-            subtitle: root.dnd ? "On" : "Off"
-            active: root.dnd
-            onClicked: root.act("neko-shell notifications toggleDnd")
-          }
-          QuickTile {
-            icon: "󰅶"
-            label: "Stay awake"
-            subtitle: root.stayAwake ? "On" : "Off"
-            active: root.stayAwake
-            onClicked: root.act("neko-toggle-idle toggle")
-          }
-          // The bar's Pomodoro shows only while a session is on: start one here
-          QuickTile {
-            icon: "󰔛"
-            label: "Pomodoro"
-            subtitle: Island.pomodoroActive ? Island.pomodoroTitle + " · " + Island.pomodoroClock(Island.pomodoroRemaining) + (Island.pomodoroRunning ? "" : " paused") : "Start a focus session"
-            active: Island.pomodoroActive
-            Layout.columnSpan: root.recorderInstalled ? 1 : 2
-            onClicked: Island.togglePomodoro()
-          }
-          QuickTile {
-            visible: root.recorderInstalled
-            icon: "󰑊"
-            label: "Screen record"
-            subtitle: root.recording ? "Recording" : "Off"
-            active: root.recording
-            onClicked: root.recording
-              ? root.act("neko-capture-screenrecording --stop-recording")
-              : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
-          }
-          QuickTile {
-            icon: root.displays.length > 1 ? "󰍺" : "󰍹"
-            label: "Display"
-            subtitle: root.displays.length > 1 ? root.displays.filter(function(d) { return d.enabled }).length + " of " + root.displays.length + " on"
-              : root.focusedDisplay ? MonitorModel.normalizeScale(root.focusedDisplay.scale) + "x, " + Math.round(root.focusedDisplay.refreshRate) + " Hz" : ""
-            opensPage: true
-            onClicked: root.page = "display"
-          }
-          QuickTile {
-            icon: "󰸉"
-            label: "Wallpaper"
-            subtitle: root.rotation ? "New one every " + root.rotationLabel(root.rotation) : root.wallpaperName
-            active: root.rotation !== ""
-            opensPage: true
-            onClicked: root.page = "wallpaper"
-          }
-        }
-
-        // Volume and brightness
-        SliderRow {
-          icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"
-          label: root.sink && root.sink.audio ? Math.round(root.sink.audio.volume * 100) + "%" : ""
-          visible: !!(root.sink && root.sink.audio)
-          PanelSlider {
+          // Weather: now, and the next three days
+          Rectangle {
             Layout.fillWidth: true
-            bar: root.bar
-            value: root.sink && root.sink.audio ? root.sink.audio.volume : 0
-            onMoved: function(v) { if (root.sink && root.sink.audio) root.sink.audio.volume = v }
-          }
-        }
-        // Brightness moves by ticks on the curve: a mark per full step, the
-        // wheel and drag landing on the fine steps between them
-        SliderRow {
-          icon: "󰃟"
-          label: BrightnessModel.tickLabel(root.brightnessTick)
-          visible: root.brightnessMax > 0
-          PanelSlider {
-            id: brightnessSlider
-            Layout.fillWidth: true
-            bar: root.bar
-            maximum: BrightnessModel.ticks
-            integer: true
-            step: 1
-            tickCount: BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1
-            tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
-            value: root.brightnessTick
-            onMoved: function(v) { root.brightnessTick = v; brightnessDebounce.restart() }
-          }
-        }
+            visible: root.weatherNow !== null
+            implicitHeight: weatherColumn.implicitHeight + Style.space(24)
+            radius: Style.space(14)
+            color: Util.alpha(root.foreground, 0.06)
 
-        // Weather: now, and the next three days
-        Rectangle {
-          Layout.fillWidth: true
-          visible: root.weatherNow !== null
-          implicitHeight: weatherColumn.implicitHeight + Style.space(24)
-          radius: Style.space(14)
-          color: Util.alpha(root.foreground, 0.06)
+            ColumnLayout {
+              id: weatherColumn
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.top: parent.top
+              anchors.margins: Style.space(12)
+              spacing: Style.space(10)
 
-          ColumnLayout {
-            id: weatherColumn
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Style.space(12)
-            spacing: Style.space(10)
+              RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.space(12)
 
-            RowLayout {
-              Layout.fillWidth: true
-              spacing: Style.space(12)
-
-              Text {
-                text: root.weatherNow ? WeatherModel.iconForOpenMeteoCode(root.weatherNow.openMeteoWeatherCode, root.weatherNow.isDay === 0) : ""
-                color: root.accent
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.displayLarge * 1.4
-              }
-              ColumnLayout {
-                spacing: 0
                 Text {
-                  text: root.weatherNow ? root.weatherNow.temp_C + "°" : ""
-                  color: root.foreground
+                  text: root.weatherNow ? WeatherModel.iconForOpenMeteoCode(root.weatherNow.openMeteoWeatherCode, root.weatherNow.isDay === 0) : ""
+                  color: root.accent
                   font.family: root.fontFamily
-                  font.pixelSize: Style.font.displayLarge
-                  font.weight: Font.DemiBold
+                  font.pixelSize: Style.font.displayLarge * 1.4
                 }
-                Text {
-                  text: root.weather ? root.weather.condition : ""
-                  color: root.dim
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.bodySmall
+                ColumnLayout {
+                  spacing: 0
+                  Text {
+                    text: root.weatherNow ? root.weatherNow.temp_C + "°" : ""
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.displayLarge
+                    font.weight: Font.DemiBold
+                  }
+                  Text {
+                    text: root.weather ? root.weather.condition : ""
+                    color: root.dim
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.bodySmall
+                  }
+                }
+                Item { Layout.fillWidth: true }
+                ColumnLayout {
+                  spacing: Style.space(2)
+                  Text {
+                    Layout.alignment: Qt.AlignRight
+                    text: root.weather ? root.weather.city : ""
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    font.weight: Font.Medium
+                  }
+                  Repeater {
+                    model: root.weatherNow ? [
+                      "Feels " + root.weatherNow.FeelsLikeC + "°",
+                      "Humidity " + root.weatherNow.humidity + "%",
+                      "Wind " + root.weatherNow.windspeedKmph + " km/h"
+                    ] : []
+                    delegate: Text {
+                      required property string modelData
+                      Layout.alignment: Qt.AlignRight
+                      text: modelData
+                      color: root.dim
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                    }
+                  }
                 }
               }
-              Item { Layout.fillWidth: true }
-              ColumnLayout {
-                spacing: Style.space(2)
+
+              RowLayout {
+                Layout.fillWidth: true
+                visible: root.weatherDays.length > 0
+                spacing: Style.space(6)
+
+                Repeater {
+                  model: root.weatherDays
+                  delegate: Rectangle {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    implicitHeight: dayColumn.implicitHeight + Style.space(12)
+                    radius: Style.space(10)
+                    color: Util.alpha(root.foreground, 0.05)
+
+                    ColumnLayout {
+                      id: dayColumn
+                      anchors.centerIn: parent
+                      spacing: Style.space(2)
+                      Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: Qt.formatDate(new Date(modelData.date + "T12:00:00"), "ddd")
+                        color: root.dim
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                      }
+                      Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: WeatherModel.iconForOpenMeteoCode(modelData.openMeteoWeatherCode, false)
+                        color: root.accent
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.iconLarge
+                      }
+                      Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: modelData.maxtempC + "° / " + modelData.mintempC + "°"
+                        color: root.foreground
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          // A month at a glance, under everything else: the clock opens this.
+          // A card like the weather's, today marked like an active tile
+          Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: calendar.implicitHeight + Style.space(24)
+            radius: Style.space(14)
+            color: Util.alpha(root.foreground, 0.06)
+
+            ColumnLayout {
+              id: calendar
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.top: parent.top
+              anchors.margins: Style.space(12)
+              spacing: Style.space(6)
+
+              property int viewYear: root.calendarToday.getFullYear()
+              property int viewMonth: root.calendarToday.getMonth()
+              readonly property int weekStart: ClockModel.normalizedWeekStart(null, Qt.locale().firstDayOfWeek)
+              readonly property var weeks: ClockModel.monthGrid(viewYear, viewMonth, weekStart, ClockModel.keyForDate(root.calendarToday))
+              readonly property var days: weeks.reduce(function(all, week) { return all.concat(week.days) }, [])
+
+              function move(delta) {
+                var date = new Date(viewYear, viewMonth + delta, 1)
+                viewYear = date.getFullYear()
+                viewMonth = date.getMonth()
+              }
+
+              function goToToday() {
+                root.calendarToday = new Date()
+                viewYear = root.calendarToday.getFullYear()
+                viewMonth = root.calendarToday.getMonth()
+                selectedKey = ClockModel.keyForDate(root.calendarToday)
+              }
+
+              // Events from the feeds in ~/.config/neko/calendars, by day key;
+              // the command answers from its cache at once and again once a
+              // stale feed is fetched
+              property var events: ({})
+              property bool calendarsConfigured: false
+              property var calendarErrors: []
+              property string selectedKey: ClockModel.keyForDate(root.calendarToday)
+              readonly property var selectedEvents: events[selectedKey] || []
+
+              function refreshEvents() {
+                if (!panel.open || days.length === 0) return
+                eventsProc.running = false
+                eventsProc.command = ["neko-calendar-events", "--from", days[0].key, "--to", days[days.length - 1].key]
+                eventsProc.running = true
+              }
+              onDaysChanged: refreshEvents()
+
+              Process {
+                id: eventsProc
+                stdout: SplitParser {
+                  onRead: data => {
+                    try {
+                      var report = JSON.parse(data)
+                      calendar.calendarsConfigured = report.configured === true
+                      calendar.events = report.days || {}
+                      calendar.calendarErrors = report.errors || []
+                    } catch (e) {
+                      console.warn("calendar events:", e)
+                    }
+                  }
+                }
+              }
+
+              Connections {
+                target: panel
+                function onOpenChanged() {
+                  if (!panel.open) return
+                  calendar.goToToday()
+                  calendar.refreshEvents()
+                }
+              }
+
+              RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.space(4)
                 Text {
-                  Layout.alignment: Qt.AlignRight
-                  text: root.weather ? root.weather.city : ""
+                  Layout.fillWidth: true
+                  text: Qt.locale().standaloneMonthName(calendar.viewMonth) + " " + calendar.viewYear
                   color: root.foreground
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.body
-                  font.weight: Font.Medium
+                  font.weight: Font.DemiBold
+                  MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: calendar.goToToday()
+                  }
                 }
+                PanelActionButton {
+                  iconText: "󰅁"
+                  tooltipText: "Last month"
+                  foreground: root.foreground
+                  onClicked: calendar.move(-1)
+                }
+                PanelActionButton {
+                  iconText: "󰅂"
+                  tooltipText: "Next month"
+                  foreground: root.foreground
+                  onClicked: calendar.move(1)
+                }
+              }
+
+              GridLayout {
+                Layout.fillWidth: true
+                columns: 7
+                rowSpacing: Style.space(2)
+                columnSpacing: 0
+
                 Repeater {
-                  model: root.weatherNow ? [
-                    "Feels " + root.weatherNow.FeelsLikeC + "°",
-                    "Humidity " + root.weatherNow.humidity + "%",
-                    "Wind " + root.weatherNow.windspeedKmph + " km/h"
-                  ] : []
-                  delegate: Text {
-                    required property string modelData
-                    Layout.alignment: Qt.AlignRight
-                    text: modelData
+                  model: ClockModel.weekdayOrder(calendar.weekStart)
+                  Text {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    text: Qt.locale().dayName(modelData, Locale.NarrowFormat)
                     color: root.dim
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.caption
                   }
                 }
-              }
-            }
 
-            RowLayout {
-              Layout.fillWidth: true
-              visible: root.weatherDays.length > 0
-              spacing: Style.space(6)
+                Repeater {
+                  model: calendar.days
+                  Item {
+                    id: dayCell
+                    required property var modelData
+                    readonly property bool selected: modelData.key === calendar.selectedKey
+                    readonly property bool busy: (calendar.events[modelData.key] || []).length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Style.space(26)
 
-              Repeater {
-                model: root.weatherDays
-                delegate: Rectangle {
-                  required property var modelData
-                  Layout.fillWidth: true
-                  implicitHeight: dayColumn.implicitHeight + Style.space(12)
-                  radius: Style.space(10)
-                  color: Util.alpha(root.foreground, 0.05)
-
-                  ColumnLayout {
-                    id: dayColumn
-                    anchors.centerIn: parent
-                    spacing: Style.space(2)
-                    Text {
-                      Layout.alignment: Qt.AlignHCenter
-                      text: Qt.formatDate(new Date(modelData.date + "T12:00:00"), "ddd")
-                      color: root.dim
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
+                    Rectangle {
+                      anchors.centerIn: parent
+                      width: Style.space(24)
+                      height: width
+                      radius: width / 2
+                      color: modelData.today ? Util.alpha(root.accent, 0.24) : "transparent"
+                      border.width: dayCell.selected && !modelData.today && calendar.calendarsConfigured ? 1 : 0
+                      border.color: Util.alpha(root.foreground, 0.35)
+                    }
+                    // A day with something on
+                    Rectangle {
+                      visible: dayCell.busy
+                      anchors.horizontalCenter: parent.horizontalCenter
+                      anchors.bottom: parent.bottom
+                      anchors.bottomMargin: Style.space(1)
+                      width: Style.space(4)
+                      height: width
+                      radius: width / 2
+                      color: modelData.inMonth ? root.accent : Util.alpha(root.accent, 0.4)
+                    }
+                    MouseArea {
+                      anchors.fill: parent
+                      enabled: calendar.calendarsConfigured
+                      cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                      onClicked: calendar.selectedKey = dayCell.modelData.key
                     }
                     Text {
-                      Layout.alignment: Qt.AlignHCenter
-                      text: WeatherModel.iconForOpenMeteoCode(modelData.openMeteoWeatherCode, false)
-                      color: root.accent
+                      anchors.centerIn: parent
+                      text: modelData.day
+                      color: modelData.today ? root.accent
+                        : !modelData.inMonth ? Util.alpha(root.foreground, 0.28)
+                        : modelData.weekend ? root.dim : root.foreground
                       font.family: root.fontFamily
-                      font.pixelSize: Style.font.iconLarge
-                    }
-                    Text {
-                      Layout.alignment: Qt.AlignHCenter
-                      text: modelData.maxtempC + "° / " + modelData.mintempC + "°"
-                      color: root.foreground
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
+                      font.pixelSize: Style.font.bodySmall
+                      font.weight: modelData.today ? Font.Bold : Font.Normal
                     }
                   }
                 }
               }
-            }
-          }
-        }
 
-        // A month at a glance, under everything else: the clock opens this.
-        // A card like the weather's, today marked like an active tile
-        Rectangle {
-          Layout.fillWidth: true
-          implicitHeight: calendar.implicitHeight + Style.space(24)
-          radius: Style.space(14)
-          color: Util.alpha(root.foreground, 0.06)
-
-          ColumnLayout {
-            id: calendar
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.margins: Style.space(12)
-            spacing: Style.space(6)
-
-            property int viewYear: root.calendarToday.getFullYear()
-            property int viewMonth: root.calendarToday.getMonth()
-            readonly property int weekStart: ClockModel.normalizedWeekStart(null, Qt.locale().firstDayOfWeek)
-            readonly property var weeks: ClockModel.monthGrid(viewYear, viewMonth, weekStart, ClockModel.keyForDate(root.calendarToday))
-            readonly property var days: weeks.reduce(function(all, week) { return all.concat(week.days) }, [])
-
-            function move(delta) {
-              var date = new Date(viewYear, viewMonth + delta, 1)
-              viewYear = date.getFullYear()
-              viewMonth = date.getMonth()
-            }
-
-            function goToToday() {
-              root.calendarToday = new Date()
-              viewYear = root.calendarToday.getFullYear()
-              viewMonth = root.calendarToday.getMonth()
-              selectedKey = ClockModel.keyForDate(root.calendarToday)
-            }
-
-            // Events from the feeds in ~/.config/neko/calendars, by day key;
-            // the command answers from its cache at once and again once a
-            // stale feed is fetched
-            property var events: ({})
-            property bool calendarsConfigured: false
-            property var calendarErrors: []
-            property string selectedKey: ClockModel.keyForDate(root.calendarToday)
-            readonly property var selectedEvents: events[selectedKey] || []
-
-            function refreshEvents() {
-              if (!panel.open || days.length === 0) return
-              eventsProc.running = false
-              eventsProc.command = ["neko-calendar-events", "--from", days[0].key, "--to", days[days.length - 1].key]
-              eventsProc.running = true
-            }
-            onDaysChanged: refreshEvents()
-
-            Process {
-              id: eventsProc
-              stdout: SplitParser {
-                onRead: data => {
-                  try {
-                    var report = JSON.parse(data)
-                    calendar.calendarsConfigured = report.configured === true
-                    calendar.events = report.days || {}
-                    calendar.calendarErrors = report.errors || []
-                  } catch (e) {
-                    console.warn("calendar events:", e)
-                  }
-                }
-              }
-            }
-
-            Connections {
-              target: panel
-              function onOpenChanged() {
-                if (!panel.open) return
-                calendar.goToToday()
-                calendar.refreshEvents()
-              }
-            }
-
-            RowLayout {
-              Layout.fillWidth: true
-              spacing: Style.space(4)
-              Text {
+              // The chosen day's events, today's when it opens
+              ColumnLayout {
                 Layout.fillWidth: true
-                text: Qt.locale().standaloneMonthName(calendar.viewMonth) + " " + calendar.viewYear
-                color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.body
-                font.weight: Font.DemiBold
-                MouseArea {
-                  anchors.fill: parent
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: calendar.goToToday()
-                }
-              }
-              PanelActionButton {
-                iconText: "󰅁"
-                tooltipText: "Last month"
-                foreground: root.foreground
-                onClicked: calendar.move(-1)
-              }
-              PanelActionButton {
-                iconText: "󰅂"
-                tooltipText: "Next month"
-                foreground: root.foreground
-                onClicked: calendar.move(1)
-              }
-            }
+                Layout.topMargin: Style.space(4)
+                visible: calendar.calendarsConfigured
+                spacing: Style.space(6)
 
-            GridLayout {
-              Layout.fillWidth: true
-              columns: 7
-              rowSpacing: Style.space(2)
-              columnSpacing: 0
-
-              Repeater {
-                model: ClockModel.weekdayOrder(calendar.weekStart)
-                Text {
-                  required property var modelData
+                Rectangle {
                   Layout.fillWidth: true
-                  horizontalAlignment: Text.AlignHCenter
-                  text: Qt.locale().dayName(modelData, Locale.NarrowFormat)
+                  implicitHeight: 1
+                  color: Util.alpha(root.foreground, 0.08)
+                }
+
+                Text {
+                  Layout.fillWidth: true
+                  text: {
+                    var parts = calendar.selectedKey.split("-")
+                    var day = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+                    return calendar.selectedKey === ClockModel.keyForDate(root.calendarToday) ? "Today"
+                      : Qt.locale().toString(day, "dddd d MMMM")
+                  }
                   color: root.dim
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
                 }
-              }
 
-              Repeater {
-                model: calendar.days
-                Item {
-                  id: dayCell
-                  required property var modelData
-                  readonly property bool selected: modelData.key === calendar.selectedKey
-                  readonly property bool busy: (calendar.events[modelData.key] || []).length > 0
-                  Layout.fillWidth: true
-                  Layout.preferredHeight: Style.space(26)
-
-                  Rectangle {
-                    anchors.centerIn: parent
-                    width: Style.space(24)
-                    height: width
-                    radius: width / 2
-                    color: modelData.today ? Util.alpha(root.accent, 0.24) : "transparent"
-                    border.width: dayCell.selected && !modelData.today && calendar.calendarsConfigured ? 1 : 0
-                    border.color: Util.alpha(root.foreground, 0.35)
-                  }
-                  // A day with something on
-                  Rectangle {
-                    visible: dayCell.busy
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: Style.space(1)
-                    width: Style.space(4)
-                    height: width
-                    radius: width / 2
-                    color: modelData.inMonth ? root.accent : Util.alpha(root.accent, 0.4)
-                  }
-                  MouseArea {
-                    anchors.fill: parent
-                    enabled: calendar.calendarsConfigured
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: calendar.selectedKey = dayCell.modelData.key
-                  }
-                  Text {
-                    anchors.centerIn: parent
-                    text: modelData.day
-                    color: modelData.today ? root.accent
-                      : !modelData.inMonth ? Util.alpha(root.foreground, 0.28)
-                      : modelData.weekend ? root.dim : root.foreground
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.bodySmall
-                    font.weight: modelData.today ? Font.Bold : Font.Normal
-                  }
-                }
-              }
-            }
-
-            // The chosen day's events, today's when it opens
-            ColumnLayout {
-              Layout.fillWidth: true
-              Layout.topMargin: Style.space(4)
-              visible: calendar.calendarsConfigured
-              spacing: Style.space(6)
-
-              Rectangle {
-                Layout.fillWidth: true
-                implicitHeight: 1
-                color: Util.alpha(root.foreground, 0.08)
-              }
-
-              Text {
-                Layout.fillWidth: true
-                text: {
-                  var parts = calendar.selectedKey.split("-")
-                  var day = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
-                  return calendar.selectedKey === ClockModel.keyForDate(root.calendarToday) ? "Today"
-                    : Qt.locale().toString(day, "dddd d MMMM")
-                }
-                color: root.dim
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-              }
-
-              Repeater {
-                model: calendar.selectedEvents.slice(0, 6)
-                RowLayout {
-                  required property var modelData
-                  Layout.fillWidth: true
-                  spacing: Style.space(8)
-
-                  Rectangle {
-                    Layout.preferredWidth: Style.space(3)
-                    Layout.fillHeight: true
-                    radius: width / 2
-                    color: root.accent
-                  }
-                  Text {
-                    Layout.preferredWidth: Style.space(78)
-                    text: modelData.allDay ? "All day"
-                      : modelData.start && modelData.end ? modelData.start + "–" + modelData.end
-                      : modelData.start ? modelData.start
-                      : modelData.end ? "until " + modelData.end : "All day"
-                    color: root.dim
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                  }
-                  ColumnLayout {
+                Repeater {
+                  model: calendar.selectedEvents.slice(0, 6)
+                  RowLayout {
+                    required property var modelData
                     Layout.fillWidth: true
-                    spacing: 0
-                    Text {
-                      Layout.fillWidth: true
-                      text: modelData.title
-                      color: root.foreground
-                      elide: Text.ElideRight
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.bodySmall
+                    spacing: Style.space(8)
+
+                    Rectangle {
+                      Layout.preferredWidth: Style.space(3)
+                      Layout.fillHeight: true
+                      radius: width / 2
+                      color: root.accent
                     }
                     Text {
-                      Layout.fillWidth: true
-                      visible: text !== ""
-                      text: modelData.location || ""
+                      Layout.preferredWidth: Style.space(78)
+                      text: modelData.allDay ? "All day"
+                        : modelData.start && modelData.end ? modelData.start + "–" + modelData.end
+                        : modelData.start ? modelData.start
+                        : modelData.end ? "until " + modelData.end : "All day"
                       color: root.dim
-                      elide: Text.ElideRight
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.caption
                     }
+                    ColumnLayout {
+                      Layout.fillWidth: true
+                      spacing: 0
+                      Text {
+                        Layout.fillWidth: true
+                        text: modelData.title
+                        color: root.foreground
+                        elide: Text.ElideRight
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.bodySmall
+                      }
+                      Text {
+                        Layout.fillWidth: true
+                        visible: text !== ""
+                        text: modelData.location || ""
+                        color: root.dim
+                        elide: Text.ElideRight
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                      }
+                    }
                   }
                 }
+
+                Text {
+                  visible: calendar.selectedEvents.length > 6
+                  text: "and " + (calendar.selectedEvents.length - 6) + " more"
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
+
+                Text {
+                  visible: calendar.selectedEvents.length === 0
+                  text: "No events"
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                }
+
+                Text {
+                  Layout.fillWidth: true
+                  visible: calendar.calendarErrors.length > 0
+                  text: "Couldn't refresh " + (calendar.calendarErrors.length === 1 ? "a calendar" : calendar.calendarErrors.length + " calendars")
+                  color: Util.alpha(NekoColor.urgent, 0.9)
+                  elide: Text.ElideRight
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
               }
+            }
+          }
+        }
+
+        ColumnLayout {
+          Layout.fillWidth: true
+          Layout.preferredWidth: 1
+          Layout.alignment: Qt.AlignTop
+          spacing: Style.space(12)
+
+          // The clock, since the panel covers the bar's: the time with its
+          // seconds, and the date under it
+          SystemClock {
+            id: panelClock
+            precision: SystemClock.Seconds
+          }
+          ColumnLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: Style.space(4)
+            spacing: Style.space(2)
+
+            Item {
+              Layout.fillWidth: true
+              implicitHeight: timeRow.implicitHeight
+
+            RowLayout {
+              id: timeRow
+              anchors.horizontalCenter: parent.horizontalCenter
+              spacing: Style.space(4)
 
               Text {
-                visible: calendar.selectedEvents.length > 6
-                text: "and " + (calendar.selectedEvents.length - 6) + " more"
+                Layout.alignment: Qt.AlignBaseline
+                textFormat: Text.RichText
+                text: Qt.formatDateTime(panelClock.date, "HH") + '<font color="' + root.accent + '">:</font>' + Qt.formatDateTime(panelClock.date, "mm")
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Math.round(Style.font.displayLarge * 2)
+                font.weight: Font.DemiBold
+                font.letterSpacing: Style.spaceReal(1.2)
+              }
+              Text {
+                Layout.alignment: Qt.AlignBaseline
+                text: Qt.formatDateTime(panelClock.date, ":ss")
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Math.round(Style.font.displayLarge * 1.0)
+                font.weight: Font.DemiBold
+                font.letterSpacing: Style.spaceReal(0.7)
+              }
+            }
+            }
+            Text {
+              Layout.fillWidth: true
+              horizontalAlignment: Text.AlignHCenter
+              text: Qt.formatDateTime(panelClock.date, "dddd, d MMMM yyyy")
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.title
+              font.weight: Font.DemiBold
+              font.letterSpacing: Style.spaceReal(0.5)
+            }
+          }
+
+          // Header: who and how long, with settings, lock and power
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.space(10)
+
+            Text {
+              text: "󰄛"
+              color: root.accent
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.display
+            }
+            ColumnLayout {
+              spacing: 0
+              Text {
+                text: Quickshell.env("USER") || "neko"
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.title
+                font.weight: Font.DemiBold
+              }
+              Text {
+                text: root.uptime ? "up " + root.uptime : ""
                 color: root.dim
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
               }
+            }
+            // Takes the free space so the buttons sit at the right edge
+            Item { Layout.fillWidth: true }
+            PanelActionButton {
+              iconText: "󰒓"
+              tooltipText: "Settings"
+              foreground: root.foreground
+              onClicked: root.runAndClose("neko-shell shell summon neko.settings '{}'")
+            }
+            PanelActionButton {
+              iconText: "󰌾"
+              tooltipText: "Lock"
+              foreground: root.foreground
+              onClicked: root.runAndClose("neko-system-lock")
+            }
+            PanelActionButton {
+              iconText: "󰐥"
+              tooltipText: "Power"
+              foreground: root.foreground
+              onClicked: root.runAndClose("neko-menu summon system")
+            }
+          }
 
-              Text {
-                visible: calendar.selectedEvents.length === 0
-                text: "No events"
-                color: root.dim
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.bodySmall
-              }
+          // Quick toggles
+          GridLayout {
+            Layout.fillWidth: true
+            columns: 2
+            rowSpacing: Style.space(8)
+            columnSpacing: Style.space(8)
 
-              Text {
-                Layout.fillWidth: true
-                visible: calendar.calendarErrors.length > 0
-                text: "Couldn't refresh " + (calendar.calendarErrors.length === 1 ? "a calendar" : calendar.calendarErrors.length + " calendars")
-                color: Util.alpha(NekoColor.urgent, 0.9)
-                elide: Text.ElideRight
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-              }
+            QuickTile {
+              icon: Networking.wifiEnabled ? "󰖩" : "󰖪"
+              label: "Wi-Fi"
+              subtitle: Networking.wifiEnabled ? (root.ssid || "On") : "Off"
+              active: Networking.wifiEnabled
+              onClicked: { Networking.wifiEnabled = !Networking.wifiEnabled; root.refresh() }
+            }
+            QuickTile {
+              icon: root.adapter && root.adapter.enabled ? "󰂯" : "󰂲"
+              label: "Bluetooth"
+              subtitle: root.adapter ? (root.adapter.enabled ? "On" : "Off") : "No adapter"
+              active: !!root.adapter && root.adapter.enabled
+              onClicked: if (root.adapter) root.adapter.enabled = !root.adapter.enabled
+            }
+            QuickTile {
+              icon: root.dnd ? "󰂛" : "󰂚"
+              label: "Do not disturb"
+              subtitle: root.dnd ? "On" : "Off"
+              active: root.dnd
+              onClicked: root.act("neko-shell notifications toggleDnd")
+            }
+            QuickTile {
+              icon: "󰅶"
+              label: "Stay awake"
+              subtitle: root.stayAwake ? "On" : "Off"
+              active: root.stayAwake
+              onClicked: root.act("neko-toggle-idle toggle")
+            }
+            // The bar's Pomodoro shows only while a session is on: start one here
+            QuickTile {
+              icon: "󰔛"
+              label: "Pomodoro"
+              subtitle: Island.pomodoroActive ? Island.pomodoroTitle + " · " + Island.pomodoroClock(Island.pomodoroRemaining) + (Island.pomodoroRunning ? "" : " paused") : "Start a focus session"
+              active: Island.pomodoroActive
+              Layout.columnSpan: root.recorderInstalled ? 1 : 2
+              onClicked: Island.togglePomodoro()
+            }
+            QuickTile {
+              visible: root.recorderInstalled
+              icon: "󰑊"
+              label: "Screen record"
+              subtitle: root.recording ? "Recording" : "Off"
+              active: root.recording
+              onClicked: root.recording
+                ? root.act("neko-capture-screenrecording --stop-recording")
+                : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
+            }
+            QuickTile {
+              icon: root.displays.length > 1 ? "󰍺" : "󰍹"
+              label: "Display"
+              subtitle: root.displays.length > 1 ? root.displays.filter(function(d) { return d.enabled }).length + " of " + root.displays.length + " on"
+                : root.focusedDisplay ? MonitorModel.normalizeScale(root.focusedDisplay.scale) + "x, " + Math.round(root.focusedDisplay.refreshRate) + " Hz" : ""
+              opensPage: true
+              onClicked: root.page = "display"
+            }
+            QuickTile {
+              icon: "󰸉"
+              label: "Wallpaper"
+              subtitle: root.rotation ? "New one every " + root.rotationLabel(root.rotation) : root.wallpaperName
+              active: root.rotation !== ""
+              opensPage: true
+              onClicked: root.page = "wallpaper"
+            }
+          }
+
+          // Volume and brightness
+          SliderRow {
+            icon: root.sink && root.sink.audio && root.sink.audio.muted ? "󰝟" : "󰕾"
+            label: root.sink && root.sink.audio ? VolumeModel.percentForVolume(root.sink.audio.volume) + "%" : ""
+            visible: !!(root.sink && root.sink.audio)
+            // Sixteen notches like the backlight's, on a perceptual curve: a
+            // drag lands on a notch, Shift reaches the fine steps between
+            PanelSlider {
+              Layout.fillWidth: true
+              bar: root.bar
+              maximum: VolumeModel.ticks
+              integer: true
+              step: 1
+              tickCount: VolumeModel.ticks / VolumeModel.ticksPerStep + 1
+              fineCount: VolumeModel.ticksPerStep
+              tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
+              value: root.sink && root.sink.audio ? VolumeModel.tickForVolume(root.sink.audio.volume) : 0
+              onMoved: function(v) { if (root.sink && root.sink.audio) root.sink.audio.volume = VolumeModel.volumeForTick(v) }
+            }
+          }
+          // Brightness moves by ticks on the curve: a mark per full step, the
+          // wheel and drag landing on the fine steps between them
+          SliderRow {
+            icon: "󰃟"
+            label: BrightnessModel.tickLabel(root.brightnessTick)
+            visible: root.brightnessMax > 0
+            PanelSlider {
+              id: brightnessSlider
+              Layout.fillWidth: true
+              bar: root.bar
+              maximum: BrightnessModel.ticks
+              integer: true
+              step: 1
+              tickCount: BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1
+              fineCount: BrightnessModel.ticksPerStep
+              tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
+              value: root.brightnessTick
+              onMoved: function(v) { root.brightnessTick = v; brightnessDebounce.restart() }
             }
           }
         }
