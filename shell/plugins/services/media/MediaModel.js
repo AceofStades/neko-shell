@@ -120,13 +120,52 @@ function osdMessage(player, fallback) {
 }
 
 // What a volume key does to the output, by neko-audio-output-volume's rules:
-// raise and lower step 5 and clamp to 0..100 (so a boosted sink drops to 100
-// on raise), unmuting as they go; mute-toggle flips mute and keeps the volume.
-function volumeKeyStep(action, percent, muted) {
-  if (action === "raise") return { percent: Math.min(percent + 5, 100), muted: false }
-  if (action === "lower") return { percent: Math.max(percent - 5, 0), muted: false }
-  if (action === "mute-toggle") return { percent: percent, muted: !muted }
-  return null
+// the volume moves along 64 ticks, sixteen steps of four, each the same 0.8 dB,
+// the top 150% of the sink's volume, which reads as 100%. raise and lower land
+// on the next whole step that way (8.3 goes up to 9 and down to 8); the fine
+// variants move one tick. Each unmutes as it goes; mute-toggle flips mute and
+// keeps the volume. `volume` is the sink's volume, 1 being its 100%. `hint` is
+// the last tick set and the volume it made, since a card that moves in coarse
+// hardware steps reports back something near that, and the next key must not
+// read it as the tick before. Same scale as shell/services/VolumeModel.js;
+// keep the two in step.
+var volumeTicks = 64
+var volumeTicksPerStep = 4
+var volumeMax = 1.5
+var volumeDbPerTick = 0.8
+var volumeDbTop = 60 * Math.log(volumeMax) / Math.LN10
+
+function volumeForTick(tick) {
+  var t = Math.max(0, Math.min(volumeTicks, Math.round(tick)))
+  if (t === 0) return 0
+  return Math.pow(10, (volumeDbTop - (volumeTicks - t) * volumeDbPerTick) / 60)
+}
+
+function volumeTickFor(volume) {
+  var v = Math.min(volumeMax, Number(volume) || 0)
+  if (v <= 0) return 0
+  var t = volumeTicks - Math.round((volumeDbTop - 60 * Math.log(v) / Math.LN10) / volumeDbPerTick)
+  return Math.max(0, Math.min(volumeTicks, t))
+}
+
+// What a tick reads as: the sink's own percent, up to 150, as pavucontrol
+// shows it
+function volumePercentForTick(tick) {
+  return Math.round(100 * volumeForTick(tick))
+}
+
+function volumeKeyStep(action, volume, muted, hint) {
+  // Within a few percent of what was last set, it is what was last set
+  var current = hint && hint.volume > 0 && Math.abs(volume - hint.volume) / hint.volume < 0.05 ? hint.tick : volumeTickFor(volume)
+  var tick
+  if (action === "raise") tick = (Math.floor(current / volumeTicksPerStep) + 1) * volumeTicksPerStep
+  else if (action === "lower") tick = current % volumeTicksPerStep ? Math.floor(current / volumeTicksPerStep) * volumeTicksPerStep : current - volumeTicksPerStep
+  else if (action === "raise-fine") tick = current + 1
+  else if (action === "lower-fine") tick = current - 1
+  else if (action === "mute-toggle") return { tick: current, volume: volume, percent: volumePercentForTick(current), muted: !muted }
+  else return null
+  tick = Math.max(0, Math.min(volumeTicks, tick))
+  return { tick: tick, volume: volumeForTick(tick), percent: volumePercentForTick(tick), muted: false }
 }
 
 function volumeOsdIcon(percent, muted) {
@@ -153,6 +192,8 @@ if (typeof module !== "undefined") {
     labelFor: labelFor,
     osdMessage: osdMessage,
     volumeKeyStep: volumeKeyStep,
+    volumeTickFor: volumeTickFor,
+    volumeForTick: volumeForTick,
     volumeOsdIcon: volumeOsdIcon
   }
 }

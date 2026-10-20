@@ -28,6 +28,8 @@ panel neko.power
 audio raise
 audio lower
 audio mute-toggle
+audio raise-fine
+audio lower-fine
 brightness raise
 brightness lower
 ipc media.playPause

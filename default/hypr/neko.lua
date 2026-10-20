@@ -99,6 +99,8 @@ if flag then
 
   hl.bind("XF86AudioRaiseVolume", hl.dsp.global("neko:audio.raise"), { locked = true, repeating = true })
   hl.bind("XF86AudioLowerVolume", hl.dsp.global("neko:audio.lower"), { locked = true, repeating = true })
+  hl.bind("SUPER + XF86AudioRaiseVolume", hl.dsp.global("neko:audio.raise-fine"), { locked = true, repeating = true })
+  hl.bind("SUPER + XF86AudioLowerVolume", hl.dsp.global("neko:audio.lower-fine"), { locked = true, repeating = true })
   hl.bind("XF86AudioMute", hl.dsp.global("neko:audio.mute-toggle"), { locked = true })
   hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd(run .. "neko-audio-input-mute"), { locked = true })
   -- Brightness moves along a perceptual curve: 16 steps, SUPER for 4 finer ones each

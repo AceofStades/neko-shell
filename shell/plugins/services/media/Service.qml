@@ -468,6 +468,10 @@ Item {
   readonly property var defaultSink: Pipewire.defaultAudioSink
   readonly property var volumeSink: defaultSink && String(defaultSink.name).indexOf("alsa_output.") === 0 ? defaultSink : null
   property double lastMuteToggle: 0
+  // The last tick a key set, and the volume it made, so a card's coarse
+  // rounding on the way back doesn't read as the tick before
+  property int lastVolumeTick: -1
+  property real lastVolumeSet: 0
 
   // Returns false when the default sink is not one to control here, so the
   // caller falls back to the script.
@@ -475,7 +479,7 @@ Item {
     var audio = volumeSink && volumeSink.audio
     if (!audio) return false
 
-    var step = MediaModel.volumeKeyStep(action, Math.round(audio.volume * 100), audio.muted)
+    var step = MediaModel.volumeKeyStep(action, audio.volume, audio.muted, lastVolumeTick >= 0 ? { tick: lastVolumeTick, volume: lastVolumeSet } : null)
     if (!step) return false
 
     if (action === "mute-toggle") {
@@ -487,7 +491,9 @@ Item {
       audio.muted = step.muted
     } else {
       audio.muted = false
-      audio.volume = step.percent / 100
+      audio.volume = step.volume
+      lastVolumeTick = step.tick
+      lastVolumeSet = step.volume
     }
 
     // The payload neko-osd builds, from the values just set: the node may
@@ -495,9 +501,10 @@ Item {
     shell.summon("neko.osd", JSON.stringify({
       icon: MediaModel.volumeOsdIcon(step.percent, step.muted),
       message: "",
-      value: String(step.percent),
+      // The tick, so the OSD can show the sixteen steps and the fine ones
+      value: String(step.tick),
       progressText: step.percent + "%",
-      max: "100",
+      max: "64",
       duration: ""
     }))
     return true

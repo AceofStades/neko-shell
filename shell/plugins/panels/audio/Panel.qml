@@ -7,6 +7,7 @@ import Quickshell.Services.Pipewire
 import qs.Ui
 import qs.Commons
 import "Model.js" as Model
+import "../../../services/VolumeModel.js" as VolumeModel
 
 Panel {
   id: root
@@ -275,7 +276,8 @@ Panel {
   // moving the global slider would surprise the user.
   function adjustVolume(delta) {
     if (focusSection === "output" && selectedIndex === -1) {
-      setOutputVolume(outputVolume + delta)
+      // A notch at a time, like the slider and the keys
+      setOutputVolume(VolumeModel.volumeForTick(VolumeModel.stepTick(VolumeModel.tickForVolume(outputVolume), delta > 0 ? 1 : -1, false)))
       return
     }
     if (focusSection === "input" && selectedIndex === -1) {
@@ -439,7 +441,8 @@ Panel {
 
   function setOutputVolume(v) {
     if (!volumeSink || !volumeSink.audio) return outputVolume
-    var volume = Math.max(0, Math.min(1, v))
+    // Up to 150%, the top of the scale the keys and the control center use
+    var volume = Math.max(0, Math.min(VolumeModel.maxVolume, v))
     volumeSink.audio.volume = volume
     return volume
   }
@@ -448,7 +451,10 @@ Panel {
     if (!bar || !bar.shell) return
     bar.shell.summon("neko.osd", JSON.stringify({
       icon: outputIcon(volume),
-      value: Math.round(volume * 100)
+      // The tick, so the OSD draws the sixteen steps and the fine ones
+      value: VolumeModel.tickForVolume(volume),
+      max: VolumeModel.ticks,
+      progressText: VolumeModel.percentForVolume(volume) + "%"
     }))
   }
 
@@ -659,7 +665,10 @@ Panel {
       var wheel = Util.wheelSteps(root.wheelAccumulator, delta)
       root.wheelAccumulator = wheel.remainder
       if (wheel.steps === 0) return
-      var volume = root.setOutputVolume(root.outputVolume + wheel.steps * 0.05)
+      // A notch a click of the wheel
+      var tick = VolumeModel.tickForVolume(root.outputVolume)
+      for (var i = 0; i < Math.abs(wheel.steps); i++) tick = VolumeModel.stepTick(tick, wheel.steps > 0 ? 1 : -1, false)
+      var volume = root.setOutputVolume(VolumeModel.volumeForTick(tick))
       root.showVolumeOsd(volume)
     }
   }
@@ -772,7 +781,8 @@ Panel {
                 color: root.bar.foreground
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.title
-                font.bold: true
+                font.weight: Font.DemiBold
+                font.letterSpacing: Style.spaceReal(0.5)
                 elide: Text.ElideRight
                 width: parent.width
               }
@@ -781,14 +791,14 @@ Panel {
                 id: heroLabel
                 textFormat: Text.PlainText
                 text: root.outputVolumeName(
-                  outputSlider.dragging ? outputSlider.liveValue : root.outputVolume,
+                  outputSlider.dragging ? VolumeModel.volumeForTick(outputSlider.liveValue) : root.outputVolume,
                   root.outputMuted
                 ).toUpperCase()
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
+                font.weight: Font.DemiBold
+                font.letterSpacing: Style.spaceReal(0.7)
                 elide: Text.ElideRight
                 width: parent.width
               }
@@ -820,11 +830,12 @@ Panel {
               Text {
                 id: outputPercent
                 textFormat: Text.PlainText
-                text: Math.round((outputSlider.dragging ? outputSlider.liveValue : root.outputVolume) * 100) + "%"
+                text: VolumeModel.percentForVolume(outputSlider.dragging ? VolumeModel.volumeForTick(outputSlider.liveValue) : root.outputVolume) + "%"
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
-                font.bold: true
+                font.weight: Font.DemiBold
+                font.letterSpacing: Style.spaceReal(0.7)
                 anchors.right: parent.right
                 anchors.rightMargin: Style.space(6)
                 anchors.verticalCenter: parent.verticalCenter
@@ -848,13 +859,19 @@ Panel {
                 anchors.leftMargin: Style.space(6)
                 anchors.rightMargin: Style.space(6)
                 minimum: 0
-                maximum: 1
-                step: 0.05
-                value: root.outputVolume
+                // Sixteen notches like the backlight's, a drag landing on a
+                // notch and Shift reaching the fine steps between them
+                maximum: VolumeModel.ticks
+                integer: true
+                step: 1
+                tickCount: VolumeModel.ticks / VolumeModel.ticksPerStep + 1
+                fineCount: VolumeModel.ticksPerStep
+                tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
+                value: VolumeModel.tickForVolume(root.outputVolume)
                 opacity: root.outputMuted ? 0.5 : 1.0
                 enabled: !!root.sink
 
-                onMoved: function(v) { root.setOutputVolume(v) }
+                onMoved: function(v) { root.setOutputVolume(VolumeModel.volumeForTick(v)) }
                 onRightClicked: root.toggleOutputMute()
               }
 
@@ -911,7 +928,8 @@ Panel {
                 color: Qt.darker(root.bar.foreground, 1.4)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
-                font.bold: true
+                font.weight: Font.DemiBold
+                font.letterSpacing: Style.spaceReal(0.7)
                 anchors.right: parent.right
                 anchors.rightMargin: Style.space(6)
                 anchors.verticalCenter: parent.verticalCenter
@@ -1223,7 +1241,8 @@ Panel {
           color: Qt.darker(root.bar.foreground, 1.5)
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.caption
-          font.bold: true
+          font.weight: Font.DemiBold
+          font.letterSpacing: Style.spaceReal(0.7)
           width: Style.space(36)
           horizontalAlignment: Text.AlignRight
           anchors.verticalCenter: parent.verticalCenter

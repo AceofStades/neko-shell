@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# neko:summary=Adjust output volume and show the Neko OSD
-# neko:args=<raise|lower|mute-toggle|+N|-N>
-# neko:examples=neko audio output volume raise | neko audio output volume lower | neko audio output volume mute-toggle | neko audio output volume +1
+# neko:summary=Adjust output volume along a perceptual curve and show the Neko OSD
+# neko:args=<raise|lower|raise-fine|lower-fine|mute-toggle|+N|-N>
+# neko:examples=neko audio output volume raise | neko audio output volume lower-fine | neko audio output volume mute-toggle | neko audio output volume +1
 
 action="${1:-}"
 
 if [[ -z $action ]]; then
-  echo "Usage: neko-audio-output-volume <raise|lower|mute-toggle|+N|-N>"
+  echo "Usage: neko-audio-output-volume <raise|lower|raise-fine|lower-fine|mute-toggle|+N|-N>"
   exit 1
 fi
 
@@ -30,14 +30,78 @@ volume_percent() {
     }'
 }
 
+# The raw volume, 65536 being 100%: a percent is too coarse to tell the quiet
+# ticks apart, which are under a percent apart
+volume_raw() {
+  pactl get-sink-volume "$sink" 2>/dev/null |
+    awk 'NR == 1 { for (i = 2; i <= NF; i++) if ($i == "/") { print $(i - 1); exit } }'
+}
+
 volume_muted() {
   [[ $(pactl get-sink-mute "$sink" 2>/dev/null) == *yes ]]
 }
 
-case "$action" in
-  raise) action="+5" ;;
-  lower) action="-5" ;;
-esac
+# The volume moves along 64 ticks, sixteen steps of four, each the same 0.8 dB:
+# PulseAudio's and PipeWire's volume is already cubic (its cube is the amplitude),
+# so equal decibels are what make every step sound like the same change, and 0.8
+# is just over the 0.75 dB the HDA hardware mixers move in, so no tick lands on
+# the same hardware step as the one before it. The top tick is 150% of the sink's
+# volume, which reads as 100%: 100% is not loud enough on many outputs, and the
+# sink takes up to about 153%. Tick 0 is silence. The shell builds the same scale
+# in shell/services/VolumeModel.js and plugins/services/media/MediaModel.js;
+# keep the three in step.
+# The tick for a raw volume
+tick_for_raw() {
+  awk -v r="$1" 'BEGIN {
+    v = r / 65536
+    if (v <= 0) { print 0; exit }
+    top = 60 * log(1.5) / log(10)
+    t = 64 - int((top - 60 * log(v) / log(10)) / 0.8 + 0.5)
+    if (t < 0) t = 0
+    if (t > 64) t = 64
+    print t
+  }'
+}
+
+# The raw volume for a tick
+raw_for_tick() {
+  awk -v t="$1" 'BEGIN {
+    if (t <= 0) { print 0; exit }
+    top = 60 * log(1.5) / log(10)
+    printf "%d", int(65536 * exp(log(10) * (top - (64 - t) * 0.8) / 60) + 0.5)
+  }'
+}
+
+# Moves a tick: a whole step that way (8.3 goes up to 9 and down to 8), or one
+# fine tick
+tick_target() {
+  local direction=$1 fine=$2 current=$3 tick
+  if [[ $fine == fine ]]; then
+    tick=$((current + direction))
+  elif ((direction > 0)); then
+    tick=$(((current / 4 + 1) * 4))
+  else
+    ((current % 4)) && tick=$((current / 4 * 4)) || tick=$((current - 4))
+  fi
+  ((tick >= 0)) || tick=0
+  ((tick <= 64)) || tick=64
+  echo "$tick"
+}
+
+# The last tick set and the raw volume it made. A card that moves in coarse
+# hardware steps reports back something near that, and the next key must not
+# read it as the tick before.
+hint_file="${XDG_RUNTIME_DIR:-/tmp}/neko-audio-output-volume.last"
+tick_now() {
+  local raw=$1 last_tick="" last_raw=""
+  [[ -r $hint_file ]] && read -r last_tick last_raw <"$hint_file" || true
+  if [[ $last_tick =~ ^[0-9]+$ && $last_raw =~ ^[0-9]+$ ]] && ((last_raw > 0)) &&
+    awk -v a="$raw" -v b="$last_raw" 'BEGIN { d = a - b; if (d < 0) d = -d; exit !(d / b < 0.05) }'; then
+    echo "$last_tick"
+  else
+    tick_for_raw "$raw"
+  fi
+}
 
 if [[ $action == "mute-toggle" ]]; then
   runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
@@ -51,7 +115,25 @@ if [[ $action == "mute-toggle" ]]; then
   printf '%s\n' "$now" >"$debounce_file"
 
   pactl set-sink-mute "$sink" toggle
+elif [[ $action =~ ^(raise|lower)(-fine)?$ ]]; then
+  current="$(volume_raw)"
+  if [[ -z $current ]]; then
+    echo "Could not read volume for $sink." >&2
+    exit 1
+  fi
+
+  direction=1
+  [[ ${BASH_REMATCH[1]} == lower ]] && direction=-1
+  fine=""
+  [[ -n ${BASH_REMATCH[2]} ]] && fine=fine
+  tick=$(tick_target "$direction" "$fine" "$(tick_now "$current")")
+  target=$(raw_for_tick "$tick")
+
+  pactl set-sink-mute "$sink" 0
+  pactl set-sink-volume "$sink" "$target"
+  printf '%s %s\n' "$tick" "$target" >"$hint_file"
 elif [[ $action =~ ^([+-])([0-9]+)$ ]]; then
+  # A plain step of raw percent, up to the top of the scale
   direction="${BASH_REMATCH[1]}"
   step="${BASH_REMATCH[2]}"
 
@@ -63,7 +145,8 @@ elif [[ $action =~ ^([+-])([0-9]+)$ ]]; then
 
   if [[ $direction == "+" ]]; then
     next=$((current + step))
-    ((next <= 100)) || next=100
+    ((next <= 150)) || next=150
+    rm -f "$hint_file"
   else
     next=$((current - step))
     ((next >= 0)) || next=0
@@ -76,11 +159,15 @@ else
   exit 1
 fi
 
-percent=$(volume_percent)
-if volume_muted || ((${percent:-0} == 0)); then
+raw=$(volume_raw)
+tick=$(tick_now "${raw:-0}")
+# What it reads as: the sink's own percent, up to 150, as pavucontrol shows it
+shown=$(awk -v r="${raw:-0}" 'BEGIN { printf "%d", int(100 * r / 65536 + 0.5) }')
+if volume_muted || ((${raw:-0} == 0)); then
   icon="volume-muted"
 else
   icon="volume-high"
 fi
 
-neko-osd -i "$icon" -p "${percent:-0}"
+# The OSD shows the tick, so it can draw the sixteen steps and the fine ones
+neko-osd -i "$icon" -p "$tick" --max 64 --label "${shown}%"
