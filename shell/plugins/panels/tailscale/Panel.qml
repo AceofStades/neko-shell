@@ -604,6 +604,7 @@ Panel {
                   foreground: root.foreground
                   placeholderText: "Search regions"
                   text: root.mullvadQuery
+                  font.family: root.fontFamily
                   onTextChanged: {
                     root.mullvadQuery = text
                     root.mullvadRegionIndex = 0

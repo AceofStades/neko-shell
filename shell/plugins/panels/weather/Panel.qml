@@ -557,7 +557,8 @@ Panel {
               // Hero temperature read-out; deliberately oversized, outside
               // the Style.font.* scale.
               font.pixelSize: 56
-              font.bold: true
+              font.weight: Font.DemiBold
+              font.letterSpacing: Style.spaceReal(0.7)
             }
             Text {
               textFormat: Text.PlainText
@@ -603,7 +604,7 @@ Panel {
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.body
-              font.letterSpacing: 1
+              font.letterSpacing: Style.spaceReal(0.5)
               anchors.verticalCenter: parent.verticalCenter
             }
           }

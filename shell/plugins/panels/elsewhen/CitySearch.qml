@@ -86,6 +86,7 @@ Column {
     width: parent.width
     placeholderText: search.placeholderText
     foreground: search.foreground
+    font.family: search.fontFamily
     Keys.onEscapePressed: search.stop()
     Keys.onReturnPressed: search.pickSelected()
     Keys.onEnterPressed: search.pickSelected()

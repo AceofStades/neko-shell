@@ -404,7 +404,8 @@ Panel {
               color: root.bar.foreground
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.title
-              font.bold: true
+              font.weight: Font.DemiBold
+              font.letterSpacing: Style.spaceReal(0.5)
               elide: Text.ElideRight
               width: parent.width
             }
@@ -416,8 +417,8 @@ Panel {
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
+              font.weight: Font.DemiBold
+              font.letterSpacing: Style.spaceReal(0.7)
               elide: Text.ElideRight
               width: parent.width
             }
@@ -430,7 +431,8 @@ Panel {
             color: root.bar.foreground
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.displayLarge
-            font.bold: true
+            font.weight: Font.DemiBold
+            font.letterSpacing: Style.spaceReal(0.7)
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 

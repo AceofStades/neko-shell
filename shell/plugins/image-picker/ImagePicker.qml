@@ -45,6 +45,7 @@ Item {
   property color scrim: NekoColor.imagePicker.scrim
   property color selectedBorder: NekoColor.imagePicker.selectedBorder
   property color unselectedBorder: NekoColor.imagePicker.unselectedBorder
+  property string fontFamily: Style.font.family
   property int expandedWidth: 768
   property int expandedHeight: 475
   property int sliceWidth: 108
@@ -664,6 +665,7 @@ Item {
           color: root.foreground
           style: Text.Outline
           styleColor: Util.alpha(root.dimColor, 0.7)
+          font.family: root.fontFamily
           font.pixelSize: Style.font.display
           font.weight: Font.DemiBold
           horizontalAlignment: Text.AlignHCenter
@@ -682,6 +684,7 @@ Item {
           opacity: 0.85
           style: Text.Outline
           styleColor: Util.alpha(root.dimColor, 0.7)
+          font.family: root.fontFamily
           font.pixelSize: Style.font.title
           horizontalAlignment: Text.AlignHCenter
           elide: Text.ElideRight

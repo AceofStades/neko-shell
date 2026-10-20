@@ -176,6 +176,7 @@ Rectangle {
         font.family: row.fontFamily
         font.pixelSize: Style.font.subtitle
         font.weight: Font.DemiBold
+        font.letterSpacing: Style.spaceReal(0.5)
         elide: Text.ElideRight
       }
 
@@ -332,6 +333,7 @@ Rectangle {
         font.family: row.fontFamily
         font.pixelSize: Style.font.heading
         font.weight: Font.DemiBold
+        font.letterSpacing: Style.spaceReal(0.5)
       }
 
       Caption {

@@ -160,5 +160,6 @@ Column {
     font.family: hero.fontFamily
     font.pixelSize: Style.font.title
     font.weight: Font.DemiBold
+    font.letterSpacing: Style.spaceReal(0.5)
   }
 }

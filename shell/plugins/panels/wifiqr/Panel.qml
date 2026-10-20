@@ -257,8 +257,8 @@ Item {
             color: root.onScrimDim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
-            font.bold: true
-            font.letterSpacing: 2
+            font.weight: Font.DemiBold
+            font.letterSpacing: Style.spaceReal(0.7)
             elide: Text.ElideRight
             Layout.maximumWidth: Style.space(320)
             Layout.alignment: Qt.AlignHCenter

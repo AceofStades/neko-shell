@@ -72,6 +72,7 @@ Item {
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           font.weight: Font.DemiBold
+          font.letterSpacing: Style.spaceReal(0.5)
         }
       }
 
