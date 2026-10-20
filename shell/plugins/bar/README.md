@@ -27,22 +27,31 @@ Example `shell.json` (bar subtree only shown):
     "position": "top",
     "transparent": false,
     "glass": true,
-    "centerAnchor": "neko.clock",
+    "centerAnchor": "neko.unibar-center",
     "layout": {
       "left": [
-        { "id": "neko.menu" },
-        { "id": "neko.spacer", "size": 12 },
-        { "id": "neko.workspaces" }
+        { "id": "neko.system-monitor" },
+        { "id": "neko.active-window" }
       ],
       "center": [
-        { "id": "neko.media" },
-        { "id": "neko.clock", "format": "HH:mm" }
+        { "id": "neko.media-players", "group": "unibar", "integrated": true },
+        { "id": "neko.workspace-bars-left", "group": "unibar", "start": 1 },
+        { "id": "neko.unibar-center", "group": "unibar", "format": "HH:mm" },
+        { "id": "neko.workspace-bars-right", "group": "unibar", "start": 6 },
+        { "id": "neko.pomodoro", "group": "unibar", "integrated": true }
       ],
       "right": [
-        { "id": "neko.audio" },
-        { "id": "neko.power" }
+        { "id": "neko.keyboard-layout", "group": "status" },
+        { "id": "neko.tray", "group": "status" },
+        { "id": "neko.agents", "group": "status" },
+        { "id": "neko.bluetooth", "group": "status" },
+        { "id": "neko.network", "group": "status" },
+        { "id": "neko.audio", "group": "status" },
+        { "id": "neko.power", "group": "status" },
+        { "id": "neko.control-center", "hideButton": true }
       ]
-    }
+    },
+    "style": "attached"
   }
 }
 ```
@@ -53,7 +62,7 @@ Example `shell.json` (bar subtree only shown):
 
 Give neighbouring entries the same `"group"` (any name) to put them in one shared capsule instead of one each: the default config groups the status icons on the right, `{ "id": "neko.network", "group": "status" }`. Hidden widgets between them don't break the group.
 
-`centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. Set to an empty string to disable anchoring (the center list is centered as a group).
+`centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. The default config anchors on `neko.unibar-center` (the UniBar's centered clock and island host). Set to an empty string to disable anchoring (the center list is centered as a group).
 
 ## Module catalogue
 

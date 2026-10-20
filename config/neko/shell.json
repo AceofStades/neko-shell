@@ -8,7 +8,7 @@
     "position": "top",
     "transparent": false,
     "glass": true,
-    "centerAnchor": "neko.workspaces",
+    "centerAnchor": "neko.unibar-center",
     "layout": {
       "left": [
         {
@@ -20,13 +20,29 @@
       ],
       "center": [
         {
-          "id": "neko.media-players"
+          "id": "neko.media-players",
+          "group": "unibar",
+          "integrated": true
         },
         {
-          "id": "neko.workspaces"
+          "id": "neko.workspace-bars-left",
+          "group": "unibar",
+          "start": 1
         },
         {
-          "id": "neko.pomodoro"
+          "id": "neko.unibar-center",
+          "group": "unibar",
+          "format": "HH:mm"
+        },
+        {
+          "id": "neko.workspace-bars-right",
+          "group": "unibar",
+          "start": 6
+        },
+        {
+          "id": "neko.pomodoro",
+          "group": "unibar",
+          "integrated": true
         }
       ],
       "right": [
@@ -61,12 +77,6 @@
         {
           "id": "neko.control-center",
           "hideButton": true
-        },
-        {
-          "id": "neko.clock",
-          "format": "dddd HH:mm",
-          "formatAlt": "d MMMM 'W'ww yyyy",
-          "verticalFormat": "HH\n—\nmm"
         }
       ]
     },
