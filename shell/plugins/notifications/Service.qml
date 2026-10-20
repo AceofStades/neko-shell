@@ -1026,10 +1026,9 @@ Item {
 
       ColumnLayout {
         id: popupColumn
-        anchors.right: parent.right
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: popupWindow.popupPlacement.margins.top
-        anchors.rightMargin: popupWindow.popupPlacement.margins.right
         spacing: Style.space(8)
 
         Repeater {
@@ -1054,7 +1053,7 @@ Item {
             // Each card sizes itself based on mode (text vs media); the slot
             // tracks the card so the column auto-fits to whichever is widest.
             Layout.preferredWidth: card.implicitWidth
-            Layout.alignment: Qt.AlignRight
+            Layout.alignment: Qt.AlignHCenter
             implicitHeight: card.implicitHeight
 
             readonly property real lifetime: service.durationFor(cardSlot.urgency, cardSlot.expireTimeout)

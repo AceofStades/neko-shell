@@ -21,6 +21,12 @@ BarWidget {
   // and every status control rather than just this clock slot.
   readonly property var islandGroupSpan: root.bar && typeof root.bar.groupSpan === "function"
     ? root.bar.groupSpan(root) : null
+  // The compact island alone: the workspace bars and the clock between them.
+  // Transient surfaces that take the island's width (the OSD) take this, not
+  // the whole group, which the media and timer pills widen while they show.
+  readonly property var coreSpan: root.bar && typeof root.bar.spanBetween === "function" && typeof root.bar.moduleItem === "function"
+    ? root.bar.spanBetween(root.bar.moduleItem("neko.workspace-bars-left", root), root.bar.moduleItem("neko.workspace-bars-right", root)) : null
+  readonly property real islandCoreWidth: coreSpan ? Math.max(1, coreSpan.right - coreSpan.left) : 0
   readonly property real islandSurfaceWidth: islandGroupSpan
     ? Math.max(1, islandGroupSpan.right - islandGroupSpan.left) : root.width
   readonly property real islandCenterOffset: {
@@ -48,6 +54,7 @@ BarWidget {
     x: Math.round((parent.width - width) / 2 + (Island.mode === "" ? root.islandCenterOffset : 0))
     y: 0
     bar: root.bar
+    coreWidth: root.islandCoreWidth
     // It hosts only the island window. Disabling its hidden workspace grid
     // keeps those ten invisible buttons out of the clock's click routing.
     enabled: false
@@ -58,7 +65,7 @@ BarWidget {
 
     Behavior on x {
       enabled: !Style.reduceMotion
-      SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+      SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
     }
   }
 
@@ -66,12 +73,16 @@ BarWidget {
   // zero-width layout module beside the visible widgets. Its hidden button
   // contributes neither geometry nor a click target; the clock below is the
   // sole trigger and the shared KeyboardPanel morphs from this UniBar slot.
+  // Found by the bar for summon/toggle, so keybinds and `neko open
+  // control-center` reach this panel, which has no slot of its own
+  readonly property var embeddedPanel: controlCenter
+
   ControlCenterPlugin.Panel {
     id: controlCenter
     anchors.fill: parent
     z: -5
     bar: root.bar
-    settings: ({ hideButton: true, panelWidth: 440 })
+    settings: ({ hideButton: true, panelWidth: 780 })
   }
 
   WidgetButton {

@@ -1,6 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
 // The bar's island: while one is up (the workspaces widget on a horizontal
@@ -19,6 +20,60 @@ Singleton {
   // center group comes back in its place; set while it does
   property bool settling: false
   readonly property bool active: islands > 0
+
+  // ---------- Fullscreen ----------
+  // Screens whose active workspace holds a fullscreen window, by name. The
+  // bar is out of sight there, so an OSD or a notification takes its leave by
+  // curling into a ball and rising toward the island's place, instead of just
+  // fading, to keep the thread of where it came from.
+  property var fullscreenScreens: ({})
+
+  function isFullscreen(screenName) {
+    return !!screenName && fullscreenScreens[screenName] === true
+  }
+
+  function readFullscreen() {
+    var next = ({})
+    var monitors = Hyprland.monitors.values
+    for (var i = 0; i < monitors.length; i++) {
+      var workspace = monitors[i].activeWorkspace
+      var state = workspace ? workspace.lastIpcObject : null
+      if (state && state.hasfullscreen === true) next[monitors[i].name] = true
+    }
+    fullscreenScreens = next
+  }
+
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      var name = event.name
+      if (name === "fullscreen" || name === "workspacev2" || name === "focusedmonv2" || name === "activewindowv2"
+          || name === "closewindow" || name === "movewindowv2" || name === "monitoraddedv2" || name === "monitorremoved") {
+        Hyprland.refreshWorkspaces()
+        fullscreenRead.restart()
+      }
+    }
+  }
+
+  // Once Hyprland has answered the refresh
+  Timer {
+    id: fullscreenRead
+    interval: 90
+    onTriggered: root.readFullscreen()
+  }
+
+  ShellIpc {
+    target: "island"
+
+    function fullscreen(): string {
+      return JSON.stringify(root.fullscreenScreens)
+    }
+
+    // Where each screen's island rests, and the width an OSD takes
+    function rests(): string {
+      return JSON.stringify(root.restRects)
+    }
+  }
 
   // ---------- Notifications ----------
   // Set by the notification service when it starts
@@ -197,6 +252,8 @@ Singleton {
   property bool pomodoroLoaded: false
   property bool pomodoroIconHovered: false
   property bool pomodoroRequested: false
+  // Customizable focus duration (seconds), persisted in state file
+  property int pomodoroFocusDuration: 25 * 60
   readonly property bool pomodoroShown: pomodoroRequested && (pomodoroIconHovered || hovered || pomodoroCloseTimer.running)
   readonly property real pomodoroFraction: {
     var duration = pomodoroDuration(pomodoroPhase)
@@ -206,7 +263,16 @@ Singleton {
     : pomodoroPhase === "longBreak" ? "Long break" : "Short break"
 
   function pomodoroDuration(phase) {
-    return phase === "focus" ? 25 * 60 : phase === "longBreak" ? 15 * 60 : 5 * 60
+    return phase === "focus" ? pomodoroFocusDuration : phase === "longBreak" ? 15 * 60 : 5 * 60
+  }
+
+  function setPomodoroFocusDuration(seconds) {
+    if (!pomodoroLoaded) return
+    pomodoroFocusDuration = Math.max(60, Math.round(Number(seconds) || 25 * 60))
+    if (pomodoroPhase === "focus" && !pomodoroActive) {
+      pomodoroRemaining = pomodoroFocusDuration
+    }
+    persistPomodoro()
   }
 
   function pomodoroClock(seconds) {
@@ -225,7 +291,8 @@ Singleton {
       running: pomodoroRunning,
       remaining: pomodoroRemaining,
       targetAt: pomodoroTargetAt,
-      completed: pomodoroCompleted
+      completed: pomodoroCompleted,
+      focusDuration: pomodoroFocusDuration
     }, null, 2) + "\n")
   }
 
@@ -243,6 +310,7 @@ Singleton {
       pomodoroRemaining = Math.max(0, Math.min(pomodoroDuration(pomodoroPhase), Math.round(Number(state.remaining) || 0)))
       pomodoroTargetAt = pomodoroRunning ? Number(state.targetAt) || 0 : 0
       pomodoroCompleted = Math.max(0, Math.round(Number(state.completed) || 0))
+      pomodoroFocusDuration = Math.max(60, Math.round(Number(state.focusDuration) || 25 * 60))
       if (!pomodoroActive) pomodoroRemaining = pomodoroDuration("focus")
     }
     pomodoroLoaded = true
@@ -365,7 +433,8 @@ Singleton {
         running: root.pomodoroRunning,
         phase: root.pomodoroPhase,
         remaining: root.pomodoroRemaining,
-        completed: root.pomodoroCompleted
+        completed: root.pomodoroCompleted,
+        focusDuration: root.pomodoroFocusDuration
       })
     }
 
@@ -407,9 +476,14 @@ Singleton {
       pomodoroCloseTimer.stop()
       return "ok"
     }
+
+    function setFocusDuration(seconds: int): string {
+      root.setPomodoroFocusDuration(seconds)
+      return "ok"
+    }
   }
 
-  Component.onCompleted: Qt.callLater(function() { pomodoroStateFile.reload() })
+  Component.onCompleted: Qt.callLater(function() { pomodoroStateFile.reload(); root.readFullscreen() })
 
   // What the island shows: "settings", "faceauth", "osd", "pomodoro",
   // "media", "notification" or "" (the workspaces). The settings window,

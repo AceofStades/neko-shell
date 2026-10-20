@@ -85,6 +85,10 @@ BarWidget {
   readonly property real restTopInset: root.topAttached ? 0 : root.restInset
   readonly property real restBottomInset: root.restInset
   readonly property real restWidth: root.width + 2 * Style.bar.capsulePadding - 4
+  // The compact island alone, when its host measures it: what an OSD is as
+  // wide as, so a timer or music pill beside the clock doesn't widen it
+  property real coreWidth: 0
+  readonly property real osdWidth: coreWidth > 0 ? Math.min(coreWidth, restWidth) : restWidth
   readonly property real restHeight: root.height - root.restTopInset - root.restBottomInset
 
   // Glass like the bar's capsules, blurred by the compositor (neko.lua's
@@ -116,11 +120,13 @@ BarWidget {
       x: root.islandLeft + (island.implicitWidth - root.restWidth) / 2,
       y: (root.topAttached ? 0 : Style.bar.floatMargin) + root.restTopInset,
       width: root.restWidth,
+      coreWidth: root.osdWidth,
       height: root.restHeight,
       attached: root.topAttached
     })
   }
   onRestWidthChanged: reportRest()
+  onOsdWidthChanged: reportRest()
   onRestHeightChanged: reportRest()
   onTopAttachedChanged: placeIsland()
   Binding {
@@ -142,15 +148,18 @@ BarWidget {
     }
   }
 
+  // The spring rings around its rest size for a good while, so wait only until
+  // the pill looks like the capsule: the swap is a quick crossfade, and the
+  // last pixels of ringing play out underneath it
   function checkSettled() {
-    if (Island.settling && Math.abs(pill.width - root.restWidth) < 1.5 && Math.abs(pill.height - root.restHeight) < 1.5)
+    if (Island.settling && Math.abs(pill.width - root.restWidth) < Style.space(5) && Math.abs(pill.height - root.restHeight) < Style.space(5))
       Island.settling = false
   }
 
   // However the spring goes, the center group is back soon after
   Timer {
     id: settleTimer
-    interval: 700
+    interval: 350
     onTriggered: Island.settling = false
   }
   onWidthChanged: placeIsland()
@@ -257,7 +266,7 @@ BarWidget {
       readonly property real targetWidth: root.islandMode === "media" ? Style.space(460)
         : root.islandMode === "pomodoro" ? Style.space(400)
         : root.islandMode === "notification" ? Style.space(410)
-        : root.islandMode === "osd" ? Style.space(175)
+        : root.islandMode === "osd" ? root.osdWidth
         : root.islandMode === "faceauth" ? Style.space(120) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
@@ -288,11 +297,11 @@ BarWidget {
       // once (the capsule into an OSD, say) settles together without a jolt
       Behavior on width {
         enabled: !Style.reduceMotion
-        SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+        SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
       }
       Behavior on height {
         enabled: !Style.reduceMotion
-        SpringAnimation { spring: 3.2; damping: 0.36; epsilon: 0.25 }
+        SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
       }
       // Swapped with the center group as fast both ways: in as it goes, and
       // out as it comes back once the pill has its shape again

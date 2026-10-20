@@ -10,6 +10,34 @@ Item {
   id: root
 
   property bool opened: false
+
+  // Over a fullscreen app the bar is out of sight, so the OSD leaves by curling
+  // into a ball and rising toward the island's place at the top of the screen,
+  // rather than fading where it stands. `curl` is the ball forming, `rise` the
+  // ball going up; both run only on the way out, and a new show cancels them.
+  readonly property bool fullscreenHere: !!panel.screen && Island.isFullscreen(panel.screen.name)
+  property bool exiting: false
+  property real curl: 0
+  property real rise: 0
+
+  onOpenedChanged: {
+    if (opened) {
+      curlExit.stop()
+      exiting = false
+      curl = 0
+      rise = 0
+    } else if (fullscreenHere && !Style.reduceMotion) {
+      exiting = true
+      curlExit.restart()
+    }
+  }
+
+  SequentialAnimation {
+    id: curlExit
+    NumberAnimation { target: root; property: "curl"; to: 1; duration: Style.duration(260); easing.type: Easing.OutCubic }
+    NumberAnimation { target: root; property: "rise"; to: 1; duration: Style.duration(340); easing.type: Easing.InCubic }
+    ScriptAction { script: { root.exiting = false; root.curl = 0; root.rise = 0 } }
+  }
   property string icon: ""
   property string message: ""
   property string iconKey: ""
@@ -32,9 +60,27 @@ Item {
   // between them opens up well past the nominal gap. Text takes two thirds of
   // it; the progress bar's hard edge keeps the full gap.
   readonly property int messageGap: Math.round(root.gap * 2 / 3)
-  readonly property int barWidth: Style.space(160)
   readonly property int trackHeight: Style.space(6)
   readonly property int maxMessageWidth: root.mediaOsd ? Style.space(325) : Style.space(190)
+
+  // Compute the bar width that fits within the island rest width.
+  // Island.restRects[width] is the card width. Available space for the bar:
+  // cardWidth - iconWidth - valueWidth - 2*gap - 2*pad (card horizontal padding).
+  // But the card's width IS islandWidth, and the Row is centered with no extra
+  // horizontal margins, so the Row can use up to islandWidth. We clamp the bar
+  // to at least trackHeight (so it stays a pill) and at most the nominal barWidth.
+  function barWidthFor(islandWidth) {
+    var avail = islandWidth - root.iconWidth - root.valueWidth - 2 * root.gap
+    return Math.max(root.trackHeight, Math.min(root.nominalBarWidth, avail))
+  }
+  readonly property int nominalBarWidth: Style.space(160)
+  // 64 ticks are the backlight's or the volume's sixteen steps of four
+  readonly property bool stepped: maxValue === 64
+  // As wide as the compact island, not the whole group beside it
+  readonly property real pillWidth: {
+    var rest = panel.screen ? Island.restRects[panel.screen.name] : null
+    return rest ? (rest.coreWidth || rest.width) : 0
+  }
 
   // Nerd Font glyphs draw well outside their monospace cell, so the icon
   // column is measured by ink rather than by advance width. Progress OSDs pin
@@ -48,8 +94,12 @@ Item {
   // digits don't jitter between 9% and 100%.
   readonly property int valueWidth: Math.ceil(Math.max(valueMetrics.advanceWidth, messageMetrics.advanceWidth))
   readonly property int messageWidth: Math.min(Math.ceil(messageMetrics.advanceWidth), root.maxMessageWidth)
+  // contentWidth uses the adaptive bar width when we know the island width,
+  // otherwise falls back to nominalBarWidth for the standalone OSD window.
   readonly property int contentWidth: root.hasProgress
-    ? root.iconWidth + root.gap + root.barWidth + root.gap + root.valueWidth
+    ? (panel.screen && Island.restRects[panel.screen.name]
+         ? root.iconWidth + root.gap + root.barWidthFor(root.pillWidth) + root.gap + root.valueWidth
+         : root.iconWidth + root.gap + root.nominalBarWidth + root.gap + root.valueWidth)
     : (root.message === "" ? root.iconWidth : root.iconWidth + root.messageGap + root.messageWidth)
 
   function iconFor(name, percent) {
@@ -176,36 +226,48 @@ Item {
 
   OverlayWindow {
     id: panel
-    shown: root.opened
+    shown: root.opened || root.exiting
     shownKeyboardFocus: WlrKeyboardFocus.None
     WlrLayershell.namespace: "neko-osd"
     // Visual-only surface: keep the layer-shell input region empty so the OSD
     // never blocks clicks to the desktop below it.
     mask: Region {}
 
+    // Match the island's compact/rest width so the standalone OSD has the same
+    // footprint as the bar's center island at rest.
+    readonly property real islandWidth: (panel.screen && Island.restRects[panel.screen.name])
+      ? (Island.restRects[panel.screen.name].coreWidth || Island.restRects[panel.screen.name].width)
+      : Style.space(300)
+
     BorderSurface {
       id: card
       // A translucent pill (blurred by the compositor) that fades and rises in
-      width: card.borderLeft + root.sidePad + root.contentWidth + root.sidePad + card.borderRight
+      // Curling, it narrows to a ball as wide as it is tall
+      width: panel.islandWidth + (height - panel.islandWidth) * root.curl
       height: card.borderTop + root.pad + Style.font.iconLarge + root.pad + card.borderBottom
+      clip: root.exiting
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom
-      anchors.bottomMargin: Style.space(56) + (root.opened ? 0 : -Style.space(8))
+      anchors.bottomMargin: Style.space(56) + (root.opened || root.exiting ? 0 : -Style.space(8))
+      transform: Translate { y: -root.rise * (card.parent.height - Style.space(56)) }
+      scale: 1 - 0.25 * root.rise
       color: NekoColor.osd.background
       borderSpec: Border.flat(NekoColor.osd.border, 1)
       radius: height / 2
-      opacity: root.opened ? 1 : 0
+      opacity: root.opened || root.exiting ? 1 : 0
 
       Behavior on opacity { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
       Behavior on anchors.bottomMargin { NumberAnimation { duration: Style.duration(200); easing.type: Easing.OutCubic } }
 
       Row {
-        anchors.fill: parent
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
         anchors.topMargin: card.borderTop + root.pad
-        anchors.rightMargin: card.borderRight + root.sidePad
         anchors.bottomMargin: card.borderBottom + root.pad
-        anchors.leftMargin: card.borderLeft + root.sidePad
         spacing: root.hasProgress ? root.gap : root.messageGap
+        // The contents give way as the ball forms
+        opacity: 1 - Math.min(1, root.curl * 2.2)
         Item {
           width: root.iconWidth
           height: parent.height
@@ -221,8 +283,10 @@ Item {
           }
         }
         Rectangle {
-          visible: root.hasProgress
-          width: root.barWidth
+          visible: root.hasProgress && !root.stepped
+          width: (panel.screen && Island.restRects[panel.screen.name])
+               ? root.barWidthFor(root.pillWidth)
+               : root.nominalBarWidth
           height: root.trackHeight
           radius: height / 2
           anchors.verticalCenter: parent.verticalCenter
@@ -239,6 +303,33 @@ Item {
             Behavior on width {
               enabled: root.opened
               NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
+            }
+          }
+        }
+        // Sixteen steps, the fine steps filling one as they come (the backlight
+        // and the volume report 64 ticks)
+        Row {
+          visible: root.hasProgress && root.stepped
+          anchors.verticalCenter: parent.verticalCenter
+          spacing: Style.space(2)
+          readonly property real filled: root.hasProgress ? root.value / root.maxValue * 16 : 0
+          readonly property real meter: (panel.screen && Island.restRects[panel.screen.name]) ? root.barWidthFor(root.pillWidth) : root.nominalBarWidth
+
+          Repeater {
+            model: 16
+            Rectangle {
+              required property int index
+              width: Math.max(Style.space(3), (parent.meter - 15 * parent.spacing) / 16)
+              height: root.trackHeight
+              radius: height / 2
+              color: NekoColor.osd.track
+
+              Rectangle {
+                height: parent.height
+                radius: height / 2
+                width: parent.width * Math.max(0, Math.min(1, parent.parent.filled - parent.index))
+                color: NekoColor.osd.fill
+              }
             }
           }
         }

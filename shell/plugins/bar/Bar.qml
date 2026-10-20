@@ -418,7 +418,7 @@ Item {
 
   function isIslandMorphItem(item) {
     var slot = slotForItem(item)
-    return root.centerTopAttached && !!slot && slot.group === "unibar"
+    return root.position === "top" && !root.vertical && !!slot && slot.group === "unibar"
   }
 
   function beginIslandPanelMorph(owner, window) {
@@ -468,6 +468,23 @@ Item {
     var serial = first.x + first.width + last.x + last.width + first.capsuleLeft + last.capsuleRight
     var start = first.mapToItem(window.contentItem, first.capsuleLeft, 0)
     var end = last.mapToItem(window.contentItem, last.capsuleRight, 0)
+    return { left: start.x, right: end.x }
+  }
+
+  // Where the slots from `firstItem` to `lastItem` start and end across their
+  // bar window: { left, right }, or null when either isn't in a slot. The part
+  // of a group the UniBar's compact island is made of, without the media and
+  // timer pills that join the group while they show. A slot's own edges, not
+  // its capsule's: a slot inside a group has no capsule end of its own.
+  function spanBetween(firstItem, lastItem) {
+    var first = slotForItem(firstItem)
+    var last = slotForItem(lastItem)
+    var window = first ? first.QsWindow.window : null
+    if (!window || !last || last.QsWindow.window !== window) return null
+    // Read for the binding's sake: mapToItem alone doesn't notice them move
+    var serial = first.x + first.width + last.x + last.width
+    var start = first.mapToItem(window.contentItem, 0, 0)
+    var end = last.mapToItem(window.contentItem, last.width, 0)
     return { left: start.x, right: end.x }
   }
 
@@ -882,10 +899,23 @@ Item {
       if (typeof item.open !== "function" || typeof item.close !== "function" || item.opened === undefined) continue
       candidates.push({ slot: slot, screenName: slotScreenName(slot), opened: item.opened === true })
     }
+    // A panel a widget hosts itself (the UniBar's clock carries the control
+    // center) has no slot of its own: fall back to the widget's `embeddedPanel`
+    var embedded = false
+    if (candidates.length === 0) {
+      for (var j = 0; j < moduleSlots.length; j++) {
+        var host = moduleSlots[j]
+        var panel = host && host.activeItem ? host.activeItem.embeddedPanel : null
+        if (!panel || panel.moduleName !== id || typeof panel.open !== "function" || typeof panel.close !== "function") continue
+        candidates.push({ slot: host, screenName: slotScreenName(host), opened: panel.opened === true })
+      }
+      embedded = candidates.length > 0
+    }
     // One copy per monitor, plus a zero-size placeholder for anchored center
     // modules. See BarModel.pickPanelSlot for which one a hotkey acts on.
     var chosen = BarModel.pickPanelSlot(candidates, focusedScreenName())
-    return chosen ? chosen.activeItem : null
+    if (!chosen) return null
+    return embedded ? chosen.activeItem.embeddedPanel : chosen.activeItem
   }
 
   function summonBarWidget(pluginId) {
@@ -2185,7 +2215,19 @@ Item {
     readonly property real padEnd: padded && !continuesNext ? Style.bar.capsulePadding : 0
     implicitWidth: activeItem && activeItem.visible ? (root.vertical ? root.barSize : activeItem.implicitWidth + gap + padStart + padEnd) : 0
     implicitHeight: activeItem && activeItem.visible ? activeItem.implicitHeight + (root.vertical ? gap + padStart + padEnd : 0) : 0
-    width: implicitWidth
+    // A side group's widget opens, closes and resizes with the shared spring
+    // instead of jumping: a tray icon arriving, a title changing length. The
+    // UniBar's own slots are driven by its island, so they are left as they are.
+    readonly property bool smoothSize: !root.vertical && !Style.reduceMotion && slot.region !== "center"
+    property real smoothWidth: implicitWidth
+    Behavior on smoothWidth {
+      enabled: slot.smoothSize
+      SpringAnimation { spring: Style.spring.stiffness; damping: 0.6; epsilon: 0.5 }
+    }
+    // How far open it is, 0 to 1: the widget fades in as it does, so it
+    // doesn't spill over its neighbours while the slot is still narrow
+    readonly property real opening: smoothSize && implicitWidth > 0 ? Math.max(0, Math.min(1, smoothWidth / implicitWidth)) : 1
+    width: smoothSize ? Math.max(0, smoothWidth) : implicitWidth
     height: implicitHeight
     z: modulePointer.dragging ? 100 : 0
 
@@ -2375,7 +2417,7 @@ Item {
       anchors.rightMargin: root.vertical ? 0 : slot.padEnd
       anchors.topMargin: root.vertical ? slot.padStart : 0
       anchors.bottomMargin: root.vertical ? slot.padEnd : 0
-      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity
+      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity * slot.opening
       Behavior on opacity { NumberAnimation { duration: Style.duration(slot.islandContentOpacity > 0 ? 140 : 60) } }
       onLoaded: {
         slot.injectProps()
@@ -2392,7 +2434,7 @@ Item {
       anchors.rightMargin: root.vertical ? 0 : slot.padEnd
       anchors.topMargin: root.vertical ? slot.padStart : 0
       anchors.bottomMargin: root.vertical ? slot.padEnd : 0
-      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity
+      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity * slot.opening
       Behavior on opacity { NumberAnimation { duration: Style.duration(slot.islandContentOpacity > 0 ? 140 : 60) } }
       onLoaded: {
         slot.injectProps()
@@ -2409,7 +2451,7 @@ Item {
       anchors.rightMargin: root.vertical ? 0 : slot.padEnd
       anchors.topMargin: root.vertical ? slot.padStart : 0
       anchors.bottomMargin: root.vertical ? slot.padEnd : 0
-      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity
+      opacity: (slot.dragSource ? 0.22 : 1.0) * slot.islandContentOpacity * slot.opening
       Behavior on opacity { NumberAnimation { duration: Style.duration(slot.islandContentOpacity > 0 ? 140 : 60) } }
       onLoaded: {
         slot.injectProps()
