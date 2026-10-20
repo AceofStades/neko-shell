@@ -4,7 +4,7 @@
   "name": "Settings",
   "version": "1.0.0",
   "author": "Neko",
-  "description": "neko's settings in tabs (appearance, bar, wallpaper, system, calendars, apps), grown out of the bar's island",
+  "description": "neko's settings in tabs (appearance, bar, widgets, clock, wallpaper, system, calendars, apps), grown out of the bar's island",
   "kinds": [
     "panel"
   ],

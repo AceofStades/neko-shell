@@ -309,7 +309,7 @@ json() {
 
 case ${1:-} in
   # The window, on a tab when one's named
-  "" | appearance | bar | widgets | wallpaper | system | calendars | apps)
+  "" | appearance | bar | widgets | clock | wallpaper | system | calendars | apps)
     neko-shell shell summon neko.settings "{\"tab\":\"${1:-appearance}\"}" >/dev/null
     ;;
   json) json ;;

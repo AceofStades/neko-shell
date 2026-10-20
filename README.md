@@ -54,7 +54,7 @@ Run it again any time; it leaves what's already set up alone. `./install.sh --ch
 | `Ctrl+Alt+L` | Lock the screen |
 | `neko settings` | The settings window (`neko settings widgets` opens a tab) |
 
-Click the clock for the control center.
+Click the clock for the control center, right-click it to choose what it says.
 
 ## The neko command
 

@@ -8,8 +8,8 @@ import "Model.js" as Model
 // Date/time label for the bar, and the host for the calendar popup.
 //
 // Left click reveals the calendar — asking "what is the date?" is what a
-// click on a clock means — right click walks the common label formats, and
-// middle click opens the timezone picker.
+// click on a clock means — right click opens the clock's customization
+// popup, and middle click opens the timezone picker.
 BarWidget {
   id: root
   moduleName: "neko.clock"
@@ -70,10 +70,11 @@ BarWidget {
     return Qt.formatDateTime(date, activeFormat.replace(/ww/g, Model.isoWeekLiteral(date.getFullYear(), date.getMonth(), date.getDate())))
   }
 
-  // ---- Calendar popup. Shape contract for shell.summon/hide/toggle
-  //      routing: Bar.findPanelWidget requires open/close/opened on the
-  //      bar-widget root.
-  readonly property bool opened: panelLoader.item ? panelLoader.item.opened === true : false
+  // ---- The popups. Shape contract for shell.summon/hide/toggle routing:
+  //      Bar.findPanelWidget requires open/close/opened on the bar-widget
+  //      root. Either of the two being up counts as the widget being open.
+  readonly property bool opened: (panelLoader.item && panelLoader.item.opened === true)
+    || (customizerLoader.item && customizerLoader.item.opened === true)
 
   function open() {
     if (panelLoader.item) panelLoader.item.open()
@@ -81,10 +82,22 @@ BarWidget {
 
   function close() {
     if (panelLoader.item) panelLoader.item.close()
+    closeCustomizer()
   }
 
   function togglePanel() {
     if (panelLoader.item) panelLoader.item.toggle()
+  }
+
+  // The customization popup: what the label says, and the presets to say
+  // it in. Only one of the clock's two popups is ever up.
+  function openCustomizer() {
+    if (panelLoader.item) panelLoader.item.close()
+    if (customizerLoader.item) customizerLoader.item.open()
+  }
+
+  function closeCustomizer() {
+    if (customizerLoader.item) customizerLoader.item.close()
   }
 
   function toggleWeekStart() {
@@ -117,11 +130,26 @@ BarWidget {
     if ("hostWidget" in target) target.hostWidget = root
   }
 
+  function injectCustomizer() {
+    var target = customizerLoader.item
+    if (!target) return
+    if ("bar" in target) target.bar = root.bar
+    if ("settings" in target) target.settings = root.settings
+    if ("anchorItem" in target) target.anchorItem = button
+    if ("hostWidget" in target) target.hostWidget = root
+  }
+
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  onBarChanged: injectPanel()
-  onSettingsChanged: injectPanel()
+  onBarChanged: {
+    injectPanel()
+    injectCustomizer()
+  }
+  onSettingsChanged: {
+    injectPanel()
+    injectCustomizer()
+  }
 
   SystemClock {
     id: clock
@@ -140,12 +168,24 @@ BarWidget {
     }
   }
 
+  Loader {
+    id: customizerLoader
+    active: true
+    source: Qt.resolvedUrl("Customizer.qml")
+    visible: false
+    onLoaded: {
+      root.injectCustomizer()
+      Qt.callLater(root.injectCustomizer)
+    }
+  }
+
   ShellIpc {
     target: "neko.clock"
 
     function refresh(): void { root.broadcast("refresh") }
     function cycleFormat(): void { root.cycleFormat() }
     function toggleWeekStart(): void { root.toggleWeekStart() }
+    function customize(): void { root.openCustomizer() }
     function open(): void { root.open() }
     function close(): void { root.close() }
     function show(): void { root.open() }
@@ -164,14 +204,15 @@ BarWidget {
     fixedHeight: root.vertical ? root.verticalLines.length * Style.bar.iconSlot : -1
     horizontalMargin: 8.75
     verticalPadding: 8.75
-    tooltipText: "Click: control center · Middle-click: timezone · Scroll: format"
+    tooltipText: "Click: control center · Right-click: customize · Middle-click: timezone · Scroll: format"
 
     // Left click opens the control center, its calendar at the foot (falling
     // back to the clock's own calendar when it isn't in the bar), middle
-    // click the timezone picker; scrolling cycles the format
+    // click the timezone picker, right click the clock's customization
+    // popup; scrolling cycles the format
     onPressed: function(b) {
       if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("neko-menu-timezone") }
-      else if (b === Qt.RightButton) return
+      else if (b === Qt.RightButton) { root.openCustomizer(); return }
       else if (root.bar) root.bar.run("neko-shell neko.control-center toggle || neko-shell neko.clock toggle")
     }
     onWheelMoved: function(delta) { root.cycleFormat() }

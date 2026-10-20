@@ -41,6 +41,26 @@ var VERTICAL_CLOCK_FORMATS = [
   "HH\nmm"
 ]
 
+// The names the format chooser offers the formats above under, in the same
+// order. What the clock says now and what the UniBar's clock says come
+// first; the rest are the shapes worth having on hand.
+var CLOCK_FORMAT_LABELS = [
+  "Day and time",
+  "Day and time (12-hour)",
+  "Day, time and seconds",
+  "Day, time and seconds (12-hour)",
+  "Time",
+  "Time (12-hour)",
+  "Date and time",
+  "Date and time (12-hour)",
+  "Date and week",
+  "ISO date and time"
+]
+
+// The UniBar's own clock format, the one its center widget shows when the
+// layout says nothing else.
+var UNIBAR_CLOCK_FORMAT = "HH:mm"
+
 // Whether a format prints seconds, so the widget can tick once a second only
 // for the formats that show them. Quoted literals go first: the s in a 'Sat'
 // is text rather than a token, and an opening quote with no closing one runs
@@ -76,6 +96,48 @@ function nextClockFormat(ring, current) {
   if (!ring || ring.length === 0) return ""
   var index = ring.indexOf(String(current === undefined || current === null ? "" : current))
   return ring[(index + 1) % ring.length]
+}
+
+// The formats the chooser offers: what the clock says now, what the
+// UniBar's clock says, and the usual shapes. A format that is already on
+// the list is not offered twice, so the first name for it is the one that
+// shows: the current format comes first and answers to "Current".
+function clockPresets(current, unibar) {
+  var presets = []
+  function add(label, format) {
+    var text = String(format === undefined || format === null ? "" : format)
+    if (text === "") return
+    for (var i = 0; i < presets.length; i++) if (presets[i].format === text) return
+    presets.push({ label: label, format: text })
+  }
+  add("Current", current)
+  add("UniBar", unibar)
+  for (var i = 0; i < CLOCK_FORMATS.length; i++) add(CLOCK_FORMAT_LABELS[i], CLOCK_FORMATS[i])
+  return presets
+}
+
+// The UniBar's clock format, read out of the UniBar's bar layout: the
+// format the user actually has in the UniBar, which is what the preset
+// named after it should hand them. The layouts are the ones `neko-bar
+// json` describes.
+function unibarClockFormat(layouts) {
+  var presets = Array.isArray(layouts) ? layouts : []
+  for (var i = 0; i < presets.length; i++) {
+    var preset = presets[i]
+    if (!preset || String(preset.name || "") !== "unibar") continue
+    var layout = preset.layout || {}
+    var sections = ["left", "center", "right"]
+    for (var s = 0; s < sections.length; s++) {
+      var entries = Array.isArray(layout[sections[s]]) ? layout[sections[s]] : []
+      for (var e = 0; e < entries.length; e++) {
+        var entry = entries[e]
+        if (!entry || typeof entry !== "object") continue
+        if (String(entry.id || "") !== "neko.unibar-center") continue
+        if (entry.format) return String(entry.format)
+      }
+    }
+  }
+  return UNIBAR_CLOCK_FORMAT
 }
 
 // Two-digit ISO week, substituted into a format's 'ww' token before Qt
@@ -303,6 +365,8 @@ if (typeof module !== "undefined") {
     clockNeedsSeconds: clockNeedsSeconds,
     clockFormatRing: clockFormatRing,
     nextClockFormat: nextClockFormat,
+    clockPresets: clockPresets,
+    unibarClockFormat: unibarClockFormat,
     isoWeekLiteral: isoWeekLiteral
   }
 }

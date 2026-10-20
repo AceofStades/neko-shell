@@ -30,6 +30,13 @@
         "label": "Second format",
         "description": "The format scrolling the clock switches to",
         "defaultValue": "d MMMM 'W'ww yyyy"
+      },
+      {
+        "key": "verticalFormat",
+        "type": "string",
+        "label": "Vertical format",
+        "description": "Qt date format for a bar on its side, one line per \\n",
+        "defaultValue": "HH\\n—\\nmm"
       }
     ]
   }

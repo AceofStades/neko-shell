@@ -6,6 +6,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
+import "../panels/clock" as ClockPlugin
+import "../panels/clock/Model.js" as ClockModel
 
 // The settings window, in tabs. With the bar's island up on its screen, it
 // grows out of the island as the island's own cards do: from where the
@@ -37,11 +39,27 @@ Item {
   // The bar as `neko-bar json` describes it: its layout, the widgets that can
   // go on it (with their options) and the saved layouts
   property var bar: ({ layout: { left: [], center: [], right: [] }, style: "floating", position: "top", widgets: [], presets: [] })
+  // Whether that read has come back yet: the layout is empty until it has,
+  // and an empty layout says nothing about what is on the bar
+  property bool barLoaded: false
   // The widget picked in the Widgets tab: { section, index }
   property var picked: null
   readonly property var pickedEntry: picked ? (bar.layout[picked.section] || [])[picked.index] : undefined
   readonly property string pickedId: pickedEntry !== undefined ? entryId(pickedEntry) : ""
   readonly property var pickedInfo: widgetInfo(pickedId)
+
+  // The clock's entry in the bar layout, and the formats it holds. The
+  // clock's formats live in the layout entry, so a layout without the
+  // clock has nothing to format yet.
+  readonly property var clockEntry: findClockEntry()
+  readonly property string clockFormat: clockEntry ? String(entryValue(clockEntry.entry, "format") || "dddd HH:mm") : "dddd HH:mm"
+  readonly property string clockVerticalFormat: clockEntry ? String(entryValue(clockEntry.entry, "verticalFormat") || "HH\n—\nmm") : "HH\n—\nmm"
+  readonly property string clockAltFormat: clockEntry ? String(entryValue(clockEntry.entry, "formatAlt") || "d MMMM 'W'ww yyyy") : "d MMMM 'W'ww yyyy"
+  // The UniBar's own clock format, read out of the bar layouts, so the
+  // preset named after it is the format the user has there
+  readonly property string clockUnibarFormat: ClockModel.unibarClockFormat(bar.presets || [])
+  readonly property var clockPresets: ClockModel.clockPresets(clockFormat, clockUnibarFormat)
+  readonly property bool clockVertical: bar.position === "left" || bar.position === "right"
 
   // On glass the card is dark whatever the theme, so its text stays light
   readonly property color foreground: settings.barGlass ? "#f2f2f2" : NekoColor.popups.text
@@ -54,6 +72,7 @@ Item {
     { id: "appearance", label: "Appearance", icon: "\u{F03D8}" },
     { id: "bar", label: "Bar", icon: "\u{F035C}" },
     { id: "widgets", label: "Widgets", icon: "\u{F056E}" },
+    { id: "clock", label: "Clock", icon: "\u{F0954}" },
     { id: "wallpaper", label: "Wallpaper", icon: "\u{F0E09}" },
     { id: "system", label: "System", icon: "\u{F0493}" },
     { id: "calendars", label: "Calendars", icon: "\u{F00ED}" },
@@ -120,6 +139,17 @@ Item {
     var widgets = root.bar.widgets || []
     for (var i = 0; i < widgets.length; i++) if (widgets[i].id === id) return widgets[i]
     return { id: id, name: String(id || "").replace(/^[^.]*\./, ""), description: "", schema: [] }
+  }
+  // The clock's entry in the bar layout, with the section and index its
+  // own options are written through
+  function findClockEntry() {
+    var sections = ["left", "center", "right"]
+    for (var s = 0; s < sections.length; s++) {
+      var list = root.bar.layout[sections[s]] || []
+      for (var i = 0; i < list.length; i++)
+        if (entryId(list[i]) === "neko.clock") return { section: sections[s], index: i, entry: list[i] }
+    }
+    return null
   }
   function onBar(id) {
     var sections = ["left", "center", "right"]
@@ -270,7 +300,7 @@ Item {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        try { root.bar = JSON.parse(String(text || "{}")) } catch (e) {}
+        try { root.bar = JSON.parse(String(text || "{}")); root.barLoaded = true } catch (e) {}
       }
     }
   }
@@ -1129,6 +1159,57 @@ Item {
                       }
                     }
                   }
+                }
+              }
+            }
+
+            // -------------------------------------------------------- Clock
+            ColumnLayout {
+              Layout.fillWidth: true
+              visible: root.tab === "clock"
+              spacing: Style.space(10)
+
+              SectionTitle { text: "What the clock says" }
+
+              // The clock is not on the bar: its formats live in the bar
+              // layout, so there is nothing to format yet
+              ColumnLayout {
+                Layout.fillWidth: true
+                visible: root.barLoaded && root.clockEntry === null
+                spacing: Style.space(8)
+
+                Text {
+                  Layout.fillWidth: true
+                  wrapMode: Text.Wrap
+                  text: "The clock is not on the bar, so there is nothing to format yet."
+                  color: root.dim
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                }
+                Button {
+                  text: "Put it on the bar"
+                  bordered: true
+                  foreground: root.foreground
+                  onClicked: root.run(["neko-bar", "put", "neko.clock"])
+                }
+              }
+
+              // The same chooser the clock's own popup opens on a right
+              // click, so the two can never disagree
+              ClockPlugin.ClockFormatChooser {
+                Layout.fillWidth: true
+                visible: root.barLoaded && root.clockEntry !== null
+                format: root.clockFormat
+                verticalFormat: root.clockVerticalFormat
+                altFormat: root.clockAltFormat
+                presets: root.clockPresets
+                vertical: root.clockVertical
+                foreground: root.foreground
+                accent: root.accent
+                fontFamily: root.fontFamily
+                onApplied: function(key, value) {
+                  if (!root.clockEntry) return
+                  root.setOption(root.clockEntry.section, root.clockEntry.index, key, value)
                 }
               }
             }

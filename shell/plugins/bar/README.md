@@ -65,7 +65,7 @@ Give neighbouring entries the same `"group"` (any name) to put them in one share
 | `neko.workspaces` | Workspaces 1 to 10 in kanji; on a horizontal bar also the island, which grows out of them to show notifications and the OSD (volume, brightness...) in their place | left = focus workspace · on a notification: left = open it, right = dismiss, hover = hold it |
 | `neko.media-players` | An icon per media player (Spotify, a browser playing YouTube...), in the accent while it plays; hovering one drops its card below the island: art, track, buttons and a seek bar | left = play/pause · hover = its card |
 | `neko.system-monitor` | CPU, CPU temperature and memory as rings around their icons; a popup with every core, the temperatures, memory and swap, disks, network, battery draw and the busiest processes | left = popup · middle = btop |
-| `neko.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping | left = popup · right = cycle label format · middle = timezone selector |
+| `neko.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping; a second popup chooses what the label says | left = popup · right = customize the label · middle = timezone selector · scroll = cycle label format |
 | `neko.media` | MPRIS now-playing — scrolling track + artist, cover-art popup | left = play/pause · middle = next · scroll = prev/next · right = popup |
 | `neko.indicators` | Manual state indicators | left = indicator action |
 | `neko.tray` | System tray | hover = reveal drawer · right on chevron = manage |
