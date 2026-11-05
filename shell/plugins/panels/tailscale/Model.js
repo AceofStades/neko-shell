@@ -107,12 +107,28 @@ function peerFromStatus(id, peer) {
     TailscaleIPs: filterIPv4(peer.TailscaleIPs || []),
     TailscaleIPv6: filterIPv6(peer.TailscaleIPs || []),
     Online: peer.Online === true,
+    LastSeen: String(peer.LastSeen || ""),
     OS: String(peer.OS || ""),
     Tags: peer.Tags || [],
     ExitNodeOption: peer.ExitNodeOption === true,
     ExitNode: peer.ExitNode === true,
     Mullvad: isMullvadPeer(peer)
   }
+}
+
+// How long since an offline machine was last seen, as tailscale status puts
+// it ("last seen 6d ago"); "" when the status doesn't say
+function lastSeenText(lastSeen, now) {
+  var seen = Date.parse(String(lastSeen || ""))
+  // Tailscale reports a machine it has never seen as the zero time
+  if (isNaN(seen) || seen <= 0) return ""
+  var seconds = Math.max(0, Math.floor(((now === undefined ? Date.now() : now) - seen) / 1000))
+  var amount, unit
+  if (seconds < 60) return "last seen just now"
+  if (seconds < 3600) { amount = Math.floor(seconds / 60); unit = "m" }
+  else if (seconds < 86400) { amount = Math.floor(seconds / 3600); unit = "h" }
+  else { amount = Math.floor(seconds / 86400); unit = "d" }
+  return "last seen " + amount + unit + " ago"
 }
 
 function sliceTableColumn(line, start, end) {
@@ -237,13 +253,14 @@ function parseStatus(raw) {
       var peer = rawPeers[id] || {}
       var normalized = peerFromStatus(id, peer)
       if (normalized.Mullvad) continue
-      if (normalized.Online) {
-        peers.push(normalized)
-        if (normalized.ExitNodeOption) exitNodes.push(normalized)
-      }
+      // Every machine on the tailnet; only one that's online can carry traffic
+      peers.push(normalized)
+      if (normalized.Online && normalized.ExitNodeOption) exitNodes.push(normalized)
     }
 
+    // The online ones first, then the rest, each by name
     peers.sort(function(a, b) {
+      if (a.Online !== b.Online) return a.Online ? -1 : 1
       return String(a.HostName).localeCompare(String(b.HostName))
     })
     exitNodes.sort(function(a, b) {
@@ -316,6 +333,7 @@ if (typeof module !== "undefined") {
     isTaildropTarget: isTaildropTarget,
     isMullvadPeer: isMullvadPeer,
     peerFromStatus: peerFromStatus,
+    lastSeenText: lastSeenText,
     parseExitNodeList: parseExitNodeList,
     mullvadRegionOptions: mullvadRegionOptions,
     mullvadCountryOptions: mullvadCountryOptions,

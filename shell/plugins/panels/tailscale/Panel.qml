@@ -875,6 +875,10 @@ Panel {
       return String(peer.TailscaleIPv6[0] || "")
     }
     readonly property string peerDns: peer ? String(peer.DNSName || "") : ""
+    // Online machines take the accent; the rest are dimmed and say when they
+    // were last seen
+    readonly property bool online: !!peer && peer.Online === true
+    readonly property color nameColor: online ? NekoColor.accent : root.dim
     readonly property var copyOptions: {
       var options = []
       if (peerName !== "") options.push({ kind: "name", label: peerName })
@@ -938,7 +942,7 @@ Panel {
       Text {
         textFormat: Text.PlainText
         text: tailscale.osIcon(peer ? peer.OS : "")
-        color: root.foreground
+        color: peerRow.nameColor
         font.family: root.fontFamily
         font.pixelSize: Style.font.icon
         Layout.alignment: Qt.AlignVCenter
@@ -953,7 +957,7 @@ Panel {
           textFormat: Text.PlainText
           Layout.fillWidth: true
           text: peerRow.peerName
-          color: root.foreground
+          color: peerRow.nameColor
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
           elide: Text.ElideRight
@@ -963,6 +967,10 @@ Panel {
           textFormat: Text.PlainText
           Layout.fillWidth: true
           text: {
+            if (!peerRow.online) {
+              var seen = tailscale.lastSeenText(peerRow.peer ? peerRow.peer.LastSeen : "")
+              return seen !== "" ? "offline · " + seen : "offline"
+            }
             var parts = []
             if (peerRow.peerIp !== "") parts.push(peerRow.peerIp)
             if (peerRow.peerDns !== "") parts.push(peerRow.peerDns)

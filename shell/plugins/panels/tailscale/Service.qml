@@ -99,6 +99,10 @@ Item {
     return Model.osIcon(os)
   }
 
+  function lastSeenText(lastSeen) {
+    return Model.lastSeenText(lastSeen)
+  }
+
   function accountLabel(account) {
     return Model.accountLabel(account)
   }

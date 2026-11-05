@@ -8,7 +8,7 @@ Native Neko bar widget for Tailscale.
 - Left click opens a keyboard-friendly panel
 - Right click toggles Tailscale on/off
 - Switch between available Tailscale connections when multiple are available
-- Browse machines from `tailscale status --json`
+- Browse every machine on the tailnet from `tailscale status --json`: the online ones first, in the accent color, then the offline ones dimmed, with when each was last seen
 - Copy a machine's Tailscale IP, host name, or DNS name
 - Send files to a machine with Taildrop, when the tailnet allows file sharing
 
