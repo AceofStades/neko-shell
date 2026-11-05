@@ -24,9 +24,20 @@ BarWidget {
   // The compact island alone: the workspace bars and the clock between them.
   // Transient surfaces that take the island's width (the OSD) take this, not
   // the whole group, which the media and timer pills widen while they show.
-  readonly property var coreSpan: root.bar && typeof root.bar.spanBetween === "function" && typeof root.bar.moduleItem === "function"
-    ? root.bar.spanBetween(root.bar.moduleItem("neko.workspace-bars-left", root), root.bar.moduleItem("neko.workspace-bars-right", root)) : null
-  readonly property real islandCoreWidth: coreSpan ? Math.max(1, coreSpan.right - coreSpan.left) : 0
+  // The three slots meet edge to edge, so their widths add up to it. Measured
+  // by position instead, it went stale: they sit in separate rows, and the
+  // rows moving told no binding, which left the OSD squeezed into whatever
+  // width the island had while the bar was still filling in.
+  readonly property real islandCoreWidth: {
+    if (!root.bar || typeof root.bar.moduleItem !== "function" || typeof root.bar.slotForItem !== "function") return 0
+    root.bar.slotGeometrySerial
+    root.bar.moduleSlots
+    var left = root.bar.slotForItem(root.bar.moduleItem("neko.workspace-bars-left", root))
+    var right = root.bar.slotForItem(root.bar.moduleItem("neko.workspace-bars-right", root))
+    var own = root.bar.slotForItem(root)
+    if (!left || !right || !own) return 0
+    return Math.max(1, left.width + own.width + right.width)
+  }
   readonly property real islandSurfaceWidth: islandGroupSpan
     ? Math.max(1, islandGroupSpan.right - islandGroupSpan.left) : root.width
   readonly property real islandCenterOffset: {

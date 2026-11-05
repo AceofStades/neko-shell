@@ -471,23 +471,6 @@ Item {
     return { left: start.x, right: end.x }
   }
 
-  // Where the slots from `firstItem` to `lastItem` start and end across their
-  // bar window: { left, right }, or null when either isn't in a slot. The part
-  // of a group the UniBar's compact island is made of, without the media and
-  // timer pills that join the group while they show. A slot's own edges, not
-  // its capsule's: a slot inside a group has no capsule end of its own.
-  function spanBetween(firstItem, lastItem) {
-    var first = slotForItem(firstItem)
-    var last = slotForItem(lastItem)
-    var window = first ? first.QsWindow.window : null
-    if (!window || !last || last.QsWindow.window !== window) return null
-    // Read for the binding's sake: mapToItem alone doesn't notice them move
-    var serial = first.x + first.width + last.x + last.width
-    var start = first.mapToItem(window.contentItem, 0, 0)
-    var end = last.mapToItem(window.contentItem, last.width, 0)
-    return { left: start.x, right: end.x }
-  }
-
   // A widget's item by id, on the same bar window as `near` when given, so a
   // widget can anchor its popup to a neighbour (the hidden world clock opens
   // from the clock)
