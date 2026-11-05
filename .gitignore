@@ -5,3 +5,6 @@
 
 # neko-core build output
 /core/target/
+
+# The port roadmap: a local copy that names upstream projects
+docs/ROADMAP.md
