@@ -27,10 +27,14 @@ Item {
   property color tickColor: NekoColor.accent
   // Fine steps between two marks (0 for none). A drag or the wheel lands on
   // the marks, like macOS's sixteen notches; holding Shift gets the fine steps
-  // between them, which show as small dots while the pointer is on the track
-  // or Shift is down. Needs `integer`, with the marks `fineCount` apart.
+  // between them. Needs `integer`, with the marks `fineCount` apart.
   property int fineCount: 0
   property bool fineHeld: false
+  // With both, the track is an island per notch, as the OSD's meter is: each
+  // fills with its share of the value, a fine step filling a part of one
+  readonly property bool islands: tickCount > 1 && fineCount > 1
+  readonly property int islandCount: islands ? tickCount - 1 : 0
+  readonly property real islandGap: Style.space(3)
 
   onValueChanged: if (!dragging) liveValue = value
 
@@ -55,7 +59,7 @@ Item {
     anchors.right: parent.right
     height: root.trackHeight
     radius: height / 2
-    color: root.trackColor
+    color: root.islands ? "transparent" : root.trackColor
   }
 
   Rectangle {
@@ -65,6 +69,7 @@ Item {
     height: track.height
     radius: track.radius
     color: root.fillColor
+    visible: !root.islands
     width: track.width * root.progress
 
     Behavior on width {
@@ -74,7 +79,37 @@ Item {
   }
 
   Repeater {
-    model: root.tickCount > 1 ? root.tickCount : 0
+    model: root.islandCount
+    Rectangle {
+      id: island
+      required property int index
+      readonly property real slot: track.width / root.islandCount
+      x: index * slot + root.islandGap / 2
+      width: Math.max(1, slot - root.islandGap)
+      height: root.trackHeight
+      radius: height / 2
+      color: root.trackColor
+      anchors.verticalCenter: track.verticalCenter
+
+      Rectangle {
+        anchors.left: parent.left
+        anchors.verticalCenter: parent.verticalCenter
+        height: parent.height
+        radius: parent.radius
+        color: root.fillColor
+        width: parent.width * Math.max(0, Math.min(1, root.progress * root.islandCount - island.index))
+
+        Behavior on width {
+          enabled: !root.dragging || !root.fineHeld
+          NumberAnimation { duration: Style.duration(root.dragging ? 70 : 140); easing.type: Easing.OutCubic }
+        }
+      }
+    }
+  }
+
+  // Notches cut across a plain track
+  Repeater {
+    model: root.tickCount > 1 && !root.islands ? root.tickCount : 0
     Rectangle {
       required property int index
       width: Math.max(1, Style.space(2))
@@ -84,24 +119,6 @@ Item {
       anchors.verticalCenter: track.verticalCenter
       x: Math.max(0, Math.min(track.width - width,
                               track.width * (index / (root.tickCount - 1)) - width / 2))
-    }
-  }
-
-  // The fine steps between the marks
-  Repeater {
-    model: root.fineCount > 1 && root.tickCount > 1 ? (root.tickCount - 1) * root.fineCount + 1 : 0
-    Rectangle {
-      required property int index
-      readonly property bool onMark: index % root.fineCount === 0
-      visible: !onMark
-      width: Style.space(2)
-      height: width
-      radius: width / 2
-      color: root.fillColor
-      opacity: root._hot || root.fineHeld ? 0.5 : 0
-      anchors.verticalCenter: track.verticalCenter
-      x: Math.max(0, Math.min(track.width - width, track.width * (index / ((root.tickCount - 1) * root.fineCount)) - width / 2))
-      Behavior on opacity { NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic } }
     }
   }
 
