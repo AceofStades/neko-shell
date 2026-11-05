@@ -8,7 +8,7 @@ Please report security problems privately, through this repository's "Report a v
 
 ### It runs as you
 
-The shell, its panels and the `neko-*` commands run as your user, from the checkout. `install.sh` never uses root and installs no packages: for anything missing it prints the command for you to run.
+The shell, its panels and the `neko-*` commands run as your user, from the checkout. `install.sh` runs as you; it installs packages and changes system files (PAM for face and fingerprint unlock and the lock screen, the `i2c-dev` module for external monitor brightness, services) only after you say yes to each, shows every root command in its plan first, and runs them through `sudo` once. Each PAM file it changes is backed up next to it as `<file>.before-neko`, its lines are `sufficient` (a no falls through to the password), and `./install.sh --uninstall` offers them back. With `--yes`, or without a terminal, it changes nothing outside your home.
 
 Two helpers can change system settings, and only when you set them up yourself:
 

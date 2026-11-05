@@ -1,13 +1,13 @@
 # neko-shell
 
-A Quickshell desktop for Hyprland (Lua config). `shell/` is the QML desktop (bar, panels, menus, OSD, notifications, pickers), `bin/` the `neko-*` commands it calls, `default/` the menu, Hyprland module and theme templates, `config/neko/` the default `shell.json`, `themes/` the shipped themes.
+A Quickshell desktop for Hyprland (Lua config). `shell/` is the QML desktop (bar, panels, menus, OSD, notifications, pickers), `bin/` the `neko-*` commands it calls, `default/` the menu, Hyprland module, the Hyprland config `install.sh` can deploy (`default/hypr/config`) and theme templates, `config/neko/` the default `shell.json`, `themes/` the shipped themes.
 
 ## Rules
 
 - Commits are unsigned (`commit.gpgsign=false` is set in this repo) and carry **no attribution trailers** (no Co-Authored-By, no session links). Keep each commit to one coherent change.
 - No upstream names in code, comments or docs. The README says only that neko was inspired by other projects; `LICENSE` keeps the required MIT copyright lines and must not lose them.
-- Never add package installers, updaters or migrations. Commands that would install something should fail with a clear message instead.
-- Anything that needs root runs from a root-owned path (see `bin/neko-dns`), never from this user-writable checkout.
+- `install.sh` is the only place that installs packages or changes system files (PAM, kernel modules, services): only after an explicit yes for each, with the commands shown in its plan first, never with `--yes` or without a terminal. Nothing else adds installers, updaters or migrations; other commands that would install something fail with a clear message instead.
+- Anything the running shell or a `neko-*` command needs root for runs from a root-owned path (see `bin/neko-dns`), never from this user-writable checkout. `install.sh`'s one-time setup steps run through `sudo` while you watch, which is the exception.
 - Markdown: full lines, no hard wrapping. Bash: `#!/bin/bash`, two-space indent, `[[ ]]` for strings and files, `(( ))` for numbers.
 
 ## Working on it

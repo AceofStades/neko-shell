@@ -33,16 +33,14 @@ cd ~/.local/share/neko-shell
 
 Or download `neko-shell-<version>-x86_64-linux.tar.gz` from the [Releases](https://github.com/AceofStades/neko-shell/releases) page, which has `neko-core` already built, unpack it where you want neko to live, and run `./install.sh` in it.
 
-`install.sh` works from wherever neko is, as your user (never root), and installs no packages. It:
+`install.sh` works from wherever neko is, as your user. It looks at the machine, asks about what it found, shows the whole plan, and only then changes anything:
 
-1. checks the dependencies in `deps.txt` and prints the `pacman` (and AUR helper) command for whatever is missing;
-2. puts a `neko` launcher in `~/.local/bin`;
-3. builds `neko-core` with Rust, or else downloads the build published with this version's release and uses it only if it matches the release's checksums;
-4. writes `~/.config/neko/env` and the default `~/.config/neko/shell.json`, if they aren't there yet;
-5. adds a marked block to your `hyprland.lua` (after backing it up next to it) that loads neko's Hyprland module and starts neko at login;
-6. checks that a PAM profile exists for the lock screen, and offers to start neko right away.
+1. **Packages.** It checks `deps.txt` and offers to install what's missing (pacman, and paru or yay for the AUR), required and recommended ones as two groups and the optional features as a list to pick from. Without pacman it prints the commands instead.
+2. **Your Hyprland config.** Keep yours and hook neko in (a marked block at the end), switch to neko's own config (yours is backed up whole first), or put neko's next to yours to compare. neko's config is in `default/hypr/config`; your own changes go in `~/.config/hypr/user.lua`, which it never touches again.
+3. **The hardware.** IR camera: Howdy face unlock for the lock screen, and sudo and polkit if you like. Fingerprint reader: fprintd. ASUS: asusctl and a battery charge limit. Other laptops: power profiles. NVIDIA: the environment Hyprland needs. External monitors: brightness over DDC. Bluetooth: the service. It only asks about what it finds.
+4. **neko itself.** A `neko` launcher in `~/.local/bin`, `neko-core` (built with Rust, or the release build if its checksum matches), `~/.config/neko`, and the lock screen's PAM profile if there's none.
 
-Run it again any time; it leaves what's already set up alone. `./install.sh --check` only reports dependencies; `./install.sh --yes` takes the defaults without asking.
+System steps (packages, PAM, modules, services) run through `sudo` once, after you agree to the plan; PAM files are backed up next to themselves first. `./install.sh --dry-run` asks the questions and shows the plan without changing anything, `--check` only reports dependencies, `--no-packages` skips the package questions, and `--yes` takes the defaults without asking, changing nothing outside your home. Run it again any time: it leaves what's set up alone and offers what's new.
 
 ## First steps
 
@@ -121,7 +119,7 @@ neko session restart
 ./install.sh --uninstall
 ```
 
-That stops neko, removes the launcher and takes neko's block out of `hyprland.lua` (with a backup). Your settings stay in `~/.config/neko` and `~/.local/state/neko`; delete those folders to remove everything.
+That stops neko, removes the launcher and takes neko's block out of `hyprland.lua` (with a backup), or offers back the Hyprland config you had before switching to neko's, and offers to restore the PAM files it changed. Your settings stay in `~/.config/neko` and `~/.local/state/neko`; delete those folders to remove everything.
 
 ## Security
 
