@@ -864,7 +864,6 @@ Panel {
               step: 1
               tickCount: VolumeModel.ticks / VolumeModel.ticksPerStep + 1
               fineCount: VolumeModel.ticksPerStep
-              tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
               value: root.sink && root.sink.audio ? VolumeModel.tickForVolume(root.sink.audio.volume) : 0
               onMoved: function(v) { if (root.sink && root.sink.audio) root.sink.audio.volume = VolumeModel.volumeForTick(v) }
             }
@@ -883,7 +882,6 @@ Panel {
               step: 1
               tickCount: BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1
               fineCount: BrightnessModel.ticksPerStep
-              tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
               value: root.brightnessLevel
               onMoved: function(v) { root.brightnessLevel = v; brightnessDebounce.restart() }
             }

@@ -18,12 +18,13 @@ Item {
   property real knobSize: Math.max(14, Math.round(Style.spacing.controlHeight * 0.38))
   property real liveValue: value
 
-  // macOS-style notches. When > 1, that many evenly-spaced tick marks are cut
-  // into the track (drawn in the panel background color, so only the part
-  // crossing the track shows). Purely visual — snapping is the caller's job via
-  // `integer`/`step` or an index-based value. Default 0 leaves the track plain.
+  // macOS-style notches. When > 1, that many evenly-spaced tick marks cross
+  // the track, in the accent so they read on the fill and the empty track
+  // alike (the panel's own color, made opaque, is near black on glass).
+  // Purely visual — snapping is the caller's job via `integer`/`step` or an
+  // index-based value. Default 0 leaves the track plain.
   property int tickCount: 0
-  property color tickColor: bar ? bar.background : NekoColor.background
+  property color tickColor: NekoColor.accent
   // Fine steps between two marks (0 for none). A drag or the wheel lands on
   // the marks, like macOS's sixteen notches; holding Shift gets the fine steps
   // between them, which show as small dots while the pointer is on the track

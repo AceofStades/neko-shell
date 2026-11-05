@@ -639,7 +639,6 @@ Panel {
                 // A mark per full step of the curve, Shift for the fine steps
                 tickCount: root.brightnessCurve ? BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1 : 0
                 fineCount: root.brightnessCurve ? BrightnessModel.ticksPerStep : 0
-                tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
                 value: root.brightnessLevel
                 integer: true
                 onMoved: function(v) { root.previewBrightness(v) }

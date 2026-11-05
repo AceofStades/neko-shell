@@ -844,7 +844,6 @@ Panel {
                 step: 1
                 tickCount: VolumeModel.ticks / VolumeModel.ticksPerStep + 1
                 fineCount: VolumeModel.ticksPerStep
-                tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
                 value: VolumeModel.tickForVolume(root.outputVolume)
                 opacity: root.outputMuted ? 0.5 : 1.0
                 enabled: !!root.sink
@@ -1199,7 +1198,6 @@ Panel {
         step: 1
         tickCount: VolumeModel.ticks / VolumeModel.ticksPerStep + 1
         fineCount: VolumeModel.ticksPerStep
-        tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
         value: VolumeModel.tickForVolume(streamRow.streamVolume)
         opacity: streamRow.streamMuted ? 0.5 : 1.0
 
