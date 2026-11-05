@@ -884,10 +884,34 @@ Panel {
             spacing: Style.space(6)
             visible: root.displayAudioSources.length > 0 || !!root.source
 
-            PanelSectionHeader {
-              text: "INPUT"
-              foreground: root.bar.foreground
-              fontFamily: root.bar.fontFamily
+            // A continuous slider is harder to read, so its percent shows
+            Item {
+              width: parent.width
+              implicitHeight: Math.max(microphoneHeader.implicitHeight, microphonePercent.implicitHeight)
+
+              PanelSectionHeader {
+                id: microphoneHeader
+                text: "INPUT"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+              }
+
+              Text {
+                id: microphonePercent
+                textFormat: Text.PlainText
+                text: Math.round((inputSlider.dragging ? inputSlider.liveValue : root.inputVolume) * 100) + "%"
+                color: Qt.darker(root.bar.foreground, 1.4)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                font.weight: Font.DemiBold
+                font.letterSpacing: Style.spaceReal(0.7)
+                anchors.right: parent.right
+                anchors.rightMargin: Style.space(6)
+                anchors.verticalCenter: parent.verticalCenter
+                opacity: root.inputMuted ? 0.5 : 1.0
+              }
             }
 
             CursorSurface {
@@ -1183,8 +1207,24 @@ Panel {
           font.pixelSize: Style.font.body
           font.bold: streamRow.isActive
           elide: Text.ElideRight
-          width: parent.width - streamMuteIcon.width - Style.space(8)
+          width: parent.width - streamMuteIcon.width - streamPct.width - Style.space(16)
           anchors.verticalCenter: parent.verticalCenter
+        }
+
+        // A continuous slider is harder to read, so its percent shows
+        Text {
+          id: streamPct
+          textFormat: Text.PlainText
+          text: Math.round(streamRow.streamVolume * 100) + "%"
+          color: Qt.darker(root.bar.foreground, 1.5)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.caption
+          font.weight: Font.DemiBold
+          font.letterSpacing: Style.spaceReal(0.7)
+          width: Style.space(36)
+          horizontalAlignment: Text.AlignRight
+          anchors.verticalCenter: parent.verticalCenter
+          opacity: streamRow.streamMuted ? 0.5 : 1.0
         }
       }
 
