@@ -443,11 +443,13 @@ REQUIRED_SKIPPED=0
 
 # PAM lines go in with their own backup, once, at the top of the file's auth
 # stack ("sufficient": on a no it falls through to the password, so a broken
-# reader never locks anyone out)
+# reader never locks anyone out). A profile only the vendor ships (polkit's
+# lives in /usr/lib/pam.d) is copied to /etc/pam.d first, which overrides it;
+# with no backup, uninstall removes that copy and the vendor's applies again.
 pam_add_line() {
   local file=$1 line=$2 module=$3
   plan_root "add '$line' to /etc/pam.d/$file" \
-    "[[ -f /etc/pam.d/$file ]] || exit 0; grep -q '$module' /etc/pam.d/$file && exit 0; cp -n /etc/pam.d/$file /etc/pam.d/$file.before-neko; awk -v line=$(quote "$line") 'NR == 1 && /^#%PAM/ { print; print line; next } NR == 1 { print line } { print }' /etc/pam.d/$file > /etc/pam.d/$file.neko-new && mv /etc/pam.d/$file.neko-new /etc/pam.d/$file"
+    "if [[ ! -f /etc/pam.d/$file ]]; then [[ -f /usr/lib/pam.d/$file ]] || { echo 'no PAM profile named $file'; exit 1; }; cp /usr/lib/pam.d/$file /etc/pam.d/$file; fi; grep -q '$module' /etc/pam.d/$file && exit 0; [[ -f /usr/lib/pam.d/$file ]] && cmp -s /etc/pam.d/$file /usr/lib/pam.d/$file || cp -n /etc/pam.d/$file /etc/pam.d/$file.before-neko; awk -v line=$(quote "$line") 'NR == 1 && /^#%PAM/ { print; print line; next } NR == 1 { print line } { print }' /etc/pam.d/$file > /etc/pam.d/$file.neko-new && mv /etc/pam.d/$file.neko-new /etc/pam.d/$file"
   echo "/etc/pam.d/$file" >> "$PAM_TOUCHED_LIST"
 }
 
@@ -538,7 +540,7 @@ decide_fingerprint() {
     "polkit (apps asking for your password)")
   [[ $where == *1* ]] && pam_add_line sudo "auth sufficient pam_fprintd.so" pam_fprintd
   [[ $where == *2* ]] && pam_add_line polkit-1 "auth sufficient pam_fprintd.so" pam_fprintd
-  if ask "Enroll a finger now?" y; then
+  if interactive && ask "Enroll a finger now?" y; then
     plan_user "enroll a finger (fprintd-enroll)" "fprintd-enroll"
   else
     note "Enroll a finger later with: fprintd-enroll"
@@ -716,6 +718,57 @@ decide_hyprland() {
   return 0
 }
 
+# Another shell or bar running now, which neko would sit on top of:
+# neko-session stops it on start and brings it back on stop (NEKO_REPLACES /
+# NEKO_RESTORES in ~/.config/neko/env)
+OTHER_SHELL=""
+OTHER_STOP=""
+OTHER_START=""
+
+decide_other_shell() {
+  local line name pattern
+  # A Quickshell config that isn't this checkout's
+  line=$(pgrep -ax 'qs|quickshell' 2> /dev/null | grep -vF -- "$NEKO_PATH/shell" | head -n 1)
+  if [[ -n $line ]]; then
+    OTHER_SHELL=${line#* }
+    pattern=$(sed 's/[][\.*^$+?(){}|/]/\\&/g' <<< "$OTHER_SHELL")
+    OTHER_STOP="pkill -xf '$pattern'"
+    OTHER_START="setsid -f $OTHER_SHELL > /dev/null 2>&1"
+  else
+    for name in waybar hyprpanel ags; do
+      pgrep -x "$name" > /dev/null 2>&1 || continue
+      OTHER_SHELL=$name
+      OTHER_STOP="pkill -x $name"
+      OTHER_START="setsid -f $name > /dev/null 2>&1"
+      break
+    done
+  fi
+  [[ -n $OTHER_SHELL ]] || return 0
+  if [[ -f $NEKO_CONFIG/env ]] && grep -q '^NEKO_REPLACES=' "$NEKO_CONFIG/env"; then
+    OTHER_STOP=""
+    return 0
+  fi
+  step "Your current shell"
+  say "  Running now: $OTHER_SHELL"
+  if ask "Stop it whenever neko starts (and start it again when neko stops)?" y; then
+    plan_user "stop '$OTHER_SHELL' when neko starts (NEKO_REPLACES in ~/.config/neko/env)" "write_other_shell"
+    if [[ $HYPR_MODE == hook || $HYPR_MODE == beside || $HYPR_MODE == skip ]]; then
+      note "Your Hyprland config probably starts '$OTHER_SHELL' at login too; take that line out so it doesn't come back beside neko."
+    fi
+  else
+    OTHER_STOP=""
+    note "'$OTHER_SHELL' keeps running beside neko; set NEKO_REPLACES in ~/.config/neko/env to have neko stop it."
+  fi
+}
+
+write_other_shell() {
+  [[ -n $OTHER_STOP ]] || return 0
+  {
+    say "NEKO_REPLACES=$(quote "$OTHER_STOP")"
+    say "NEKO_RESTORES=$(quote "$OTHER_START")"
+  } >> "$NEKO_CONFIG/env"
+}
+
 # What the marked block in your own config loads
 hook_block() {
   cat << EOF
@@ -735,8 +788,10 @@ $MARK_END
 EOF
 }
 
+# Not neko-config/ (the copy put beside yours) or the configs install.sh moved aside
 hypr_has_neko() {
-  grep -rqsE "default/hypr/neko\.lua|neko-session start" "$HYPR_DIR" --include='*.lua'
+  grep -rqsE "default/hypr/neko\.lua|neko-session start" "$HYPR_DIR" --include='*.lua' \
+    --exclude-dir=neko-config --exclude-dir='configs.before-neko-*'
 }
 
 plan_hyprland() {
@@ -791,9 +846,12 @@ remove_hook_block() {
   ' "$1"
 }
 
+HYPR_BACKED_UP=0
+
 backup_hypr_dir() {
   [[ -d $HYPR_DIR ]] || return 0
-  cp -a "$HYPR_DIR" "$HYPR_DIR.before-neko-$STAMP"
+  cp -a "$HYPR_DIR" "$HYPR_DIR.before-neko-$STAMP" || return 1
+  HYPR_BACKED_UP=1
   echo "hypr_dir_backup=$HYPR_DIR.before-neko-$STAMP" >> "$STATE_FILE"
 }
 
@@ -821,6 +879,10 @@ copy_neko_config() {
 }
 
 deploy_hypr_config() {
+  if [[ -d $HYPR_DIR ]] && (( ! HYPR_BACKED_UP )); then
+    warn "~/.config/hypr couldn't be backed up, so it's left as it is"
+    return 1
+  fi
   mkdir -p "$HYPR_DIR"
   # Your config's own modules would be loaded by nothing; they stay in the backup
   rm -f "$HYPR_CONFIG"
@@ -831,7 +893,10 @@ deploy_hypr_config() {
 }
 
 update_hypr_config() {
-  cp -a "$HYPR_DIR" "$HYPR_DIR.before-neko-update-$STAMP"
+  cp -a "$HYPR_DIR" "$HYPR_DIR.before-neko-update-$STAMP" || {
+    warn "~/.config/hypr couldn't be backed up, so it's left as it is"
+    return 1
+  }
   copy_neko_config "$HYPR_DIR"
 }
 
@@ -1038,6 +1103,7 @@ show_plan() {
 }
 
 run_root_steps() {
+  interactive || return 0
   local needs_root=$(( ${#REPO_PACKAGES[@]} + ${#PLAN_ROOT[@]} + ${#SERVICES[@]} ))
   (( needs_root )) || { [[ ${#AUR_PACKAGES[@]} -gt 0 ]] && install_aur; return 0; }
   step "Asking for sudo, once, for the system steps"
@@ -1153,7 +1219,7 @@ uninstall() {
   fi
 
   # System files install.sh changed, each with the backup it made
-  local touched file
+  local touched file keep_pam=0
   touched=$(state_values pam_touched | sort -u)
   if [[ -n $touched ]]; then
     say ""
@@ -1163,14 +1229,26 @@ uninstall() {
       for file in $touched; do
         if [[ -f $file.before-neko ]]; then
           sudo cp "$file.before-neko" "$file" && say "  Restored $file"
-        else
-          # A file install.sh created
+        elif [[ ! -f $file ]]; then
+          continue
+        elif grep -q "neko" "$file" 2> /dev/null || [[ -f /usr/lib/pam.d/${file##*/} ]]; then
+          # One install.sh wrote, or its copy of the vendor's profile
           sudo rm -f "$file" && say "  Removed $file"
+        else
+          # No backup and not neko's: removing it could break sudo or login
+          warn "No backup of $file and it isn't neko's; left as it is"
         fi
       done
+    else
+      keep_pam=1
     fi
   fi
-  rm -f "$STATE_FILE"
+  if (( keep_pam )); then
+    # So a later --uninstall can still offer them back
+    sed -i '/^pam_touched=/!d' "$STATE_FILE"
+  else
+    rm -f "$STATE_FILE"
+  fi
   say ""
   say "Your settings stay in $NEKO_CONFIG and ~/.local/state/neko; delete them to remove everything."
   say "Packages install.sh installed stay installed."
@@ -1209,6 +1287,7 @@ case $MODE in
     fi
 
     decide_hyprland
+    decide_other_shell
     decide_face_unlock
     decide_fingerprint
     decide_laptop
@@ -1218,10 +1297,11 @@ case $MODE in
     decide_extras
     decide_lock
 
-    # Without a terminal to ask, root steps aren't run; they're printed
-    if ! interactive && (( ${#PLAN_ROOT[@]} )); then
+    # Without a terminal to ask, nothing runs as root; it's printed instead
+    if ! interactive; then
       for (( i = 0; i < ${#PLAN_ROOT_TEXT[@]}; i++ )); do note "Skipped (needs a yes): ${PLAN_ROOT_TEXT[i]}"; done
-      PLAN_ROOT=() PLAN_ROOT_TEXT=()
+      for service in "${SERVICES[@]}"; do note "Skipped (needs a yes): turn on $service"; done
+      PLAN_ROOT=() PLAN_ROOT_TEXT=() SERVICES=() REPO_PACKAGES=() AUR_PACKAGES=()
     fi
     plan_hyprland
     plan_hardware_lua
