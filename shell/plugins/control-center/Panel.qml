@@ -60,9 +60,15 @@ Panel {
   readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
   property bool recorderInstalled: false
   property bool recording: false
-  // Brightness as a tick on the curve (0-64) and the backlight's raw maximum
-  property int brightnessTick: 0
+  // Brightness of the focused display, as neko-monitor-state reads it: on a
+  // laptop panel a tick on the brightness curve (out of 64), on a monitor a
+  // percentage over DDC/CI (out of 100); a max of 0 when it has none
+  property int brightnessLevel: 0
   property int brightnessMax: 0
+  readonly property bool brightnessCurve: brightnessMax === BrightnessModel.ticks
+  // The last level asked for while a set was still running: DDC/CI takes a
+  // moment, and the command drops a set that overlaps another
+  property int pendingBrightness: -1
   property var displays: []
 
   readonly property var focusedDisplay: {
@@ -117,7 +123,7 @@ Panel {
       "echo colors=$(neko-settings get colors)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
       "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
-      "echo brightness=$(brightnessctl -m | awk -F, '{print $3\",\"$5}')",
+      "echo brightness=$(neko-monitor-state | head -n 1)",
       "echo displays=$(neko-display json)"
     ].join("; ")]
     stdout: StdioCollector {
@@ -138,10 +144,11 @@ Panel {
           else if (key === "colors") root.colors = value
           else if (key === "recorder") root.recorderInstalled = value === "yes"
           else if (key === "recording") root.recording = value === "yes"
-          else if (key === "brightness" && !brightnessSlider.dragging) {
-            var reading = value.split(",")
-            root.brightnessMax = Number(reading[1]) || 0
-            if (root.brightnessMax > 0) root.brightnessTick = BrightnessModel.tickForRaw(Number(reading[0]) || 0, root.brightnessMax)
+          else if (key === "brightness" && !brightnessSlider.dragging && !brightnessProc.running) {
+            // level/max, or "unavailable"
+            var reading = value.split("/")
+            root.brightnessMax = reading.length === 2 ? Number(reading[1]) || 0 : 0
+            if (root.brightnessMax > 0) root.brightnessLevel = Math.max(0, Math.min(root.brightnessMax, Number(reading[0]) || 0))
           }
           else if (key === "displays") { try { root.displays = JSON.parse(value) } catch (e) {} }
         }
@@ -175,7 +182,30 @@ Panel {
   Timer {
     id: brightnessDebounce
     interval: 60
-    onTriggered: if (root.brightnessMax > 0) Quickshell.execDetached(["brightnessctl", "-q", "set", String(BrightnessModel.rawForTick(root.brightnessTick, root.brightnessMax))])
+    onTriggered: root.setBrightness(root.brightnessLevel)
+  }
+
+  // The laptop panel along the curve, any other display by percentage (over
+  // DDC/CI, or an Apple display's own control), as the monitor panel does
+  function setBrightness(level) {
+    if (root.brightnessMax <= 0) return
+    if (brightnessProc.running) {
+      root.pendingBrightness = level
+      return
+    }
+    root.pendingBrightness = -1
+    brightnessProc.command = root.brightnessCurve
+      ? ["neko-brightness-step", "set", String(level), "--no-osd"]
+      : ["neko-brightness-display", "--no-osd", String(Math.max(1, level)) + "%"]
+    brightnessProc.running = true
+  }
+
+  Process {
+    id: brightnessProc
+    onRunningChanged: {
+      if (running || root.pendingBrightness < 0) return
+      root.setBrightness(root.pendingBrightness)
+    }
   }
 
   BarIconButton {
@@ -844,24 +874,25 @@ Panel {
               onMoved: function(v) { if (root.sink && root.sink.audio) root.sink.audio.volume = VolumeModel.volumeForTick(v) }
             }
           }
-          // Brightness moves by ticks on the curve: a mark per full step, the
-          // wheel and drag landing on the fine steps between them
+          // On the laptop panel brightness moves by ticks on the curve: a mark
+          // per full step, the wheel and drag landing on the fine steps between
+          // them. A monitor moves by percent, a mark every 5% and Shift for 1%.
           SliderRow {
             icon: "󰃟"
-            label: BrightnessModel.tickLabel(root.brightnessTick)
+            label: root.brightnessCurve ? BrightnessModel.tickLabel(root.brightnessLevel) : root.brightnessLevel + "%"
             visible: root.brightnessMax > 0
             PanelSlider {
               id: brightnessSlider
               Layout.fillWidth: true
               bar: root.bar
-              maximum: BrightnessModel.ticks
+              maximum: root.brightnessCurve ? BrightnessModel.ticks : 100
               integer: true
               step: 1
-              tickCount: BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1
-              fineCount: BrightnessModel.ticksPerStep
+              tickCount: root.brightnessCurve ? BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1 : 21
+              fineCount: root.brightnessCurve ? BrightnessModel.ticksPerStep : 5
               tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
-              value: root.brightnessTick
-              onMoved: function(v) { root.brightnessTick = v; brightnessDebounce.restart() }
+              value: root.brightnessLevel
+              onMoved: function(v) { root.brightnessLevel = v; brightnessDebounce.restart() }
             }
           }
         }
