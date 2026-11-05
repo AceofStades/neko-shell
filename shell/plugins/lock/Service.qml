@@ -259,15 +259,19 @@ Item {
   function runWake() {
     root.displaysBlank = false
     root.monitorDpmsKnown = false
+    // A blank still turning the panel off would land after this wake and
+    // leave the screen dark: end it first
+    if (blankProcess.running) blankProcess.running = false
     if (!wakeProcess.running) wakeProcess.running = true
     if (lockRequested) armBlankTimer()
     nudgeFaceAuth()
     nudgeFingerprint()
   }
 
+  // Face unlock runs alongside the password: typing, or a password being
+  // checked, doesn't stop it, and whichever succeeds first unlocks
   function startFaceAuth() {
     if (!lockRequested || !sessionLock.secure || !facePamConfigured) return
-    if (authenticatingPassword || enteredPassword.length > 0) return
     if (facePam.active || faceAuthenticating || faceApprovedTimer.running) return
 
     faceRetryTimer.stop()
@@ -281,7 +285,7 @@ Item {
     faceAuthenticating = false
     faceVisualState = ""
     faceApprovedTimer.stop()
-    if (retry && lockRequested && facePamConfigured && enteredPassword.length === 0) faceRetryTimer.restart()
+    if (retry && lockRequested && facePamConfigured) faceRetryTimer.restart()
     else faceRetryTimer.stop()
   }
 
@@ -290,7 +294,9 @@ Item {
     faceAuthenticating = false
     if (facePam.active) facePam.abort()
     faceVisualState = showFailure ? "failed" : ""
-    if (retry && lockRequested && facePamConfigured && enteredPassword.length === 0) faceRetryTimer.restart()
+    // Time to read the failure and type, before the panel goes dark
+    if (lockRequested && !displaysBlank) armBlankTimer()
+    if (retry && lockRequested && facePamConfigured) faceRetryTimer.restart()
   }
 
   function handleFaceFinished(result) {
@@ -298,6 +304,7 @@ Item {
     if (result === PamResult.Success) {
       faceAuthenticating = false
       faceRetryTimer.stop()
+      idleBlankTimer.stop()
       faceVisualState = "approved"
       faceApprovedTimer.restart()
     } else {
@@ -307,7 +314,7 @@ Item {
 
   function nudgeFaceAuth() {
     if (!lockRequested || !sessionLock.secure || !facePamConfigured) return
-    if (authenticatingPassword || enteredPassword.length > 0 || facePam.active || faceAuthenticating || faceApprovedTimer.running) return
+    if (facePam.active || faceAuthenticating || faceApprovedTimer.running) return
     faceRetryTimer.interval = 350
     faceRetryTimer.restart()
   }
@@ -363,7 +370,8 @@ Item {
   function runBlank() {
     root.displaysBlank = true
     root.monitorDpmsKnown = false
-    if (!blankProcess.running) blankProcess.running = true
+    // Not over a wake still turning the panel on; it blanks once that's done
+    if (!blankProcess.running && !wakeProcess.running) blankProcess.running = true
   }
 
   function screenBlank(screenName) {
@@ -394,7 +402,6 @@ Item {
     var password = String(value || "")
     if (!lockRequested || authenticatingPassword || password.length === 0) return
 
-    stopFaceAuth(false)
     pendingPassword = password
     failureMessage = ""
     authenticatingPassword = true
@@ -424,10 +431,11 @@ Item {
     runWake()
   }
 
+  // Typing is activity: a face scan that had given up looks again, and one
+  // underway carries on
   onEnteredPasswordChanged: {
     if (!lockRequested || !facePamConfigured) return
-    if (enteredPassword.length > 0) stopFaceAuth(false)
-    else if (!authenticatingPassword) nudgeFaceAuth()
+    nudgeFaceAuth()
   }
 
   function startFingerprint() {
@@ -819,11 +827,16 @@ Item {
   Process {
     id: wakeProcess
     command: ["bash", "-c", "neko-system-wake"]
+    // A blank asked for while this ran waited for it
+    onExited: if (root.displaysBlank && !blankProcess.running) blankProcess.running = true
   }
 
   Process {
     id: blankProcess
     command: ["bash", "-c", "neko-brightness-keyboard off; neko-brightness-display off"]
+    // Woken while this ran (and it couldn't be ended in time): wake again, so
+    // the panel ends up on
+    onExited: if (!root.displaysBlank && !wakeProcess.running) wakeProcess.running = true
   }
 
   // Hold logind's delay inhibitor while the shell is alive. On a suspend
@@ -873,10 +886,17 @@ Item {
         root.armBlankTimer()
         return
       }
-      // Only a password check in flight should hold the display up. The
-      // fingerprint PAM stays armed for the whole lock, so gating on
-      // `authenticating` here would keep the panel lit until unlock.
-      if (root.lockRequested && !root.authenticatingPassword) root.runBlank()
+      // A password check in flight holds the display up, and so does a face
+      // scan or its approval on screen: blanking under them is a black screen
+      // just as Howdy answers. The fingerprint PAM stays armed for the whole
+      // lock, so gating on `authenticating` would keep the panel lit until
+      // unlock instead.
+      if (!root.lockRequested || root.authenticatingPassword) return
+      if (root.faceAuthenticating || faceApprovedTimer.running) {
+        root.armBlankTimer()
+        return
+      }
+      root.runBlank()
     }
   }
 
