@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.bitwarden",
+  "name": "Bitwarden",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Search the Bitwarden vault and copy a username, password or 2FA code",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Bitwarden",
+    "description": "Search the Bitwarden vault and copy a username, password or 2FA code",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
