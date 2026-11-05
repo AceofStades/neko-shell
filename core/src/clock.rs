@@ -9,11 +9,14 @@
 //! shell is up, and a shell restart leaves no watcher behind.
 //!
 //!   state                         the state, as JSON
-//!   timer-add <duration> [label]  "5" (minutes), "1:30", "1h 30m", "90s"
+//!   timer-add <duration [label]> [label]
+//!                                 "5" (minutes), "1:30", "1h 30m", "90s";
+//!                                 "25 focus" names it too
 //!   timer-pause|timer-resume|timer-restart|timer-remove <id>
-//!   alarm-add <time> [days] [label]  "7:30", "19:30", "7pm"; days as 0-6
-//!                                 (Sunday first), comma-separated, or none
-//!                                 for once
+//!   alarm-add <time [label]> [days] [label]
+//!                                 "7:30", "19:30", "7pm", "7:30 work"; days
+//!                                 as 0-6 (Sunday first), comma-separated, or
+//!                                 none for once
 //!   alarm-enable|alarm-disable|alarm-remove <id>
 //!   stopwatch-toggle|stopwatch-lap|stopwatch-reset
 //!   dismiss|snooze                what's ringing: quiet it, or again in 5 min
@@ -358,6 +361,16 @@ fn parse_alarm_time(input: &str) -> Option<(u32, u32)> {
         None => {}
     }
     Some((hour, minute))
+}
+
+/// What people type in one go, "25 focus" or "1h 30m laundry": the longest run
+/// of leading words `parse` reads, and the rest as the label
+fn split_leading<T>(input: &str, parse: impl Fn(&str) -> Option<T>) -> Option<(T, String)> {
+    let words: Vec<&str> = input.split_whitespace().collect();
+    (1..=words.len()).rev().find_map(|count| {
+        let value = parse(&words[..count].join(" "))?;
+        Some((value, words[count..].join(" ")))
+    })
 }
 
 /// "1,3,5" as weekdays, Sunday being 0
@@ -800,7 +813,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         "timer-add" => {
             let input = arg(rest, 0, "a duration")?;
-            let duration_ms = parse_duration(&input).ok_or_else(|| format!("can't read \"{input}\" as a duration"))?;
+            let (duration_ms, named) =
+                split_leading(&input, parse_duration).ok_or_else(|| format!("can't read \"{input}\" as a duration"))?;
             if state.timers.len() >= MAX_ITEMS {
                 return Err(format!("at most {MAX_ITEMS} timers"));
             }
@@ -809,7 +823,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 0,
                 Timer {
                     id: id.clone(),
-                    label: label_of(&rest.get(1..).unwrap_or_default().join(" ")),
+                    label: label_of(&[named].into_iter().chain(rest.get(1..).unwrap_or_default().iter().cloned()).collect::<Vec<_>>().join(" ")),
                     duration_ms,
                     state: "running".into(),
                     ends_at: now + duration_ms,
@@ -848,7 +862,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         "alarm-add" => {
             let input = arg(rest, 0, "a time")?;
-            let (hour, minute) = parse_alarm_time(&input).ok_or_else(|| format!("can't read \"{input}\" as a time"))?;
+            let ((hour, minute), named) =
+                split_leading(&input, parse_alarm_time).ok_or_else(|| format!("can't read \"{input}\" as a time"))?;
             let days = parse_days(rest.get(1).map(String::as_str).unwrap_or(""))?;
             if state.alarms.len() >= MAX_ITEMS {
                 return Err(format!("at most {MAX_ITEMS} alarms"));
@@ -857,7 +872,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             let next_fire = next_alarm_fire(hour, minute, &days, now);
             state.alarms.push(Alarm {
                 id: id.clone(),
-                label: label_of(&rest.get(2..).unwrap_or_default().join(" ")),
+                label: label_of(&[named].into_iter().chain(rest.get(2..).unwrap_or_default().iter().cloned()).collect::<Vec<_>>().join(" ")),
                 hour,
                 minute,
                 days,
@@ -952,6 +967,16 @@ mod tests {
         assert_eq!(parse_duration("101h"), None);
         assert_eq!(parse_duration("soon"), None);
         assert_eq!(parse_duration(""), None);
+    }
+
+    #[test]
+    fn a_label_after_the_time() {
+        assert_eq!(split_leading("25 focus", parse_duration), Some((1_500_000, "focus".into())));
+        assert_eq!(split_leading("1h 30m laundry day", parse_duration), Some((5_400_000, "laundry day".into())));
+        assert_eq!(split_leading("10", parse_duration), Some((600_000, String::new())));
+        assert_eq!(split_leading("7:30 pm work", parse_alarm_time), Some(((19, 30), "work".into())));
+        assert_eq!(split_leading("tea 5", parse_duration), None);
+        assert_eq!(split_leading("", parse_duration), None);
     }
 
     #[test]

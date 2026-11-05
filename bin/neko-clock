@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # neko:summary=Timers, alarms and a stopwatch, which ring even while the shell restarts
-# neko:args=<state|timer-add <duration> [label]|timer-pause|timer-resume|timer-restart|timer-remove <id>|alarm-add <time> [days] [label]|alarm-enable|alarm-disable|alarm-remove <id>|stopwatch-toggle|stopwatch-lap|stopwatch-reset|dismiss|snooze|schedule>
-# neko:examples=neko clock timer-add 5 Tea | neko clock timer-add "1h 30m" | neko clock alarm-add 7:30 1,2,3,4,5 Work | neko clock dismiss
+# neko:args=<state|timer-add <duration [label]>|timer-pause|timer-resume|timer-restart|timer-remove <id>|alarm-add <time [label]> [days]|alarm-enable|alarm-disable|alarm-remove <id>|stopwatch-toggle|stopwatch-lap|stopwatch-reset|dismiss|snooze|schedule>
+# neko:examples=neko clock timer-add "5 tea" | neko clock timer-add "1h 30m" | neko clock alarm-add "7:30 work" 1,2,3,4,5 | neko clock dismiss
 
 # neko-core's clock (core/), which install.sh builds or downloads
 root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
