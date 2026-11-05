@@ -34,11 +34,11 @@ Example `shell.json` (bar subtree only shown):
         { "id": "neko.active-window" }
       ],
       "center": [
-        { "id": "neko.media-players", "group": "unibar", "integrated": true },
+        { "id": "neko.media-players", "separate": true },
         { "id": "neko.workspace-bars-left", "group": "unibar", "start": 1 },
         { "id": "neko.unibar-center", "group": "unibar", "format": "HH:mm" },
         { "id": "neko.workspace-bars-right", "group": "unibar", "start": 6 },
-        { "id": "neko.pomodoro", "group": "unibar", "integrated": true }
+        { "id": "neko.pomodoro", "separate": true }
       ],
       "right": [
         { "id": "neko.keyboard-layout", "group": "status" },
@@ -61,6 +61,8 @@ Example `shell.json` (bar subtree only shown):
 `glass` leaves the bar itself clear and puts each widget on dark glass, blur with a dark tint and white text, so the widgets take their color from what's under them rather than from the theme. Where the top of the wallpaper is light (checked again whenever it changes) the tint deepens so the text still stands out. The workspaces' capsule alone is tinted dark, with white text, like the island that grows out of it. `transparent` wins over it, so `neko-shell shell toggleBarTransparency` goes between the two.
 
 Give neighbouring entries the same `"group"` (any name) to put them in one shared capsule instead of one each: the default config groups the status icons on the right, `{ "id": "neko.network", "group": "status" }`. Hidden widgets between them don't break the group.
+
+The music and Pomodoro widgets beside the island take one of three looks: `"separate": true` (the default config's) gives each an island of its own, a gap off the workspaces; `"group": "unibar", "integrated": true` folds it into the island's capsule; with neither, it's a crescent that cups the island's end.
 
 `centerAnchor` pins one center module to the exact horizontal/vertical center and flanks others around it. The default config anchors on `neko.unibar-center` (the UniBar's centered clock and island host). Set to an empty string to disable anchoring (the center list is centered as a group).
 

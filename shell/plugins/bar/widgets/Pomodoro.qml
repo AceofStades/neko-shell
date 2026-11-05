@@ -10,7 +10,11 @@ BarWidget {
   id: root
   moduleName: "neko.pomodoro"
   readonly property bool integrated: setting("integrated", false) === true
-  readonly property bool ownCapsule: !root.integrated
+  // An island of its own: the bar's own capsule, a gap off the workspaces,
+  // instead of the crescent that cups them
+  readonly property bool separate: !root.integrated && setting("separate", false) === true
+  readonly property bool crescent: !root.integrated && !root.separate
+  readonly property bool ownCapsule: root.crescent
   readonly property bool sessionActive: Island.pomodoroActive
   readonly property bool sessionRunning: Island.pomodoroRunning
   readonly property string clock: Island.pomodoroClock(Island.pomodoroRemaining)
@@ -51,7 +55,7 @@ BarWidget {
   // backwards so this edge cups the workspace capsule while keeping a gap.
   Shape {
     anchors.fill: parent
-    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
+    visible: root.crescent && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
     preferredRendererType: Shape.CurveRenderer
     transform: Scale { origin.x: root.width / 2; xScale: -1; yScale: 1 }
 
@@ -81,7 +85,7 @@ BarWidget {
 
   Shape {
     anchors.fill: parent
-    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
+    visible: root.crescent && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
     preferredRendererType: Shape.CurveRenderer
     transform: Scale { origin.x: root.width / 2; xScale: -1; yScale: 1 }
 

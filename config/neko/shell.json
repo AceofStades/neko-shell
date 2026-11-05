@@ -21,8 +21,7 @@
       "center": [
         {
           "id": "neko.media-players",
-          "group": "unibar",
-          "integrated": true
+          "separate": true
         },
         {
           "id": "neko.workspace-bars-left",
@@ -41,8 +40,7 @@
         },
         {
           "id": "neko.pomodoro",
-          "group": "unibar",
-          "integrated": true
+          "separate": true
         }
       ],
       "right": [

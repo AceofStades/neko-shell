@@ -13,7 +13,11 @@ BarWidget {
   id: root
   moduleName: "neko.media-players"
   readonly property bool integrated: setting("integrated", false) === true
-  readonly property bool ownCapsule: !root.integrated
+  // An island of its own: the bar's own capsule, a gap off the workspaces,
+  // instead of the crescent that cups them
+  readonly property bool separate: !root.integrated && setting("separate", false) === true
+  readonly property bool crescent: !root.integrated && !root.separate
+  readonly property bool ownCapsule: root.crescent
 
   // A browser plays all sorts; only what a music site describes as music
   // counts (YouTube Music, Spotify's web player and the like give an album,
@@ -126,7 +130,7 @@ BarWidget {
 
   Shape {
     anchors.fill: parent
-    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
+    visible: root.crescent && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && !root.topAttached
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
@@ -155,7 +159,7 @@ BarWidget {
 
   Shape {
     anchors.fill: parent
-    visible: !root.integrated && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
+    visible: root.crescent && !!root.bar && !root.bar.transparent && (root.bar.glass || NekoColor.bar.capsule.a > 0) && root.topAttached
     preferredRendererType: Shape.CurveRenderer
 
     ShapePath {
