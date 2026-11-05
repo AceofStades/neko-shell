@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# neko:summary=Cycle Hyprland's tiling layout, and resize or scroll the way the current one works
+# neko:args=[cycle|resize <h|j|k|l>|scroll <next|prev>]
+# neko:examples=neko-hyprland-layout cycle | neko-hyprland-layout resize h | neko-hyprland-layout scroll next
+
+# cycle goes master, dwindle, scrolling and round again. resize moves the split
+# the layout has (master's width, dwindle's ratio, scrolling's column) with h
+# and l, and the window's height with j and k. scroll moves along the columns
+# of the scrolling layout and does nothing in the others.
+
+usage() {
+  echo "Usage: neko-hyprland-layout [cycle|resize <h|j|k|l>|scroll <next|prev>]" >&2
+  exit 1
+}
+
+layout() {
+  hyprctl -j getoption general:layout | jq -r '.str'
+}
+
+dispatch() {
+  hyprctl dispatch "$1" > /dev/null
+}
+
+case ${1:-cycle} in
+  cycle)
+    case $(layout) in
+      master) next=dwindle ;;
+      dwindle) next=scrolling ;;
+      *) next=master ;;
+    esac
+    hyprctl eval "hl.config({ general = { layout = '$next' } })" > /dev/null
+    neko-osd -i "󰕰" -m "${next^} layout" 2> /dev/null || notify-send -a Hyprland -u low "${next^} layout"
+    ;;
+  resize)
+    direction=${2:-}
+    [[ $direction == [hjkl] ]] || usage
+    case $(layout) in
+      master)
+        case $direction in
+          h) dispatch "hl.dsp.layout('mfact -0.05')" ;;
+          l) dispatch "hl.dsp.layout('mfact +0.05')" ;;
+          k) dispatch "hl.dsp.exec_raw('resizeactive', '0 -50')" ;;
+          j) dispatch "hl.dsp.exec_raw('resizeactive', '0 50')" ;;
+        esac
+        ;;
+      dwindle)
+        if [[ $direction == [hk] ]]; then
+          dispatch "hl.dsp.layout('splitratio -0.05')"
+        else
+          dispatch "hl.dsp.layout('splitratio +0.05')"
+        fi
+        ;;
+      scrolling)
+        case $direction in
+          h) dispatch "hl.dsp.layout('colresize -0.05')" ;;
+          l) dispatch "hl.dsp.layout('colresize +0.05')" ;;
+          k) dispatch "hl.dsp.exec_raw('resizeactive', '0 -50')" ;;
+          j) dispatch "hl.dsp.exec_raw('resizeactive', '0 50')" ;;
+        esac
+        ;;
+    esac
+    ;;
+  scroll)
+    [[ ${2:-} == next || ${2:-} == prev ]] || usage
+    if [[ $(layout) == scrolling ]]; then
+      [[ $2 == next ]] && dispatch "hl.dsp.layout('move +col')" || dispatch "hl.dsp.layout('move -col')"
+    fi
+    ;;
+  *)
+    usage
+    ;;
+esac

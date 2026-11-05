@@ -1,0 +1,8 @@
+-- Your own Hyprland settings. install.sh creates this file once and never
+-- touches it again; it's loaded last, so anything here wins over neko's config.
+--
+-- Examples:
+--   hl.monitor({ output = "eDP-1", mode = "2880x1800@60", position = "auto", scale = "1.5" })
+--   hl.bind("SUPER + B", hl.dsp.exec_cmd("firefox"), { description = "Browser" })
+--   hl.window_rule({ name = "my-firefox", match = { class = "^(firefox)$" }, opacity = "0.95 0.95" })
+--   hl.on("hyprland.start", function() hl.exec_cmd("syncthing") end)
