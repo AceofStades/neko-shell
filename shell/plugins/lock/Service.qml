@@ -226,6 +226,8 @@ Item {
     lockRequested = true
     armBlankTimer()
     logEvent("lock-requested")
+    // The Bitwarden vault locks with the screen, if its settings say to
+    Quickshell.execDetached(["neko-bitwarden", "lock-for-screen"])
     queueSessionLock()
 
     Qt.callLater(function() {
