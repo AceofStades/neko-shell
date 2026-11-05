@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# neko:summary=The Bitwarden vault through the official bw CLI, held unlocked in memory for the bar's panel
+# neko:args=<status|unlock|unlock-keyring|lock|sync|items|copy <id> <username|password|totp|uri>|open <id>|remember <on|off>>
+# neko:examples=neko bitwarden status | neko bitwarden unlock < password-file | neko bitwarden lock
+
+# neko-core's bitwarden (core/), which install.sh builds or downloads
+root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
+fi
+if ! command -v bw > /dev/null; then
+  echo "${0##*/}: the Bitwarden CLI isn't installed (bitwarden-cli)" >&2
+  exit 1
+fi
+exec "$root/core/target/release/neko-core" bitwarden "$@"

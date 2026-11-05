@@ -3,6 +3,7 @@
 //! `neko-core <subcommand>`, so nothing else in neko notices the switch.
 
 mod agents;
+mod bitwarden;
 mod calendar;
 mod clock;
 mod faceauth;
@@ -23,6 +24,7 @@ fn main() -> ExitCode {
             println!("{}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
+        "bitwarden" => bitwarden::run(rest),
         "calendar-events" => calendar::run(rest),
         "clock" => clock::run(rest),
         "faceauth-watch" => faceauth::run(rest),
