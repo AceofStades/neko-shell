@@ -40,14 +40,21 @@ BarWidget {
   onShownBesideChanged: root.reveal = shownBeside ? 1 : 0
   opacity: reveal
   transform: Translate { x: (1 - root.reveal) * Style.space(16) * -1 }
-  implicitWidth: !visible ? 0 : tileActive ? content.implicitWidth + Style.space(30) : Style.space(40)
+  // It sizes its own ends: the bar draws the pill a little in from the slot
+  // (tileEnd); the slot is sized so the pill is round when passive and hugs
+  // the time when active
+  readonly property bool capsulePadded: false
+  readonly property real capsuleInset: Style.bar.capsuleInset
+  readonly property real capsuleTop: !!root.bar && root.bar.centerTopAttached === true ? 0 : capsuleInset
+  readonly property real capsuleHeight: root.barSize - capsuleTop - capsuleInset
+  readonly property real tileEnd: 2 + Style.bar.widgetGap / 2
+  readonly property real ringGap: Style.spaceReal(2)
+  implicitWidth: !visible ? 0 : (tileActive ? content.implicitWidth + capsuleHeight : capsuleHeight) + 4
   implicitHeight: root.barSize
   Behavior on implicitWidth {
     enabled: !Style.reduceMotion
     SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
-
-  readonly property real capsuleInset: Style.bar.capsuleInset
 
   WidgetButton {
     id: button
@@ -67,10 +74,11 @@ BarWidget {
     Item {
       id: progress
       anchors.fill: parent
-      anchors.leftMargin: Style.space(3)
-      anchors.rightMargin: Style.space(3)
-      anchors.topMargin: root.capsuleInset + Style.space(2)
-      anchors.bottomMargin: root.capsuleInset + Style.space(2)
+      // As far from the pill on every side
+      anchors.leftMargin: root.tileEnd + root.ringGap
+      anchors.rightMargin: root.tileEnd + root.ringGap
+      anchors.topMargin: root.capsuleTop + root.ringGap
+      anchors.bottomMargin: root.capsuleInset + root.ringGap
       visible: !root.ringing
       property real shownFraction: root.fraction
       readonly property real stroke: Style.spaceReal(2.2)

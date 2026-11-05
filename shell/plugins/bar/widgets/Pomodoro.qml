@@ -38,7 +38,15 @@ BarWidget {
   onShownBesideChanged: root.reveal = shownBeside ? 1 : 0
   opacity: root.integrated ? 1 : reveal
   transform: Translate { x: root.integrated ? 0 : (1 - root.reveal) * Style.space(16) * -1 }
-  implicitWidth: showsClock ? Style.space(92) : Style.space(40)
+  // As its own island it sizes its own ends: the bar draws the pill a little
+  // in from the slot (tileEnd), and this sizes the slot so the pill is round
+  // when passive and hugs the clock when active
+  readonly property bool capsulePadded: !root.separate
+  readonly property real tileEnd: 2 + Style.bar.widgetGap / 2
+  readonly property real ringGap: Style.spaceReal(2)
+  implicitWidth: root.separate
+    ? (showsClock ? pomodoroContent.implicitWidth + capsuleHeight : capsuleHeight) + 4
+    : (showsClock ? Style.space(92) : Style.space(40))
   implicitHeight: root.barSize
   Behavior on implicitWidth {
     enabled: !Style.reduceMotion
@@ -111,7 +119,7 @@ BarWidget {
   WidgetButton {
     id: button
     anchors.fill: parent
-    anchors.leftMargin: root.sessionActive ? Style.space(4) : 0
+    anchors.leftMargin: root.sessionActive && !root.separate ? Style.space(4) : 0
     bar: root.bar
     hasVisualContent: true
     labelVisible: false
@@ -126,10 +134,11 @@ BarWidget {
     Item {
       id: compactProgress
       anchors.fill: parent
-      anchors.leftMargin: Style.space(3)
-      anchors.rightMargin: Style.space(3)
-      anchors.topMargin: root.capsuleInset + Style.space(2)
-      anchors.bottomMargin: root.capsuleInset + Style.space(2)
+      // As far from the pill on every side
+      anchors.leftMargin: root.separate ? root.tileEnd + root.ringGap : Style.space(3)
+      anchors.rightMargin: root.separate ? root.tileEnd + root.ringGap : Style.space(3)
+      anchors.topMargin: root.separate ? root.capsuleTop + root.ringGap : root.capsuleInset + Style.space(2)
+      anchors.bottomMargin: root.capsuleInset + (root.separate ? root.ringGap : Style.space(2))
       visible: root.sessionActive
       property real shownFraction: Island.pomodoroFraction
       readonly property real stroke: Style.spaceReal(2.2)
@@ -206,6 +215,7 @@ BarWidget {
     }
 
     Row {
+      id: pomodoroContent
       anchors.centerIn: parent
       spacing: Style.space(7)
 

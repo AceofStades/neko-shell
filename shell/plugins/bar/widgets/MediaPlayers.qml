@@ -112,7 +112,13 @@ BarWidget {
   onShownBesideChanged: root.reveal = shownBeside ? 1 : 0
   opacity: root.integrated ? 1 : reveal
   transform: Translate { x: root.integrated ? 0 : (1 - root.reveal) * Style.space(16) * 1 }
-  implicitWidth: visible ? Style.space(root.playing ? 62 : 40) : 0
+  // As its own island it sizes its own ends: the bar draws the pill a little
+  // in from the slot, and the slot is sized so the pill hugs what it shows,
+  // half the pill's height clear of it either side
+  readonly property bool capsulePadded: !root.separate
+  implicitWidth: !visible ? 0
+    : root.separate ? mediaContent.implicitWidth + root.capsuleHeight + 4
+    : Style.space(root.playing ? 62 : 40)
   implicitHeight: root.barSize
   Behavior on implicitWidth {
     enabled: !Style.reduceMotion
@@ -187,6 +193,7 @@ BarWidget {
     onPressed: function(b) { if (root.player && root.player.canTogglePlaying) root.player.togglePlaying() }
 
     Row {
+      id: mediaContent
       anchors.centerIn: parent
       spacing: Style.space(5)
 
