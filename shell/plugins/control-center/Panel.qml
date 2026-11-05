@@ -408,21 +408,77 @@ Panel {
               function onOpenChanged() { if (!panel.open) calendarCard.tab = "calendar" }
             }
 
-            ButtonGroup {
+            // A segmented bar, its highlight sliding to the tab picked
+            Rectangle {
               id: cardTabs
+              readonly property var tabs: [
+                { value: "calendar", label: "Calendar", icon: "󰃭" },
+                { value: "timers", label: "Timers", icon: "󰔟" },
+                { value: "alarms", label: "Alarms", icon: "󰀠" },
+                { value: "stopwatch", label: "Stopwatch", icon: "󱎫" }
+              ]
+              readonly property int current: Math.max(0, tabs.map(function(t) { return t.value }).indexOf(calendarCard.tab))
+              readonly property real slot: (width - Style.space(6)) / tabs.length
               anchors.left: parent.left
               anchors.right: parent.right
               anchors.top: parent.top
               anchors.margins: Style.space(12)
-              fontSize: Style.font.caption
-              options: [
-                { value: "calendar", label: "Calendar" },
-                { value: "timers", label: "Timers" },
-                { value: "alarms", label: "Alarms" },
-                { value: "stopwatch", label: "Stopwatch" }
-              ]
-              value: calendarCard.tab
-              onChanged: function(v) { calendarCard.tab = v }
+              implicitHeight: Style.space(34)
+              radius: height / 2
+              color: Util.alpha(root.foreground, 0.06)
+
+              Rectangle {
+                x: Style.space(3) + cardTabs.current * cardTabs.slot
+                y: Style.space(3)
+                width: cardTabs.slot
+                height: parent.height - Style.space(6)
+                radius: height / 2
+                color: Util.alpha(root.foreground, 0.12)
+                Behavior on x {
+                  enabled: !Style.reduceMotion
+                  SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
+                }
+              }
+
+              Row {
+                anchors.fill: parent
+                anchors.margins: Style.space(3)
+                Repeater {
+                  model: cardTabs.tabs
+                  Item {
+                    id: tabItem
+                    required property var modelData
+                    required property int index
+                    readonly property bool picked: index === cardTabs.current
+                    width: cardTabs.slot
+                    height: parent.height
+                    Row {
+                      anchors.centerIn: parent
+                      spacing: Style.space(5)
+                      Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: tabItem.modelData.icon
+                        color: tabItem.picked ? root.accent : root.dim
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.bodySmall
+                      }
+                      Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: tabItem.modelData.label
+                        color: tabItem.picked ? root.foreground : root.dim
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.caption
+                        font.weight: tabItem.picked ? Font.DemiBold : Font.Normal
+                      }
+                    }
+                    MouseArea {
+                      anchors.fill: parent
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: calendarCard.tab = tabItem.modelData.value
+                    }
+                  }
+                }
+              }
             }
 
             Flickable {
@@ -440,7 +496,6 @@ Panel {
               TimersPage {
                 id: timersPage
                 width: parent.width
-                embedded: true
                 tab: calendarCard.tab
                 shown: panel.open && calendarCard.tab !== "calendar"
                 foreground: root.foreground

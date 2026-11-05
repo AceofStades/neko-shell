@@ -1,15 +1,16 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Shapes
 import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
 // The clock's timers, alarms and stopwatch, on the control center's calendar
-// card (embedded: the card's tabs pick which) or as a page of its own. neko-clock
-// keeps them and rings them (as its own systemd units, so they ring with the
-// shell down); this page reads its state file and asks it for every change.
-// The countdowns here only draw: nothing on this page has to be on time.
+// card, whose tabs pick `tab`. neko-clock keeps and rings them (as its own
+// systemd units, so they ring with the shell down); this reads its state
+// file and asks it for every change. The countdowns here only draw: nothing
+// on this page has to be on time.
 ColumnLayout {
   id: root
 
@@ -17,11 +18,8 @@ ColumnLayout {
   property color dim: Util.alpha(foreground, 0.6)
   property color accent: NekoColor.accent
   property string fontFamily: Style.font.family
-  // Whether the page is up, so the countdowns only tick while they're seen
+  // Whether it's on show, so the countdowns only tick while they're seen
   property bool shown: false
-  // Inside a card whose own tabs choose `tab`: no header or tabs here
-  property bool embedded: false
-  signal back()
 
   property string tab: "timers"
   onTabChanged: problem = ""
@@ -33,8 +31,10 @@ ColumnLayout {
   property var alarmDays: []
 
   readonly property var weekdays: ["S", "M", "T", "W", "T", "F", "S"]
+  readonly property color soft: Util.alpha(foreground, 0.06)
+  readonly property color softer: Util.alpha(foreground, 0.1)
 
-  spacing: Style.space(12)
+  spacing: Style.space(10)
 
   function clock(args) {
     clockProc.command = ["neko-clock"].concat(args)
@@ -55,10 +55,6 @@ ColumnLayout {
     return formatSeconds(Math.ceil(Math.max(0, ms) / 1000))
   }
 
-  function stopwatchText(ms) {
-    return formatSeconds(Math.floor(Math.max(0, ms) / 1000)) + "." + Math.floor(Math.max(0, ms) / 100) % 10
-  }
-
   function remaining(timer) {
     if (timer.state === "running") return Math.max(0, timer.endsAt - root.now)
     if (timer.state === "paused") return timer.remainingMs
@@ -77,27 +73,12 @@ ColumnLayout {
     if (joined === "12345") return "Weekdays"
     if (joined === "06") return "Weekends"
     var names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    return days.map(function(day) { return names[day] }).join(", ")
+    return days.map(function(day) { return names[day] }).join(" ")
   }
 
   function ringingLabel(event) {
     var what = event.kind === "timer" ? "Timer done" : "Alarm"
     return event.label ? what + ": " + event.label : what
-  }
-
-  function addTimer(duration) {
-    var text = String(duration || "").trim()
-    if (!text) return
-    root.problem = ""
-    root.clock(["timer-add", text].concat(labelField.text.trim() ? [labelField.text.trim()] : []))
-  }
-
-  function addAlarm() {
-    var text = alarmField.text.trim()
-    if (!text) return
-    root.problem = ""
-    var days = root.alarmDays.slice().sort().join(",")
-    root.clock(["alarm-add", text, days].concat(alarmLabelField.text.trim() ? [alarmLabelField.text.trim()] : []))
   }
 
   function toggleDay(day) {
@@ -130,8 +111,9 @@ ColumnLayout {
     onExited: function(code) {
       if (code !== 0) return
       // Taken: clear what was typed
-      if (root.tab === "timers") { durationField.text = ""; labelField.text = "" }
-      if (root.tab === "alarms") { alarmField.text = ""; alarmLabelField.text = ""; root.alarmDays = [] }
+      timerAdd.text = ""
+      alarmAdd.text = ""
+      root.alarmDays = []
     }
   }
 
@@ -144,82 +126,37 @@ ColumnLayout {
     onTriggered: root.now = Date.now()
   }
 
-  RowLayout {
-    Layout.fillWidth: true
-    visible: !root.embedded
-    spacing: Style.space(6)
-    PanelActionButton {
-      iconText: "󰅁"
-      tooltipText: "Back"
-      foreground: root.foreground
-      onClicked: root.back()
-    }
-    Text {
-      Layout.fillWidth: true
-      text: "Timers"
-      color: root.foreground
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.title
-      font.weight: Font.DemiBold
-    }
-  }
-
   // What's ringing, to quiet it or bring it back in five minutes
   Rectangle {
     Layout.fillWidth: true
     visible: root.state.ringing.length > 0
-    implicitHeight: ringingRow.implicitHeight + Style.space(20)
-    radius: Style.space(14)
-    color: Util.alpha(root.accent, 0.16)
-    border.width: 1
-    border.color: Util.alpha(root.accent, 0.5)
+    implicitHeight: Style.space(44)
+    radius: height / 2
+    color: Util.alpha(root.accent, 0.18)
 
     RowLayout {
-      id: ringingRow
       anchors.fill: parent
-      anchors.margins: Style.space(10)
-      spacing: Style.space(8)
+      anchors.leftMargin: Style.space(14)
+      anchors.rightMargin: Style.space(6)
+      spacing: Style.space(6)
       Text {
         text: "󰂞"
         color: root.accent
         font.family: root.fontFamily
-        font.pixelSize: Style.font.iconLarge
+        font.pixelSize: Style.font.icon
       }
       Text {
         Layout.fillWidth: true
-        text: root.state.ringing.length > 0 ? root.ringingLabel(root.state.ringing[0]) + (root.state.ringing.length > 1 ? " and " + (root.state.ringing.length - 1) + " more" : "") : ""
+        text: root.state.ringing.length > 0 ? root.ringingLabel(root.state.ringing[0]) : ""
         color: root.foreground
         font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+        font.pixelSize: Style.font.bodySmall
         font.weight: Font.DemiBold
         elide: Text.ElideRight
       }
-      Button {
-        text: "Snooze 5 min"
-        bordered: true
-        foreground: root.foreground
-        onClicked: root.clock(["snooze"])
-      }
-      Button {
-        text: "Dismiss"
-        bordered: true
-        foreground: root.foreground
-        onClicked: root.clock(["dismiss"])
-      }
+      Chip { text: "Snooze"; onClicked: root.clock(["snooze"]) }
+      Chip { text: "Stop"; strong: true; onClicked: root.clock(["dismiss"]) }
     }
-  }
-
-  ButtonGroup {
-    Layout.fillWidth: true
-    visible: !root.embedded
-    fontSize: Style.font.bodySmall
-    options: [
-      { value: "timers", label: "Timers", icon: "󰔟" },
-      { value: "alarms", label: "Alarms", icon: "󰀠" },
-      { value: "stopwatch", label: "Stopwatch", icon: "󱎫" }
-    ]
-    value: root.tab
-    onChanged: function(v) { root.tab = v; root.problem = "" }
   }
 
   Text {
@@ -239,64 +176,32 @@ ColumnLayout {
     visible: root.tab === "timers"
     spacing: Style.space(10)
 
-    RowLayout {
-      Layout.fillWidth: true
-      spacing: Style.space(8)
-      TextField {
-        id: durationField
-        Layout.fillWidth: true
-        Layout.preferredWidth: 2
-        foreground: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        placeholderText: "5 or 1h 30m"
-        onAccepted: root.addTimer(text)
-      }
-      TextField {
-        id: labelField
-        Layout.fillWidth: true
-        Layout.preferredWidth: 2
-        foreground: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        placeholderText: "Label"
-        onAccepted: root.addTimer(durationField.text)
-      }
-      Button {
-        iconText: "󰐕"
-        text: "Start"
-        bordered: true
-        foreground: root.foreground
-        onClicked: root.addTimer(durationField.text)
-      }
+    AddField {
+      id: timerAdd
+      icon: "󰔟"
+      placeholder: "25 focus, 1h 30m, 90s"
+      onSubmitted: function(value) { root.problem = ""; root.clock(["timer-add", value]) }
     }
 
     RowLayout {
       Layout.fillWidth: true
-      spacing: Style.space(8)
+      spacing: Style.space(6)
       Repeater {
-        model: [{ label: "1 min", value: "1" }, { label: "5 min", value: "5" }, { label: "10 min", value: "10" }, { label: "25 min", value: "25" }, { label: "1 hour", value: "60" }]
-        Button {
+        model: [{ label: "1m", value: "1" }, { label: "5m", value: "5" }, { label: "10m", value: "10" }, { label: "25m", value: "25" }, { label: "1h", value: "60" }]
+        Chip {
           required property var modelData
           Layout.fillWidth: true
           text: modelData.label
-          fontSize: Style.font.bodySmall
-          bordered: true
-          foreground: root.foreground
-          onClicked: root.addTimer(modelData.value)
+          onClicked: root.clock(["timer-add", modelData.value])
         }
       }
     }
 
-    Text {
-      Layout.fillWidth: true
+    Empty {
       visible: root.state.timers.length === 0
-      Layout.topMargin: Style.space(12)
-      text: "No timers. Type a length or pick one above."
-      color: root.dim
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
-      horizontalAlignment: Text.AlignHCenter
+      icon: "󰔟"
+      title: "No timers"
+      hint: "Type a length, a name after it if you like"
     }
 
     Repeater {
@@ -305,43 +210,45 @@ ColumnLayout {
         id: timerRow
         required property var modelData
         readonly property bool done: modelData.state === "done"
-        readonly property real progress: modelData.durationMs > 0 ? root.remaining(modelData) / modelData.durationMs : 0
+        readonly property bool running: modelData.state === "running"
         Layout.fillWidth: true
-        implicitHeight: Style.space(64)
-        radius: Style.space(14)
-        color: Util.alpha(root.foreground, 0.06)
-
-        // How much is left, as a fill along the row's foot
-        Rectangle {
-          anchors.left: parent.left
-          anchors.bottom: parent.bottom
-          anchors.leftMargin: Style.space(14)
-          anchors.bottomMargin: Style.space(8)
-          width: (parent.width - Style.space(28)) * timerRow.progress
-          height: Style.space(3)
-          radius: height / 2
-          color: timerRow.modelData.state === "running" ? root.accent : root.dim
-          visible: !timerRow.done
-        }
+        implicitHeight: Style.space(56)
+        radius: Style.space(16)
+        color: root.soft
 
         RowLayout {
           anchors.fill: parent
-          anchors.leftMargin: Style.space(14)
-          anchors.rightMargin: Style.space(8)
-          spacing: Style.space(8)
+          anchors.leftMargin: Style.space(10)
+          anchors.rightMargin: Style.space(6)
+          spacing: Style.space(10)
+
+          Ring {
+            size: Style.space(36)
+            fraction: timerRow.modelData.durationMs > 0 ? root.remaining(timerRow.modelData) / timerRow.modelData.durationMs : 0
+            live: timerRow.running
+            Text {
+              anchors.centerIn: parent
+              text: timerRow.done ? "󰄬" : "󰔟"
+              color: timerRow.running ? root.accent : root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+            }
+          }
+
           ColumnLayout {
             Layout.fillWidth: true
             spacing: 0
             Text {
               text: timerRow.done ? "Done" : root.countdown(root.remaining(timerRow.modelData))
-              color: timerRow.done ? root.dim : root.foreground
+              color: timerRow.running ? root.foreground : root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.title
               font.weight: Font.DemiBold
+              font.features: { "tnum": 1 }
             }
             Text {
               Layout.fillWidth: true
-              text: (timerRow.modelData.label ? timerRow.modelData.label + " · " : "") + root.countdown(timerRow.modelData.durationMs)
+              text: (timerRow.modelData.label || "Timer") + " · " + root.countdown(timerRow.modelData.durationMs)
                 + (timerRow.modelData.state === "paused" ? " · paused" : "")
               color: root.dim
               font.family: root.fontFamily
@@ -349,12 +256,13 @@ ColumnLayout {
               elide: Text.ElideRight
             }
           }
+
           PanelActionButton {
             visible: !timerRow.done
-            iconText: timerRow.modelData.state === "running" ? "󰏤" : "󰐊"
-            tooltipText: timerRow.modelData.state === "running" ? "Pause" : "Resume"
+            iconText: timerRow.running ? "󰏤" : "󰐊"
+            tooltipText: timerRow.running ? "Pause" : "Resume"
             foreground: root.foreground
-            onClicked: root.clock([timerRow.modelData.state === "running" ? "timer-pause" : "timer-resume", timerRow.modelData.id])
+            onClicked: root.clock([timerRow.running ? "timer-pause" : "timer-resume", timerRow.modelData.id])
           }
           PanelActionButton {
             iconText: "󰑐"
@@ -365,7 +273,7 @@ ColumnLayout {
           PanelActionButton {
             iconText: "󰅖"
             tooltipText: "Remove"
-            foreground: root.foreground
+            foreground: root.dim
             onClicked: root.clock(["timer-remove", timerRow.modelData.id])
           }
         }
@@ -380,73 +288,64 @@ ColumnLayout {
     visible: root.tab === "alarms"
     spacing: Style.space(10)
 
-    RowLayout {
-      Layout.fillWidth: true
-      spacing: Style.space(8)
-      TextField {
-        id: alarmField
-        Layout.fillWidth: true
-        Layout.preferredWidth: 2
-        foreground: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        placeholderText: "7:30 or 7pm"
-        onAccepted: root.addAlarm()
-      }
-      TextField {
-        id: alarmLabelField
-        Layout.fillWidth: true
-        Layout.preferredWidth: 2
-        foreground: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        placeholderText: "Label"
-        onAccepted: root.addAlarm()
-      }
-      Button {
-        iconText: "󰐕"
-        text: "Add"
-        bordered: true
-        foreground: root.foreground
-        onClicked: root.addAlarm()
+    AddField {
+      id: alarmAdd
+      icon: "󰀠"
+      placeholder: "7:30 work, 7pm"
+      onSubmitted: function(value) {
+        root.problem = ""
+        root.clock(["alarm-add", value, root.alarmDays.slice().sort().join(",")])
       }
     }
 
-    // The days it repeats on; none rings once
+    // The days a new alarm repeats on; none rings once
     RowLayout {
       Layout.fillWidth: true
       spacing: Style.space(6)
-      Text {
-        text: root.alarmDays.length === 0 ? "Once" : "Repeats"
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        Layout.preferredWidth: Style.space(58)
-      }
       Repeater {
         model: 7
-        Button {
+        Rectangle {
+          id: day
           required property int index
+          readonly property bool picked: root.alarmDays.indexOf(index) >= 0
           Layout.fillWidth: true
-          text: root.weekdays[index]
-          fontSize: Style.font.bodySmall
-          bordered: true
-          selected: root.alarmDays.indexOf(index) >= 0
-          foreground: root.foreground
-          onClicked: root.toggleDay(index)
+          implicitHeight: Style.space(28)
+          radius: height / 2
+          color: picked ? root.accent : dayMouse.containsMouse ? root.softer : root.soft
+          Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+          Text {
+            anchors.centerIn: parent
+            text: root.weekdays[day.index]
+            color: day.picked ? NekoColor.popups.background : root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.weight: Font.DemiBold
+          }
+          MouseArea {
+            id: dayMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.toggleDay(day.index)
+          }
         }
       }
     }
-
     Text {
       Layout.fillWidth: true
-      visible: root.state.alarms.length === 0
-      Layout.topMargin: Style.space(12)
-      text: "No alarms. Type a time to add one."
+      Layout.topMargin: -Style.space(4)
+      text: root.alarmDays.length === 0 ? "Rings once · pick days to repeat" : "Repeats " + root.daysLabel(root.alarmDays.slice().sort()).toLowerCase()
       color: root.dim
       font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
+      font.pixelSize: Style.font.caption
       horizontalAlignment: Text.AlignHCenter
+    }
+
+    Empty {
+      visible: root.state.alarms.length === 0
+      icon: "󰀠"
+      title: "No alarms"
+      hint: "Type a time, a name after it if you like"
     }
 
     Repeater {
@@ -455,25 +354,25 @@ ColumnLayout {
         id: alarmRow
         required property var modelData
         Layout.fillWidth: true
-        implicitHeight: Style.space(60)
-        radius: Style.space(14)
-        color: Util.alpha(root.foreground, 0.06)
-        opacity: modelData.enabled ? 1 : 0.6
+        implicitHeight: Style.space(56)
+        radius: Style.space(16)
+        color: root.soft
 
         RowLayout {
           anchors.fill: parent
           anchors.leftMargin: Style.space(14)
-          anchors.rightMargin: Style.space(8)
-          spacing: Style.space(8)
+          anchors.rightMargin: Style.space(6)
+          spacing: Style.space(10)
           ColumnLayout {
             Layout.fillWidth: true
             spacing: 0
             Text {
               text: Qt.formatTime(new Date(2000, 0, 1, alarmRow.modelData.hour, alarmRow.modelData.minute), "HH:mm")
-              color: root.foreground
+              color: alarmRow.modelData.enabled ? root.foreground : root.dim
               font.family: root.fontFamily
               font.pixelSize: Style.font.title
               font.weight: Font.DemiBold
+              font.features: { "tnum": 1 }
             }
             Text {
               Layout.fillWidth: true
@@ -494,7 +393,7 @@ ColumnLayout {
           PanelActionButton {
             iconText: "󰅖"
             tooltipText: "Remove"
-            foreground: root.foreground
+            foreground: root.dim
             onClicked: root.clock(["alarm-remove", alarmRow.modelData.id])
           }
         }
@@ -507,47 +406,59 @@ ColumnLayout {
   ColumnLayout {
     Layout.fillWidth: true
     visible: root.tab === "stopwatch"
-    spacing: Style.space(12)
+    spacing: Style.space(10)
 
-    Text {
-      Layout.fillWidth: true
-      Layout.topMargin: Style.space(8)
-      text: root.stopwatchText(root.elapsed())
-      color: root.foreground
-      font.family: root.fontFamily
-      font.pixelSize: Math.round(Style.font.display * 1.6)
-      font.weight: Font.DemiBold
-      horizontalAlignment: Text.AlignHCenter
+    // A ring that sweeps once a minute, the time inside it
+    Ring {
+      Layout.alignment: Qt.AlignHCenter
+      size: Style.space(118)
+      stroke: Style.spaceReal(4)
+      fraction: (root.elapsed() % 60000) / 60000
+      live: root.state.stopwatch.running
+
+      Row {
+        anchors.centerIn: parent
+        Text {
+          id: watchWhole
+          text: root.formatSeconds(Math.floor(root.elapsed() / 1000))
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Math.round(Style.font.display * 1.1)
+          font.weight: Font.DemiBold
+          font.features: { "tnum": 1 }
+        }
+        Text {
+          anchors.baseline: watchWhole.baseline
+          text: "." + Math.floor(root.elapsed() / 100) % 10
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.title
+          font.weight: Font.DemiBold
+          font.features: { "tnum": 1 }
+        }
+      }
     }
 
-    RowLayout {
-      Layout.fillWidth: true
-      spacing: Style.space(8)
-      Button {
-        Layout.fillWidth: true
-        iconText: root.state.stopwatch.running ? "󰏤" : "󰐊"
-        text: root.state.stopwatch.running ? "Pause" : (root.elapsed() > 0 ? "Resume" : "Start")
-        bordered: true
-        foreground: root.foreground
+    Row {
+      Layout.alignment: Qt.AlignHCenter
+      spacing: Style.space(18)
+      RoundButton {
+        anchors.verticalCenter: parent.verticalCenter
+        icon: "󰑐"
+        enabled: root.elapsed() > 0
+        onClicked: root.clock(["stopwatch-reset"])
+      }
+      RoundButton {
+        anchors.verticalCenter: parent.verticalCenter
+        icon: root.state.stopwatch.running ? "󰏤" : "󰐊"
+        main: true
         onClicked: root.clock(["stopwatch-toggle"])
       }
-      Button {
-        Layout.fillWidth: true
-        iconText: "󰌖"
-        text: "Lap"
-        bordered: true
+      RoundButton {
+        anchors.verticalCenter: parent.verticalCenter
+        icon: "󰌖"
         enabled: root.state.stopwatch.running
-        foreground: root.foreground
         onClicked: root.clock(["stopwatch-lap"])
-      }
-      Button {
-        Layout.fillWidth: true
-        iconText: "󰑐"
-        text: "Reset"
-        bordered: true
-        enabled: root.elapsed() > 0
-        foreground: root.foreground
-        onClicked: root.clock(["stopwatch-reset"])
       }
     }
 
@@ -561,8 +472,8 @@ ColumnLayout {
       RowLayout {
         required property var modelData
         Layout.fillWidth: true
-        Layout.leftMargin: Style.space(14)
-        Layout.rightMargin: Style.space(14)
+        Layout.leftMargin: Style.space(6)
+        Layout.rightMargin: Style.space(6)
         Text {
           Layout.fillWidth: true
           text: "Lap " + modelData.number
@@ -571,22 +482,243 @@ ColumnLayout {
           font.pixelSize: Style.font.bodySmall
         }
         Text {
-          text: root.stopwatchText(modelData.split)
+          text: root.formatSeconds(Math.floor(modelData.split / 1000)) + "." + Math.floor(modelData.split / 100) % 10
           color: root.foreground
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
-          Layout.preferredWidth: Style.space(90)
-          horizontalAlignment: Text.AlignRight
+          font.features: { "tnum": 1 }
         }
         Text {
-          text: root.stopwatchText(modelData.total)
+          text: root.formatSeconds(Math.floor(modelData.total / 1000))
           color: root.dim
           font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          Layout.preferredWidth: Style.space(90)
+          font.pixelSize: Style.font.caption
+          font.features: { "tnum": 1 }
+          Layout.preferredWidth: Style.space(56)
           horizontalAlignment: Text.AlignRight
         }
       }
+    }
+  }
+
+  // ------------------------------------------------------------ parts
+
+  // One rounded field for a whole entry: what it is, and a name after it
+  component AddField: Rectangle {
+    id: field
+    property string icon: ""
+    property string placeholder: ""
+    property alias text: input.text
+    signal submitted(string value)
+
+    function submit() {
+      var value = input.text.trim()
+      if (value) field.submitted(value)
+    }
+
+    Layout.fillWidth: true
+    implicitHeight: Style.space(40)
+    radius: height / 2
+    color: root.soft
+    border.width: 1
+    border.color: input.activeFocus ? Util.alpha(root.accent, 0.7) : Util.alpha(root.foreground, 0.08)
+    Behavior on border.color { ColorAnimation { duration: Style.duration(120) } }
+
+    Text {
+      id: fieldIcon
+      anchors.left: parent.left
+      anchors.leftMargin: Style.space(14)
+      anchors.verticalCenter: parent.verticalCenter
+      text: field.icon
+      color: root.accent
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.icon
+    }
+    TextInput {
+      id: input
+      anchors.left: fieldIcon.right
+      anchors.right: addButton.left
+      anchors.leftMargin: Style.space(10)
+      anchors.rightMargin: Style.space(6)
+      anchors.verticalCenter: parent.verticalCenter
+      color: root.foreground
+      selectionColor: Util.alpha(root.accent, 0.4)
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      clip: true
+      onAccepted: field.submit()
+      Text {
+        anchors.fill: parent
+        visible: !input.text
+        text: field.placeholder
+        color: Util.alpha(root.foreground, 0.4)
+        font: input.font
+        elide: Text.ElideRight
+      }
+    }
+    MouseArea {
+      anchors.fill: parent
+      anchors.rightMargin: addButton.width + Style.space(5)
+      cursorShape: Qt.IBeamCursor
+      onPressed: function(mouse) { input.forceActiveFocus(); mouse.accepted = false }
+    }
+    Rectangle {
+      id: addButton
+      anchors.right: parent.right
+      anchors.rightMargin: Style.space(5)
+      anchors.verticalCenter: parent.verticalCenter
+      width: Style.space(30)
+      height: width
+      radius: width / 2
+      color: input.text.trim() ? root.accent : root.softer
+      Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+      Text {
+        anchors.centerIn: parent
+        text: "󰐕"
+        color: input.text.trim() ? NekoColor.popups.background : root.dim
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+      }
+      MouseArea {
+        anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
+        onClicked: field.submit()
+      }
+    }
+  }
+
+  // A soft pill to press
+  component Chip: Rectangle {
+    id: chip
+    property string text: ""
+    property bool strong: false
+    signal clicked()
+    implicitWidth: chipText.implicitWidth + Style.space(24)
+    implicitHeight: Style.space(30)
+    radius: height / 2
+    color: strong ? root.accent : chipMouse.containsMouse ? root.softer : root.soft
+    Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+    Text {
+      id: chipText
+      anchors.centerIn: parent
+      text: chip.text
+      color: chip.strong ? NekoColor.popups.background : root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.bodySmall
+      font.weight: Font.DemiBold
+    }
+    MouseArea {
+      id: chipMouse
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: chip.clicked()
+    }
+  }
+
+  // A round control; the main one filled with the accent
+  component RoundButton: Rectangle {
+    id: roundButton
+    property string icon: ""
+    property bool main: false
+    signal clicked()
+    width: main ? Style.space(52) : Style.space(40)
+    height: width
+    radius: width / 2
+    opacity: enabled ? 1 : 0.4
+    color: main ? root.accent : roundMouse.containsMouse ? root.softer : root.soft
+    Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+    Text {
+      anchors.centerIn: parent
+      text: roundButton.icon
+      color: roundButton.main ? NekoColor.popups.background : root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: roundButton.main ? Style.font.iconLarge : Style.font.icon
+    }
+    MouseArea {
+      id: roundMouse
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: roundButton.clicked()
+    }
+  }
+
+  // A progress ring from twelve o'clock; what it holds sits in its middle
+  component Ring: Item {
+    id: ring
+    property real size: Style.space(36)
+    property real stroke: Style.spaceReal(2.5)
+    property real fraction: 0
+    property bool live: false
+    implicitWidth: size
+    implicitHeight: size
+    Layout.preferredWidth: size
+    Layout.preferredHeight: size
+
+    Shape {
+      anchors.fill: parent
+      preferredRendererType: Shape.CurveRenderer
+      ShapePath {
+        strokeWidth: ring.stroke
+        strokeColor: root.softer
+        fillColor: "transparent"
+        PathAngleArc {
+          centerX: ring.size / 2
+          centerY: ring.size / 2
+          radiusX: ring.size / 2 - ring.stroke
+          radiusY: ring.size / 2 - ring.stroke
+          startAngle: 0
+          sweepAngle: 360
+        }
+      }
+      ShapePath {
+        strokeWidth: ring.stroke
+        strokeColor: ring.fraction > 0.001 ? (ring.live ? root.accent : root.dim) : "transparent"
+        fillColor: "transparent"
+        capStyle: ShapePath.RoundCap
+        PathAngleArc {
+          centerX: ring.size / 2
+          centerY: ring.size / 2
+          radiusX: ring.size / 2 - ring.stroke
+          radiusY: ring.size / 2 - ring.stroke
+          startAngle: -90
+          sweepAngle: 360 * Math.max(0, Math.min(1, ring.fraction))
+        }
+      }
+    }
+  }
+
+  // What a tab says while it's empty
+  component Empty: ColumnLayout {
+    id: empty
+    property string icon: ""
+    property string title: ""
+    property string hint: ""
+    Layout.fillWidth: true
+    Layout.topMargin: Style.space(14)
+    spacing: Style.space(4)
+    Text {
+      Layout.alignment: Qt.AlignHCenter
+      text: empty.icon
+      color: Util.alpha(root.foreground, 0.3)
+      font.family: root.fontFamily
+      font.pixelSize: Math.round(Style.font.display * 1.2)
+    }
+    Text {
+      Layout.alignment: Qt.AlignHCenter
+      text: empty.title
+      color: root.foreground
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      font.weight: Font.DemiBold
+    }
+    Text {
+      Layout.alignment: Qt.AlignHCenter
+      text: empty.hint
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
     }
   }
 }
