@@ -2147,7 +2147,7 @@ Item {
     readonly property bool ownCapsule: !!activeItem && activeItem.ownCapsule === true
     readonly property bool islandFollower: group === "unibar"
     readonly property bool islandPart: moduleName === "neko.workspaces"
-      || moduleName === "neko.media-players" || moduleName === "neko.pomodoro"
+      || moduleName === "neko.media-players" || moduleName === "neko.pomodoro" || moduleName === "neko.timers"
       || moduleName === "neko.unibar-center" || islandFollower
     readonly property bool islandPanelPart: islandFollower && root.islandMorphsSlot(slot)
     readonly property real islandContentOpacity: islandFollower
@@ -2234,7 +2234,7 @@ Item {
       readonly property bool panelBelow: root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion
       bottomLeftRadius: (root.vertical ? slot.continuesNext : slot.continuesPrevious || slot.atScreenStart || panelBelow && root.openCardFlushStart) ? 0 : round
       bottomRightRadius: slot.continuesNext || slot.atScreenEnd || panelBelow && root.openCardFlushEnd ? 0 : round
-      // The media, Pomodoro and workspace capsules share the island's tint. The
+      // The media, Pomodoro, timers and workspace capsules share the island's tint. The
       // workspace capsule clears when the island shows anything else.
       property color fill: slot.islandPart && (Island.mode !== "" || Island.settling || slot.islandPanelPart) ? "transparent"
         : root.centerTopAttached && slot.region !== "center" && slot.region === root.openPanelRegion ? root.attachedPanelColor

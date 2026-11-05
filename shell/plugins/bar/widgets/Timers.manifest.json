@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.timers",
+  "name": "Timers",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "What the clock has running beside the island: a timer, the stopwatch, an alarm ringing",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Timers.qml"
+  },
+  "barWidget": {
+    "displayName": "Timers",
+    "description": "What the clock has running beside the island: a timer, the stopwatch, an alarm ringing",
+    "category": "Productivity",
+    "allowMultiple": false
+  }
+}

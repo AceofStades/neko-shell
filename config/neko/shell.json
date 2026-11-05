@@ -41,6 +41,10 @@
         {
           "id": "neko.pomodoro",
           "separate": true
+        },
+        {
+          "id": "neko.timers",
+          "separate": true
         }
       ],
       "right": [

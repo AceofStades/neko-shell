@@ -38,7 +38,8 @@ Example `shell.json` (bar subtree only shown):
         { "id": "neko.workspace-bars-left", "group": "unibar", "start": 1 },
         { "id": "neko.unibar-center", "group": "unibar", "format": "HH:mm" },
         { "id": "neko.workspace-bars-right", "group": "unibar", "start": 6 },
-        { "id": "neko.pomodoro", "separate": true }
+        { "id": "neko.pomodoro", "separate": true },
+        { "id": "neko.timers", "separate": true }
       ],
       "right": [
         { "id": "neko.keyboard-layout", "group": "status" },
