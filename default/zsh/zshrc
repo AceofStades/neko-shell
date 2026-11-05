@@ -31,6 +31,14 @@ done
 
 source $ZSH/oh-my-zsh.sh
 
+# The package isn't a git checkout, so `omz update` updates it with yay
+if [[ $ZSH == /usr/share/oh-my-zsh ]]; then
+  function _omz::update {
+    echo "oh-my-zsh comes from the oh-my-zsh-git package; updating it with yay"
+    yay -S oh-my-zsh-git
+  }
+fi
+
 for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
   (( ${plugins[(Ie)$plugin]} )) && continue
   [[ -f /usr/share/zsh/plugins/$plugin/$plugin.zsh ]] && source /usr/share/zsh/plugins/$plugin/$plugin.zsh
