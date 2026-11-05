@@ -107,6 +107,9 @@ start() {
   load_hyprland_rules
   # Rotation is a transient timer, so it needs arming again after a reboot
   neko-wallpaper auto resume
+  # So are the clock's: timers and alarms ring again, and those missed while
+  # logged out get their notice
+  neko-clock schedule > /dev/null 2>&1 || true
   setsid -f neko-wallpaper warm
   neko-hook session-start
   echo "neko-shell started"

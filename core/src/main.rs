@@ -4,6 +4,7 @@
 
 mod agents;
 mod calendar;
+mod clock;
 mod faceauth;
 mod filepick;
 
@@ -22,6 +23,7 @@ fn main() -> ExitCode {
             Ok(())
         }
         "calendar-events" => calendar::run(rest),
+        "clock" => clock::run(rest),
         "faceauth-watch" => faceauth::run(rest),
         "file-select" => filepick::run(rest),
         "agent-account-state" => agents::accounts::run(rest),
