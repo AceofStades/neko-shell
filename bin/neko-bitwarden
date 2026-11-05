@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# neko:summary=The Bitwarden vault through the official bw CLI, held unlocked in memory for the bar's panel
-# neko:args=<status|unlock|unlock-keyring|lock|sync|items|copy <id> <username|password|totp|uri>|open <id>|remember <on|off>>
+# neko:summary=The Bitwarden vault through the official bw CLI, held unlocked in memory for the bar's panel: search, copy, add and edit
+# neko:args=<status|unlock|unlock-pin|unlock-keyring|lock|sync|items|folders|item <id>|save|delete <id>|generate [length]|copy <id> <username|password|totp|uri>|open <id>|set <name> <value>|pin|lock-for-screen>
 # neko:examples=neko bitwarden status | neko bitwarden unlock < password-file | neko bitwarden lock
 
 # neko-core's bitwarden (core/), which install.sh builds or downloads
