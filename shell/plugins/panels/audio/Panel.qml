@@ -286,7 +286,8 @@ Panel {
     }
     if (focusSection === "streams" && selectedIndex >= 0 && selectedIndex < displayAudioStreams.length) {
       var s = nodeFor(displayAudioStreams[selectedIndex])
-      if (s && s.audio) s.audio.volume = Math.max(0, Math.min(1.5, s.audio.volume + delta))
+      // A notch at a time, as on the output
+      if (s && s.audio) s.audio.volume = VolumeModel.volumeForTick(VolumeModel.stepTick(VolumeModel.tickForVolume(s.audio.volume), delta > 0 ? 1 : -1, false))
     }
   }
 
@@ -453,8 +454,7 @@ Panel {
       icon: outputIcon(volume),
       // The tick, so the OSD draws the sixteen steps and the fine ones
       value: VolumeModel.tickForVolume(volume),
-      max: VolumeModel.ticks,
-      progressText: VolumeModel.percentForVolume(volume) + "%"
+      max: VolumeModel.ticks
     }))
   }
 
@@ -814,33 +814,11 @@ Panel {
             width: parent.width
             spacing: Style.space(6)
 
-            Item {
-              width: parent.width
-              implicitHeight: Math.max(outputHeader.implicitHeight, outputPercent.implicitHeight)
-
-              PanelSectionHeader {
-                id: outputHeader
-                text: "OUTPUT"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-              }
-
-              Text {
-                id: outputPercent
-                textFormat: Text.PlainText
-                text: VolumeModel.percentForVolume(outputSlider.dragging ? VolumeModel.volumeForTick(outputSlider.liveValue) : root.outputVolume) + "%"
-                color: Qt.darker(root.bar.foreground, 1.4)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                font.weight: Font.DemiBold
-                font.letterSpacing: Style.spaceReal(0.7)
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
-                anchors.verticalCenter: parent.verticalCenter
-                opacity: root.outputMuted ? 0.5 : 1.0
-              }
+            // The sliders say how far without a number
+            PanelSectionHeader {
+              text: "OUTPUT"
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
             }
 
             CursorSurface {
@@ -908,33 +886,10 @@ Panel {
             spacing: Style.space(6)
             visible: root.displayAudioSources.length > 0 || !!root.source
 
-            Item {
-              width: parent.width
-              implicitHeight: Math.max(microphoneHeader.implicitHeight, microphonePercent.implicitHeight)
-
-              PanelSectionHeader {
-                id: microphoneHeader
-                text: "INPUT"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-              }
-
-              Text {
-                id: microphonePercent
-                textFormat: Text.PlainText
-                text: Math.round((inputSlider.dragging ? inputSlider.liveValue : root.inputVolume) * 100) + "%"
-                color: Qt.darker(root.bar.foreground, 1.4)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                font.weight: Font.DemiBold
-                font.letterSpacing: Style.spaceReal(0.7)
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
-                anchors.verticalCenter: parent.verticalCenter
-                opacity: root.inputMuted ? 0.5 : 1.0
-              }
+            PanelSectionHeader {
+              text: "INPUT"
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
             }
 
             CursorSurface {
@@ -1230,37 +1185,26 @@ Panel {
           font.pixelSize: Style.font.body
           font.bold: streamRow.isActive
           elide: Text.ElideRight
-          width: parent.width - streamMuteIcon.width - streamPct.width - Style.space(16)
+          width: parent.width - streamMuteIcon.width - Style.space(8)
           anchors.verticalCenter: parent.verticalCenter
-        }
-
-        Text {
-          id: streamPct
-          textFormat: Text.PlainText
-          text: Math.round(streamRow.streamVolume * 100) + "%"
-          color: Qt.darker(root.bar.foreground, 1.5)
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.caption
-          font.weight: Font.DemiBold
-          font.letterSpacing: Style.spaceReal(0.7)
-          width: Style.space(36)
-          horizontalAlignment: Text.AlignRight
-          anchors.verticalCenter: parent.verticalCenter
-          opacity: streamRow.streamMuted ? 0.5 : 1.0
         }
       }
 
+      // On the output's scale: sixteen notches of four fine ticks, up to 150%
       PanelSlider {
         bar: root.bar
         width: parent.width
-        minimum: 0
-        maximum: 1.5
-        step: 0.05
-        value: streamRow.streamVolume
+        maximum: VolumeModel.ticks
+        integer: true
+        step: 1
+        tickCount: VolumeModel.ticks / VolumeModel.ticksPerStep + 1
+        fineCount: VolumeModel.ticksPerStep
+        tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
+        value: VolumeModel.tickForVolume(streamRow.streamVolume)
         opacity: streamRow.streamMuted ? 0.5 : 1.0
 
         onMoved: function(v) {
-          if (streamRow.node && streamRow.node.audio) streamRow.node.audio.volume = v
+          if (streamRow.node && streamRow.node.audio) streamRow.node.audio.volume = VolumeModel.volumeForTick(v)
         }
         onRightClicked: {
           if (streamRow.node && streamRow.node.audio)

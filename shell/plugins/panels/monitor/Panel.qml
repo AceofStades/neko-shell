@@ -269,15 +269,8 @@ Panel {
     bar.shell.summon("neko.osd", JSON.stringify({
       icon: "brightness",
       value: level,
-      max: root.brightnessMax,
-      progressText: root.brightnessLabel(level)
+      max: root.brightnessMax
     }))
-  }
-
-  // "8.2" on the curve, "40%" elsewhere
-  function brightnessLabel(level) {
-    var whole = Math.round(level)
-    return root.brightnessCurve ? BrightnessModel.tickLabel(whole) : whole + "%"
   }
 
   function normalizeScale(scale) {
@@ -619,32 +612,10 @@ Panel {
             width: parent.width
             spacing: Style.space(6)
 
-            Item {
-              width: parent.width
-              implicitHeight: Math.max(brightnessHeader.implicitHeight, brightnessValue.implicitHeight)
-
-              PanelSectionHeader {
-                id: brightnessHeader
-                text: "BRIGHTNESS"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-              }
-
-              Text {
-                id: brightnessValue
-                textFormat: Text.PlainText
-                text: root.brightnessLabel(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessLevel)
-                color: Qt.darker(root.bar.foreground, 1.4)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                font.weight: Font.DemiBold
-                font.letterSpacing: Style.spaceReal(0.5)
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
-                anchors.verticalCenter: parent.verticalCenter
-              }
+            PanelSectionHeader {
+              text: "BRIGHTNESS"
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
             }
 
             CursorSurface {
@@ -665,8 +636,9 @@ Panel {
                 minimum: root.brightnessMin
                 maximum: root.brightnessMax
                 step: 1
-                // A mark per full step of the curve
+                // A mark per full step of the curve, Shift for the fine steps
                 tickCount: root.brightnessCurve ? BrightnessModel.ticks / BrightnessModel.ticksPerStep + 1 : 0
+                fineCount: root.brightnessCurve ? BrightnessModel.ticksPerStep : 0
                 tickColor: Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, 1)
                 value: root.brightnessLevel
                 integer: true

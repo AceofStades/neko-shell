@@ -876,7 +876,8 @@ PanelWindow {
       }
       Text {
         anchors.verticalCenter: parent.verticalCenter
-        visible: !!osdPill.osd && osdPill.osd.message !== ""
+        // A meter shows no number beside it
+        visible: !!osdPill.osd && osdPill.osd.message !== "" && !osdPill.osd.hasProgress
         text: osdPill.osd ? osdPill.osd.message : ""
         color: NekoColor.osd.text
         font.family: Style.font.family

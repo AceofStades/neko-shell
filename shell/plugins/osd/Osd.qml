@@ -65,12 +65,12 @@ Item {
 
   // Compute the bar width that fits within the island rest width.
   // Island.restRects[width] is the card width. Available space for the bar:
-  // cardWidth - iconWidth - valueWidth - 2*gap - 2*pad (card horizontal padding).
+  // cardWidth - iconWidth - gap - 2*pad (card horizontal padding).
   // But the card's width IS islandWidth, and the Row is centered with no extra
   // horizontal margins, so the Row can use up to islandWidth. We clamp the bar
   // to at least trackHeight (so it stays a pill) and at most the nominal barWidth.
   function barWidthFor(islandWidth) {
-    var avail = islandWidth - root.iconWidth - root.valueWidth - 2 * root.gap
+    var avail = islandWidth - root.iconWidth - 2 * root.gap
     return Math.max(root.trackHeight, Math.min(root.nominalBarWidth, avail))
   }
   readonly property int nominalBarWidth: Style.space(160)
@@ -90,16 +90,13 @@ Item {
   readonly property int iconWidth: root.hasProgress
     ? Math.max(root.iconInkWidth, Math.ceil(widestIconMetrics.tightBoundingRect.width))
     : root.iconInkWidth
-  // Same idea for the readout: it is as wide as the longest percentage so the
-  // digits don't jitter between 9% and 100%.
-  readonly property int valueWidth: Math.ceil(Math.max(valueMetrics.advanceWidth, messageMetrics.advanceWidth))
   readonly property int messageWidth: Math.min(Math.ceil(messageMetrics.advanceWidth), root.maxMessageWidth)
   // contentWidth uses the adaptive bar width when we know the island width,
   // otherwise falls back to nominalBarWidth for the standalone OSD window.
   readonly property int contentWidth: root.hasProgress
     ? (panel.screen && Island.restRects[panel.screen.name]
-         ? root.iconWidth + root.gap + root.barWidthFor(root.pillWidth) + root.gap + root.valueWidth
-         : root.iconWidth + root.gap + root.nominalBarWidth + root.gap + root.valueWidth)
+         ? root.iconWidth + root.gap + root.barWidthFor(root.pillWidth)
+         : root.iconWidth + root.gap + root.nominalBarWidth)
     : (root.message === "" ? root.iconWidth : root.iconWidth + root.messageGap + root.messageWidth)
 
   function iconFor(name, percent) {
@@ -192,12 +189,6 @@ Item {
     font.weight: Font.Medium
     font.pixelSize: Style.font.body
     text: root.message
-  }
-
-  TextMetrics {
-    id: valueMetrics
-    font: messageMetrics.font
-    text: "100%"
   }
 
   TextMetrics {
@@ -335,11 +326,10 @@ Item {
         }
         Text {
           textFormat: Text.PlainText
-          visible: root.message !== ""
-          width: root.hasProgress ? root.valueWidth : root.messageWidth
-          // The readout hugs the card edge so a short percentage doesn't leave
-          // a hole in the padding; the slack lands in the gap after the bar.
-          horizontalAlignment: root.hasProgress ? Text.AlignRight : Text.AlignLeft
+          // A meter speaks for itself: no percentage or step number beside it
+          visible: root.message !== "" && !root.hasProgress
+          width: root.messageWidth
+          horizontalAlignment: Text.AlignLeft
           anchors.verticalCenter: parent.verticalCenter
           text: root.message
           font: messageMetrics.font
