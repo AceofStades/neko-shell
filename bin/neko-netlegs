@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# neko:summary=Time this machine to the router and the router to the internet, to tell whose side is slow
+# neko:args=<start|stop|state|report>
+# neko:examples=neko netlegs state | neko netlegs report
+
+# neko-core's netlegs (core/), which install.sh builds or downloads
+root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
+fi
+exec "$root/core/target/release/neko-core" netlegs "$@"

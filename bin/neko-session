@@ -110,6 +110,8 @@ start() {
   # So are the clock's: timers and alarms ring again, and those missed while
   # logged out get their notice
   neko-clock schedule > /dev/null 2>&1 || true
+  # Both halves of the connection timed in the background, for the network panel
+  neko-netlegs start > /dev/null 2>&1 || true
   setsid -f neko-wallpaper warm
   neko-hook session-start
   echo "neko-shell started"
@@ -139,6 +141,7 @@ stop() {
   if [[ -n $pids ]]; then
     kill $pids 2> /dev/null
   fi
+  neko-netlegs stop > /dev/null 2>&1 || true
 
   # Without the flag a reload gives the media keys back to your own binds
   rm -f "$XDG_RUNTIME_DIR/neko-active"
