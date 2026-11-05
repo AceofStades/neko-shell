@@ -113,11 +113,15 @@ BarWidget {
   opacity: root.integrated ? 1 : reveal
   transform: Translate { x: root.integrated ? 0 : (1 - root.reveal) * Style.space(16) * 1 }
   // As its own island it sizes its own ends: the bar draws the pill a little
-  // in from the slot, and the slot is sized so the pill hugs what it shows,
-  // half the pill's height clear of it either side
+  // in from the slot (tileEnd). Paused, the pill is a circle with the app's
+  // halo in its middle; playing, it runs on to the right just far enough for
+  // the bars, the halo staying in its round end.
   readonly property bool capsulePadded: !root.separate
+  readonly property real tileEnd: 2 + Style.bar.widgetGap / 2
+  readonly property real haloSize: root.separate ? root.capsuleHeight - Style.space(6) : Style.space(25)
+  readonly property real haloInset: (root.capsuleHeight - root.haloSize) / 2
   implicitWidth: !visible ? 0
-    : root.separate ? mediaContent.implicitWidth + root.capsuleHeight + 4
+    : root.separate ? root.capsuleHeight + (root.playing ? Style.space(5) + Style.space(22) + root.haloInset + Style.space(2) : 0) + 4
     : Style.space(root.playing ? 62 : 40)
   implicitHeight: root.barSize
   Behavior on implicitWidth {
@@ -194,13 +198,17 @@ BarWidget {
 
     Row {
       id: mediaContent
-      anchors.centerIn: parent
+      // Separate, from the round end; otherwise centered
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.horizontalCenter: root.separate ? undefined : parent.horizontalCenter
+      anchors.left: root.separate ? parent.left : undefined
+      anchors.leftMargin: root.tileEnd + root.haloInset
       spacing: Style.space(5)
 
       Item {
         id: compactAppMark
         anchors.verticalCenter: parent.verticalCenter
-        width: Style.space(25)
+        width: root.haloSize
         height: width
 
         Rectangle {
@@ -287,7 +295,8 @@ BarWidget {
               property real level: 0.24 + index * 0.07
 
               Rectangle {
-                anchors.bottom: parent.bottom
+                // From the middle, both ways, level with the app's mark
+                anchors.verticalCenter: parent.verticalCenter
                 width: parent.width
                 height: Math.max(width, parent.height * spectrumSlot.level)
                 radius: width / 2
