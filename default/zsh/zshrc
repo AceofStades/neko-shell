@@ -1,0 +1,67 @@
+# neko's zsh setup: oh-my-zsh with the eastwood theme, suggestions as you
+# type and syntax highlighting. install.sh puts it in ~/.zshrc when you have
+# none; it's yours from then on.
+
+# oh-my-zsh from the package (oh-my-zsh-git), or a copy of your own
+if [[ -d $HOME/.oh-my-zsh ]]; then
+  export ZSH="$HOME/.oh-my-zsh"
+else
+  export ZSH=/usr/share/oh-my-zsh
+fi
+export EDITOR='nvim'
+export VISUAL='nvim'
+export GPG_TTY=$(tty)
+
+ZSH_THEME="eastwood"
+# The package keeps its cache out of the read-only install
+ZSH_CACHE_DIR=${XDG_CACHE_HOME:-$HOME/.cache}/oh-my-zsh
+[[ -d $ZSH_CACHE_DIR ]] || mkdir -p "$ZSH_CACHE_DIR"
+
+plugins=(
+  git
+  archlinux
+)
+# The two plugins come as oh-my-zsh custom plugins in a copy of your own, or
+# as Arch packages, sourced after it
+for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+  [[ -d ${ZSH_CUSTOM:-$ZSH/custom}/plugins/$plugin ]] && plugins+=($plugin)
+done
+
+source $ZSH/oh-my-zsh.sh
+
+for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+  (( ${plugins[(Ie)$plugin]} )) && continue
+  [[ -f /usr/share/zsh/plugins/$plugin/$plugin.zsh ]] && source /usr/share/zsh/plugins/$plugin/$plugin.zsh
+done
+unset plugin
+
+# A Pokémon to greet each terminal
+command -v pokemon-colorscripts > /dev/null && pokemon-colorscripts --no-title -s -r
+
+alias update='yay -Syu'
+alias n='nvim'
+alias :q='exit'
+alias sn='sudo nvim'
+alias timeshift='sudo timeshift'
+alias z='zeditor'
+alias c='code-insiders --ozone-platform=wayland'
+alias obsidian='obsidian --enable-features=UseOzonePlatform --ozone-platform=wayland'
+alias icat='kitten icat'
+alias open='xdg-open'
+
+# Compile and run a C or C++ file: run hello.cpp
+function run() {
+  local filename="$1"
+  local extension="${filename##*.}"
+  if [[ ! -f $filename ]]; then
+    echo "Error: File '$filename' does not exist."
+    return 1
+  fi
+  case "$extension" in
+    cpp) g++ -o "${filename%.*}" "$filename" && ./"${filename%.*}" ;;
+    c) gcc -o "${filename%.*}" "$filename" && ./"${filename%.*}" ;;
+    *) echo "Error: Unsupported file extension '$extension'." ;;
+  esac
+}
+
+export PATH=$PATH:$HOME/.spicetify:$HOME/.cargo/bin:$HOME/.local/bin

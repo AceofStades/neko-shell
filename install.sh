@@ -24,6 +24,7 @@
 #   ~/.config/hypr              either a marked block in your hyprland.lua that
 #                               loads neko, or neko's own config (yours backed
 #                               up first), as you choose
+#   ~/.zshrc                    neko's, if you switch to zsh and have none
 #
 # A fork publishing its own releases sets NEKO_RELEASES to its download URL
 # (https://github.com/<owner>/<repo>/releases/download).
@@ -1070,6 +1071,39 @@ decide_lock() {
   fi
 }
 
+# zsh as the login shell, with neko's ~/.zshrc when there's none yet
+decide_shell() {
+  local zsh_path
+  zsh_path=$(command -v zsh 2> /dev/null) || zsh_path=/usr/bin/zsh
+  if [[ $(getent passwd "$USER" | cut -d: -f7) == */zsh ]]; then
+    [[ -f $HOME/.zshrc ]] || plan_user "write ~/.zshrc (neko's starting point)" "write_zshrc"
+    return 0
+  fi
+  step "Shell"
+  say "  Your login shell is $(getent passwd "$USER" | cut -d: -f7)."
+  ask "Switch to zsh (oh-my-zsh, suggestions as you type, syntax highlighting)?" y || return 0
+  local package
+  for package in zsh zsh-autosuggestions zsh-syntax-highlighting aur:oh-my-zsh-git aur:pokemon-colorscripts-git; do
+    package_installed "$package" && continue
+    # A copy of oh-my-zsh of your own does instead
+    [[ $package == aur:oh-my-zsh-git && -d $HOME/.oh-my-zsh ]] && continue
+    if ! can_install; then
+      note "zsh needs: sudo pacman -S --needed zsh zsh-autosuggestions zsh-syntax-highlighting"
+      note "  and from the AUR: oh-my-zsh-git pokemon-colorscripts-git; then run ./install.sh again"
+      return 0
+    fi
+    want_package "$package"
+  done
+  plan_root "make zsh $USER's login shell" "chsh -s $zsh_path $(quote "$USER")"
+  [[ -f $HOME/.zshrc ]] || plan_user "write ~/.zshrc (neko's starting point)" "write_zshrc"
+  note "zsh is your shell from your next login; open a new terminal for it now."
+}
+
+write_zshrc() {
+  [[ -f $HOME/.zshrc ]] && return 0
+  cp "$NEKO_PATH/default/zsh/zshrc" "$HOME/.zshrc"
+}
+
 # ------------------------------------------------------------- the plan
 
 show_plan() {
@@ -1296,6 +1330,7 @@ case $MODE in
     decide_displays
     decide_extras
     decide_lock
+    decide_shell
 
     # Without a terminal to ask, nothing runs as root; it's printed instead
     if ! interactive; then
