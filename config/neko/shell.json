@@ -71,10 +71,6 @@
         {
           "id": "neko.power",
           "group": "status"
-        },
-        {
-          "id": "neko.control-center",
-          "hideButton": true
         }
       ]
     },
