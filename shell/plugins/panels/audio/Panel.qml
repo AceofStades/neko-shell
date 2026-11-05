@@ -286,8 +286,7 @@ Panel {
     }
     if (focusSection === "streams" && selectedIndex >= 0 && selectedIndex < displayAudioStreams.length) {
       var s = nodeFor(displayAudioStreams[selectedIndex])
-      // A notch at a time, as on the output
-      if (s && s.audio) s.audio.volume = VolumeModel.volumeForTick(VolumeModel.stepTick(VolumeModel.tickForVolume(s.audio.volume), delta > 0 ? 1 : -1, false))
+      if (s && s.audio) s.audio.volume = Math.max(0, Math.min(1.5, s.audio.volume + delta))
     }
   }
 
@@ -1189,20 +1188,18 @@ Panel {
         }
       }
 
-      // On the output's scale: sixteen notches of four fine ticks, up to 150%
+      // A continuous scale up to 150%, without the output's notches
       PanelSlider {
         bar: root.bar
         width: parent.width
-        maximum: VolumeModel.ticks
-        integer: true
-        step: 1
-        tickCount: VolumeModel.ticks / VolumeModel.ticksPerStep + 1
-        fineCount: VolumeModel.ticksPerStep
-        value: VolumeModel.tickForVolume(streamRow.streamVolume)
+        minimum: 0
+        maximum: 1.5
+        step: 0.05
+        value: streamRow.streamVolume
         opacity: streamRow.streamMuted ? 0.5 : 1.0
 
         onMoved: function(v) {
-          if (streamRow.node && streamRow.node.audio) streamRow.node.audio.volume = VolumeModel.volumeForTick(v)
+          if (streamRow.node && streamRow.node.audio) streamRow.node.audio.volume = v
         }
         onRightClicked: {
           if (streamRow.node && streamRow.node.audio)
