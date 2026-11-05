@@ -224,6 +224,7 @@ Singleton {
   readonly property bool mediaShown: mediaPlayer !== null && (mediaIconHovered || hovered || mediaCloseTimer.running)
 
   function showMedia(player) {
+    clockRequested = ""
     mediaPlayer = player
     mediaIconHovered = true
     mediaCloseTimer.stop()
@@ -386,6 +387,7 @@ Singleton {
   }
 
   function showPomodoro() {
+    clockRequested = ""
     pomodoroRequested = true
     pomodoroIconHovered = true
     pomodoroCloseTimer.stop()
@@ -485,10 +487,136 @@ Singleton {
 
   Component.onCompleted: Qt.callLater(function() { pomodoroStateFile.reload(); root.readFullscreen() })
 
-  // What the island shows: "settings", "faceauth", "osd", "pomodoro",
-  // "media", "notification" or "" (the workspaces). The settings window,
-  // grown out of it, holds it while open; then face unlock, asking for you;
-  // a passing OSD outranks the card the pointer asked for, which outranks a
-  // notification.
-  readonly property string mode: !active ? "" : settingsOpen ? "settings" : faceAuth !== "" ? "faceauth" : osdShown ? "osd" : pomodoroShown ? "pomodoro" : mediaShown ? "media" : current ? "notification" : ""
+  // ---------- Clock ----------
+  // neko-clock's timers and stopwatch, read once here for every screen's
+  // tiles and cards. neko-clock keeps time and rings; this only draws.
+  property var clockState: ({ timers: [], alarms: [], stopwatch: { running: false, startedAt: 0, accumulatedMs: 0, laps: [] }, ringing: [] })
+  property double clockNow: Date.now()
+
+  FileView {
+    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/neko/clock.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try { root.clockState = JSON.parse(text()) } catch (error) {}
+    }
+  }
+
+  // The timer closest to done, else one that's paused, so it isn't forgotten
+  readonly property var clockTimer: {
+    var running = null, paused = null
+    var timers = clockState.timers || []
+    for (var i = 0; i < timers.length; i++) {
+      var timer = timers[i]
+      if (timer.state === "running" && (!running || timer.endsAt < running.endsAt)) running = timer
+      if (timer.state === "paused" && !paused) paused = timer
+    }
+    return running || paused
+  }
+  readonly property bool clockRinging: (clockState.ringing || []).length > 0
+  readonly property bool timerRunning: !!clockTimer && clockTimer.state === "running"
+  readonly property bool stopwatchRunning: clockState.stopwatch.running === true
+  readonly property bool stopwatchPresent: stopwatchRunning || clockState.stopwatch.accumulatedMs > 0
+  readonly property real timerRemaining: !clockTimer ? 0
+    : clockTimer.state === "running" ? Math.max(0, clockTimer.endsAt - clockNow) : clockTimer.remainingMs
+  readonly property real timerFraction: clockTimer && clockTimer.durationMs > 0 ? timerRemaining / clockTimer.durationMs : 0
+  readonly property real stopwatchElapsed: clockState.stopwatch.accumulatedMs
+    + (stopwatchRunning ? Math.max(0, clockNow - clockState.stopwatch.startedAt) : 0)
+
+  Timer {
+    interval: 250
+    repeat: true
+    running: root.timerRunning || root.stopwatchRunning
+    onTriggered: root.clockNow = Date.now()
+  }
+
+  function clockText(ms, roundUp) {
+    var total = roundUp ? Math.ceil(Math.max(0, ms) / 1000) : Math.floor(Math.max(0, ms) / 1000)
+    var hours = Math.floor(total / 3600), minutes = Math.floor(total / 60) % 60, seconds = total % 60
+    var pad = function(value) { return (value < 10 ? "0" : "") + value }
+    return hours > 0 ? hours + ":" + pad(minutes) + ":" + pad(seconds) : minutes + ":" + pad(seconds)
+  }
+
+  function clock(args) {
+    Quickshell.execDetached(["neko-clock"].concat(args))
+  }
+
+  // Which tile beside the island shows its time; the rest show a ring. Something
+  // ringing first, as it wants you; then what's running, Pomodoro before a
+  // timer before the stopwatch; with nothing running, the first that's there.
+  readonly property string activeTile: {
+    if (clockRinging) return "timer"
+    if (pomodoroRunning) return "pomodoro"
+    if (timerRunning) return "timer"
+    if (stopwatchRunning) return "stopwatch"
+    if (pomodoroActive) return "pomodoro"
+    if (clockTimer) return "timer"
+    if (stopwatchPresent) return "stopwatch"
+    return ""
+  }
+
+  // A timer's or the stopwatch's card, while the pointer is on its tile or
+  // on the card, as the Pomodoro's
+  property string clockRequested: ""
+  property bool clockIconHovered: false
+  readonly property string clockShown: clockRequested !== "" && (clockIconHovered || hovered || clockCloseTimer.running) ? clockRequested : ""
+
+  function showClock(kind) {
+    clockRequested = kind
+    clockIconHovered = true
+    clockCloseTimer.stop()
+  }
+
+  function leaveClockIcon() {
+    clockIconHovered = false
+    if (!hovered) clockCloseTimer.restart()
+  }
+
+  onClockRequestedChanged: if (clockRequested !== "") { pomodoroRequested = false; mediaPlayer = null }
+
+  Timer {
+    id: clockCloseTimer
+    interval: 350
+    onTriggered: if (!root.clockIconHovered && !root.hovered) root.clockRequested = ""
+  }
+
+  ShellIpc {
+    target: "clock"
+
+    // The timer's or the stopwatch's card, as hovering its tile opens it
+    function show(kind: string): string {
+      if (kind !== "timer" && kind !== "stopwatch") return "unknown card: " + kind
+      root.clockRequested = kind
+      root.clockIconHovered = true
+      clockCloseTimer.stop()
+      return "ok"
+    }
+
+    function hide(): string {
+      root.clockIconHovered = false
+      root.clockRequested = ""
+      clockCloseTimer.stop()
+      return "ok"
+    }
+
+    function active(): string {
+      return root.activeTile
+    }
+  }
+
+  Connections {
+    target: root
+    function onHoveredChanged() {
+      if (!root.hovered && !root.clockIconHovered && root.clockRequested !== "") clockCloseTimer.restart()
+    }
+  }
+
+  // What the island shows: "settings", "faceauth", "osd", "pomodoro", "timer",
+  // "stopwatch", "media", "notification" or "" (the workspaces). The settings
+  // window, grown out of it, holds it while open; then face unlock, asking for
+  // you; a passing OSD outranks the card the pointer asked for, which outranks
+  // a notification.
+  readonly property string mode: !active ? "" : settingsOpen ? "settings" : faceAuth !== "" ? "faceauth" : osdShown ? "osd"
+    : pomodoroShown ? "pomodoro" : clockShown !== "" ? clockShown : mediaShown ? "media" : current ? "notification" : ""
 }

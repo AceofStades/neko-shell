@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.stopwatch",
+  "name": "Stopwatch",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "The stopwatch beside the island, its time when it leads, else a ring",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Stopwatch.qml"
+  },
+  "barWidget": {
+    "displayName": "Stopwatch",
+    "description": "The stopwatch beside the island, its time when it leads, else a ring",
+    "category": "Productivity",
+    "allowMultiple": false
+  }
+}

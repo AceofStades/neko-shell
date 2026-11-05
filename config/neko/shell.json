@@ -45,6 +45,10 @@
         {
           "id": "neko.timers",
           "separate": true
+        },
+        {
+          "id": "neko.stopwatch",
+          "separate": true
         }
       ],
       "right": [

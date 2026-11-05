@@ -264,16 +264,19 @@ BarWidget {
     Rectangle {
       id: pill
       readonly property real targetWidth: root.islandMode === "media" ? Style.space(460)
-        : root.islandMode === "pomodoro" ? Style.space(400)
+        : root.islandMode === "pomodoro" || root.islandMode === "timer" || root.islandMode === "stopwatch" ? Style.space(400)
         : root.islandMode === "notification" ? Style.space(410)
         : root.islandMode === "osd" ? root.osdWidth
         : root.islandMode === "faceauth" ? Style.space(120) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
+        : root.islandMode === "timer" ? timerView.implicitHeight
+        : root.islandMode === "stopwatch" ? stopwatchView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
         : root.islandMode === "osd" || root.islandMode === "faceauth" ? Style.space(80) : root.restHeight
 
       readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
+        || root.islandMode === "timer" || root.islandMode === "stopwatch"
       readonly property real targetRadius: card ? Style.space(26) : height / 2
       x: Math.round((island.width - width) / 2)
       y: root.restTopInset
@@ -1125,6 +1128,86 @@ BarWidget {
         }
       }
 
+      // A timer's card, as the Pomodoro's: the time left in a dial, what it is
+      // and when it ends beside it, and its controls; ringing, stop or snooze
+      ClockCard {
+        id: timerView
+        mode: "timer"
+        fraction: Island.timerFraction
+        live: Island.timerRunning
+        time: Island.clockRinging ? "0:00" : Island.clockText(Island.timerRemaining, true)
+        timeLabel: "REMAINING"
+        glyph: Island.clockRinging ? "󰂞" : "󰔟"
+        title: Island.clockRinging ? "RINGING" : "TIMER"
+        badge: {
+          var count = (Island.clockState.timers || []).filter(function(t) { return t.state !== "done" }).length
+          return count > 1 ? count + " TIMERS" : ""
+        }
+        headline: Island.clockRinging ? (Island.clockState.ringing[0].label || (Island.clockState.ringing[0].kind === "timer" ? "Time's up" : "Alarm"))
+          : Island.clockTimer ? (Island.clockTimer.label || "Timer") : "No timer"
+        status: Island.clockRinging ? "Stop it, or snooze five minutes"
+          : !Island.clockTimer ? ""
+          : Island.timerRunning ? "Ends at " + Qt.formatTime(new Date(Island.clockTimer.endsAt), "HH:mm") + "  •  " + Island.clockText(Island.clockTimer.durationMs, true) + " in all"
+          : "Paused  •  " + Island.clockText(Island.clockTimer.durationMs, true) + " in all"
+
+        PomodoroButton {
+          glyph: Island.clockRinging ? "󰒲" : "󰑓"
+          enabled: Island.clockRinging || !!Island.clockTimer
+          onClicked: Island.clockRinging ? Island.clock(["snooze"]) : Island.clock(["timer-restart", Island.clockTimer.id])
+        }
+        PomodoroButton {
+          glyph: Island.clockRinging ? "󰓛" : Island.timerRunning ? "󰏤" : "󰐊"
+          label: Island.clockRinging ? "Stop" : Island.timerRunning ? "Pause" : "Resume"
+          primary: true
+          enabled: Island.clockRinging || !!Island.clockTimer
+          onClicked: {
+            if (Island.clockRinging) Island.clock(["dismiss"])
+            else if (Island.clockTimer) Island.clock([Island.timerRunning ? "timer-pause" : "timer-resume", Island.clockTimer.id])
+          }
+        }
+        PomodoroButton {
+          glyph: "󰅖"
+          enabled: !Island.clockRinging && !!Island.clockTimer
+          onClicked: Island.clock(["timer-remove", Island.clockTimer.id])
+        }
+      }
+
+      // The stopwatch's card: the time in a dial that sweeps once a minute,
+      // its laps beside it, and its controls
+      ClockCard {
+        id: stopwatchView
+        readonly property var laps: Island.clockState.stopwatch.laps || []
+        mode: "stopwatch"
+        fraction: (Island.stopwatchElapsed % 60000) / 60000
+        live: Island.stopwatchRunning
+        time: Island.clockText(Island.stopwatchElapsed, false)
+        timeLabel: "ELAPSED"
+        glyph: "󱎫"
+        title: "STOPWATCH"
+        badge: laps.length > 0 ? laps.length + (laps.length === 1 ? " LAP" : " LAPS") : ""
+        headline: Island.stopwatchRunning ? "Keeping time" : Island.stopwatchPresent ? "Paused" : "Ready when you are"
+        status: laps.length > 0
+          ? "Last lap " + Island.clockText(laps[laps.length - 1] - (laps.length > 1 ? laps[laps.length - 2] : 0), false)
+          : "Lap to mark a split"
+
+        PomodoroButton {
+          glyph: "󰑓"
+          enabled: Island.stopwatchPresent
+          onClicked: Island.clock(["stopwatch-reset"])
+        }
+        PomodoroButton {
+          glyph: Island.stopwatchRunning ? "󰏤" : "󰐊"
+          label: Island.stopwatchRunning ? "Pause" : Island.stopwatchPresent ? "Resume" : "Start"
+          primary: true
+          onClicked: Island.clock(["stopwatch-toggle"])
+        }
+        PomodoroButton {
+          glyph: "󰌖"
+          enabled: Island.stopwatchRunning
+          onClicked: Island.clock(["stopwatch-lap"])
+        }
+      }
+
       // The newest notification: its icon, the app, the summary and the body
       Item {
         id: notificationView
@@ -1332,6 +1415,185 @@ BarWidget {
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
       onClicked: mediaButton.clicked()
+    }
+  }
+
+  // A clock card in the island, laid out as the Pomodoro's: a dial with the
+  // time, a mark and a badge, a headline, a status line, and the buttons it holds
+  component ClockCard: Item {
+    id: clockCard
+    property string mode: ""
+    property real fraction: 0
+    property bool live: false
+    property string time: ""
+    property string timeLabel: ""
+    property string glyph: ""
+    property string title: ""
+    property string badge: ""
+    property string headline: ""
+    property string status: ""
+    default property alias buttons: buttonRow.data
+
+    anchors.fill: parent
+    implicitHeight: Style.space(168)
+    opacity: root.islandMode === mode ? 1 : 0
+    visible: opacity > 0
+    Behavior on opacity { NumberAnimation { duration: Style.duration(220) } }
+
+    Item {
+      id: clockDial
+      x: Style.space(16)
+      y: Style.space(16)
+      width: Style.space(136)
+      height: width
+      readonly property real arcRadius: width / 2 - Style.space(10)
+      readonly property bool hasProgress: clockCard.fraction > 0.002
+
+      Rectangle {
+        anchors.centerIn: parent
+        width: parent.width - Style.space(28)
+        height: width
+        radius: width / 2
+        color: Util.alpha(root.islandText, 0.035)
+        border.width: 1
+        border.color: Util.alpha(root.islandText, 0.055)
+      }
+
+      Shape {
+        anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+          strokeWidth: Style.space(6)
+          strokeColor: Util.alpha(root.islandText, 0.13)
+          fillColor: "transparent"
+          capStyle: ShapePath.RoundCap
+          PathAngleArc { centerX: clockDial.width / 2; centerY: clockDial.height / 2; radiusX: clockDial.arcRadius; radiusY: clockDial.arcRadius; startAngle: -90; sweepAngle: 360 }
+        }
+        ShapePath {
+          strokeWidth: Style.space(14)
+          strokeColor: clockDial.hasProgress ? Util.alpha(root.accent, 0.14) : "transparent"
+          fillColor: "transparent"
+          capStyle: ShapePath.RoundCap
+          PathAngleArc { centerX: clockDial.width / 2; centerY: clockDial.height / 2; radiusX: clockDial.arcRadius; radiusY: clockDial.arcRadius; startAngle: -90; sweepAngle: 360 * clockCard.fraction }
+        }
+        ShapePath {
+          strokeWidth: Style.space(6)
+          strokeColor: clockDial.hasProgress ? (clockCard.live ? root.accent : root.islandDim) : "transparent"
+          fillColor: "transparent"
+          capStyle: ShapePath.RoundCap
+          PathAngleArc { centerX: clockDial.width / 2; centerY: clockDial.height / 2; radiusX: clockDial.arcRadius; radiusY: clockDial.arcRadius; startAngle: -90; sweepAngle: 360 * clockCard.fraction }
+        }
+      }
+
+      Column {
+        anchors.centerIn: parent
+        spacing: Style.space(1)
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: clockCard.time
+          color: root.islandText
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.pixelSize: clockCard.time.length > 5 ? Style.font.display : Style.font.displayLarge
+          font.weight: Font.Bold
+          font.features: { "tnum": 1 }
+        }
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: clockCard.timeLabel
+          color: root.islandDim
+          font.pixelSize: Style.font.caption - 1
+          font.weight: Font.DemiBold
+          font.letterSpacing: Style.spaceReal(0.7)
+        }
+      }
+
+      Rectangle {
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Style.space(8)
+        width: Style.space(7)
+        height: width
+        radius: width / 2
+        color: clockCard.live ? root.accent : root.islandDim
+        SequentialAnimation on opacity {
+          running: clockCard.visible && clockCard.live
+          loops: Animation.Infinite
+          NumberAnimation { to: 0.35; duration: 850; easing.type: Easing.InOutSine }
+          NumberAnimation { to: 1; duration: 850; easing.type: Easing.InOutSine }
+        }
+      }
+    }
+
+    Item {
+      x: Style.space(170)
+      y: Style.space(17)
+      width: parent.width - x - Style.space(18)
+      height: parent.height - Style.space(32)
+
+      Row {
+        spacing: Style.space(7)
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: clockCard.glyph
+          color: root.accent
+          font.family: root.bar ? root.bar.fontFamily : Style.font.family
+          font.pixelSize: Style.font.title
+        }
+        Text {
+          anchors.verticalCenter: parent.verticalCenter
+          text: clockCard.title
+          color: root.accent
+          font.pixelSize: Style.font.caption
+          font.weight: Font.Bold
+          font.letterSpacing: Style.spaceReal(0.8)
+        }
+      }
+
+      Rectangle {
+        anchors.right: parent.right
+        y: -Style.space(2)
+        visible: clockCard.badge !== ""
+        width: badgeLabel.implicitWidth + Style.space(14)
+        height: Style.space(24)
+        radius: height / 2
+        color: Util.alpha(root.islandText, 0.065)
+        border.width: 1
+        border.color: Util.alpha(root.islandText, 0.08)
+        Text {
+          id: badgeLabel
+          anchors.centerIn: parent
+          text: clockCard.badge
+          color: root.islandDim
+          font.pixelSize: Style.font.caption - 1
+          font.weight: Font.Bold
+          font.letterSpacing: Style.spaceReal(0.4)
+        }
+      }
+
+      Text {
+        y: Style.space(34)
+        width: parent.width
+        text: clockCard.headline
+        color: root.islandText
+        font.pixelSize: Style.font.title + 2
+        font.weight: Font.Bold
+        elide: Text.ElideRight
+      }
+
+      Text {
+        y: Style.space(59)
+        width: parent.width
+        text: clockCard.status
+        color: root.islandDim
+        font.pixelSize: Style.font.bodySmall
+        elide: Text.ElideRight
+      }
+
+      Row {
+        id: buttonRow
+        y: Style.space(105)
+        spacing: Style.space(8)
+      }
     }
   }
 

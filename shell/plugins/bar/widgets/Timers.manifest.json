@@ -4,7 +4,7 @@
   "name": "Timers",
   "version": "1.0.0",
   "author": "Neko",
-  "description": "What the clock has running beside the island: a timer, the stopwatch, an alarm ringing",
+  "description": "The timer closest to done beside the island, and what is ringing; its time when it leads, else a ring",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "Timers",
-    "description": "What the clock has running beside the island: a timer, the stopwatch, an alarm ringing",
+    "description": "The timer closest to done beside the island, and what is ringing; its time when it leads, else a ring",
     "category": "Productivity",
     "allowMultiple": false
   }

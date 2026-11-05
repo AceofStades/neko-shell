@@ -18,6 +18,9 @@ BarWidget {
   readonly property bool sessionActive: Island.pomodoroActive
   readonly property bool sessionRunning: Island.pomodoroRunning
   readonly property string clock: Island.pomodoroClock(Island.pomodoroRemaining)
+  // One tile beside the island shows its time; the others only their ring
+  readonly property bool tileActive: Island.activeTile === "pomodoro"
+  readonly property bool showsClock: sessionActive && tileActive
 
   // Only while a session is on; the control center and the menu start one
   visible: !root.vertical && (root.sessionActive || Island.mode === "pomodoro")
@@ -35,7 +38,7 @@ BarWidget {
   onShownBesideChanged: root.reveal = shownBeside ? 1 : 0
   opacity: root.integrated ? 1 : reveal
   transform: Translate { x: root.integrated ? 0 : (1 - root.reveal) * Style.space(16) * -1 }
-  implicitWidth: sessionActive ? Style.space(92) : Style.space(40)
+  implicitWidth: showsClock ? Style.space(92) : Style.space(40)
   implicitHeight: root.barSize
   Behavior on implicitWidth {
     enabled: !Style.reduceMotion
@@ -218,7 +221,7 @@ BarWidget {
 
       Text {
         anchors.verticalCenter: parent.verticalCenter
-        visible: root.sessionActive
+        visible: root.showsClock
         text: root.clock
         color: button.foreground
         opacity: root.sessionActive && !root.sessionRunning ? 0.65 : 1
