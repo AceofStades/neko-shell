@@ -54,7 +54,7 @@ Panel {
   property string rotation: ""
   property string wallpaper: ""
   property string colors: ""
-  // "" for the main page, or "wallpaper" or "display" for their settings
+  // "" for the main page, or "wallpaper", "display" or "timers" for theirs
   property string page: ""
   // The wallpaper's file name, readable: "a_red_alien.png" reads "a red alien"
   readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
@@ -819,11 +819,19 @@ Panel {
               label: "Pomodoro"
               subtitle: Island.pomodoroActive ? Island.pomodoroTitle + " · " + Island.pomodoroClock(Island.pomodoroRemaining) + (Island.pomodoroRunning ? "" : " paused") : "Start a focus session"
               active: Island.pomodoroActive
-              Layout.columnSpan: root.recorderInstalled ? 1 : 2
               onClicked: Island.togglePomodoro()
             }
             QuickTile {
+              icon: "󰔟"
+              label: "Timers"
+              subtitle: timersPage.summary
+              active: timersPage.busy
+              opensPage: true
+              onClicked: root.page = "timers"
+            }
+            QuickTile {
               visible: root.recorderInstalled
+              Layout.columnSpan: 2
               icon: "󰑊"
               label: "Screen record"
               subtitle: root.recording ? "Recording" : "Off"
@@ -986,6 +994,26 @@ Panel {
           options: [ { value: "material", label: "From wallpaper" }, { value: "neko", label: "Neko" } ]
           value: root.colors
           onChanged: function(v) { root.act("neko-settings set colors " + v) }
+        }
+      }
+
+      // The timers page scrolls inside the card, as the display page does
+      Flickable {
+        anchors.fill: parent
+        visible: root.page === "timers"
+        contentHeight: timersPage.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        TimersPage {
+          id: timersPage
+          width: parent.width
+          shown: root.opened && root.page === "timers"
+          foreground: root.foreground
+          dim: root.dim
+          accent: root.accent
+          fontFamily: root.fontFamily
+          onBack: root.page = ""
         }
       }
 
