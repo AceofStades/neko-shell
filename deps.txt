@@ -1,5 +1,5 @@
 # What neko needs, as Arch Linux packages. install.sh reads this file to say
-# what's missing; it installs no packages itself.
+# what's missing, and installs them only with your yes.
 #
 # Columns: package, need, command that shows it's there, what it's for.
 #   need is "required" (neko won't run right without it), "recommended" (a
@@ -31,6 +31,7 @@ matugen                 recommended  matugen              Colors from the wallpa
 grim                    recommended  grim                 Screenshots
 slurp                   recommended  slurp                Picking a region to capture
 wl-clipboard            recommended  wl-copy              Copying captures and the clipboard manager
+wtype                   recommended  wtype                Pasting from the clipboard history and the emoji picker
 noto-fonts-cjk          recommended  lang:ja              The kanji workspace names
 
 # One feature each
