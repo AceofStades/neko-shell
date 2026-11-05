@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# neko:summary=Step screen brightness along a perceptual curve and show it on the OSD
+# neko:summary=Step the focused display's brightness along a perceptual curve and show it on the OSD
 # neko:args=<up|down|fine-up|fine-down|set <0-64>|get> [--no-osd]
 # neko:examples=neko-brightness-step up|neko-brightness-step fine-down|neko-brightness-step set 32|neko-brightness-step get
 
@@ -12,6 +12,9 @@
 #
 # `set` moves straight to a tick and `get` prints the current one, so sliders
 # can work on the same 0-64 scale.
+#
+# It works on the focused display: a laptop panel through its backlight, any
+# other display over DDC/CI, its brightness running 1-100% along the same curve.
 
 usage() {
   echo "Usage: neko-brightness-step <up|down|fine-up|fine-down|set <0-64>|get> [--no-osd]" >&2
@@ -44,11 +47,38 @@ case $action in
   *) usage ;;
 esac
 
-# device,class,current,percent,max
-IFS=, read -r _ _ current _ max < <(brightnessctl -m)
-if [[ -z $current || -z $max ]]; then
-  echo "No backlight found" >&2
-  exit 1
+monitor=$(neko-hyprland-monitor-focused 2>/dev/null || true)
+ddc=0
+if [[ -n $monitor && ! $monitor =~ ^(eDP|LVDS|DSI)- ]]; then
+  ddc=1
+fi
+
+# A held key repeats faster than DDC/CI answers; drop the presses that overlap
+if [[ $action != "get" ]]; then
+  exec {lock_fd}>"${XDG_RUNTIME_DIR:-/tmp}/neko-brightness-step.lock"
+  flock -n "$lock_fd" || exit 0
+fi
+
+if (( ddc )); then
+  current=$(neko-brightness-display-ddc "$monitor" 2>/dev/null)
+  max=100
+  if [[ ! $current =~ ^[0-9]+$ ]]; then
+    echo "No DDC/CI brightness on $monitor" >&2
+    exit 1
+  fi
+else
+  # The backlight itself: brightnessctl alone takes the first device it finds,
+  # which can be a keyboard or network port LED
+  device=$(neko-hw-display) || {
+    echo "No backlight found" >&2
+    exit 1
+  }
+  # device,class,current,percent,max
+  IFS=, read -r _ _ current _ max < <(brightnessctl -d "$device" -m)
+  if [[ -z $current || -z $max ]]; then
+    echo "No backlight found" >&2
+    exit 1
+  fi
 fi
 
 read -r step raw < <(awk -v current="$current" -v max="$max" -v delta="$delta" -v tick="$tick" '
@@ -86,11 +116,12 @@ if [[ $action == "get" ]]; then
   exit 0
 fi
 
-brightnessctl -q set "$raw"
+if (( ddc )); then
+  neko-brightness-display-ddc "$monitor" "$raw%" >/dev/null || exit 1
+else
+  brightnessctl -q -d "$device" set "$raw"
+fi
 
-# The OSD shows the tick: "8" on a full step, "8.2" two fine steps past it
 if (( osd )); then
-  label=$(( step / 4 ))
-  (( step % 4 )) && label+=".$(( step % 4 ))"
-  neko-osd -i brightness -p "$step" --max 64 --label "$label"
+  neko-osd -i brightness -p "$step" --max 64
 fi
