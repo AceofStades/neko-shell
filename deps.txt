@@ -33,6 +33,7 @@ slurp                   recommended  slurp                Picking a region to ca
 wl-clipboard            recommended  wl-copy              Copying captures and the clipboard manager
 wtype                   recommended  wtype                Pasting from the clipboard history and the emoji picker
 noto-fonts-cjk          recommended  lang:ja              The kanji workspace names
+noto-fonts-emoji        recommended  font:Noto_Color_Emoji The emoji picker, and emoji anywhere in the shell
 
 # One feature each
 rust                    optional     cargo                Builds neko-core from source (install.sh downloads the release build otherwise)
