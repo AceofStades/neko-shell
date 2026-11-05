@@ -228,9 +228,25 @@ PanelWindow {
   // which grow down out of their group.
   readonly property bool islandMorph: !!bar && barPos === "top" && !centerOnBar && typeof bar.isIslandMorphItem === "function"
     && bar.isIslandMorphItem(anchorItem)
-  readonly property bool grown: attached || islandMorph
+  // Floating, a side group's panel grows out of its group the same way: the
+  // card starts as the group's capsule, drops below the bar as it springs to
+  // its size, and goes back up into the capsule as it closes. The group stays
+  // where it is, unlike the island, which becomes its panel.
+  readonly property bool groupMorphCandidate: !!bar && barPos === "top" && !attached && !centerOnBar && !islandMorph
+    && typeof bar.groupSpan === "function"
+  readonly property bool groupMorph: groupMorphCandidate && !!groupSpan
+  readonly property bool morph: islandMorph || groupMorph
+  readonly property bool grown: attached || morph
+  // From the capsule's tint to the panel's as it leaves the group
+  readonly property color groupRestColor: bar && bar.glass === true && bar.glassCapsule !== undefined
+    ? bar.glassCapsule : NekoColor.bar.capsule
+  property color groupMorphColor: islandExpanded ? NekoColor.popups.background : groupRestColor
+  Behavior on groupMorphColor {
+    enabled: root.groupMorph && !Style.reduceMotion
+    ColorAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic }
+  }
   readonly property color surfaceColor: islandMorph && bar && bar.glassIslandCapsule !== undefined
-    ? bar.glassIslandCapsule : attachedColor
+    ? bar.glassIslandCapsule : groupMorph ? groupMorphColor : attachedColor
   readonly property real snapReach: Style.space(40)
   readonly property bool snappedLeft: attached && cardOrigin.x <= 0.5
   readonly property bool snappedRight: attached && cardOrigin.x + contentWidth >= screenW - 0.5
@@ -238,7 +254,7 @@ PanelWindow {
   // group's ends when it comes near them
   readonly property var groupSpan: {
     anchorWatcher.transform
-    return grown && bar && typeof bar.groupSpan === "function" ? bar.groupSpan(anchorItem) : null
+    return (attached || islandMorph || groupMorphCandidate) && bar && typeof bar.groupSpan === "function" ? bar.groupSpan(anchorItem) : null
   }
   readonly property bool groupFits: !!groupSpan && groupSpan.right - groupSpan.left >= contentWidth
   // A floating bar sits barInset in from the screen's edges (none attached)
@@ -254,19 +270,27 @@ PanelWindow {
   // Floating, the island is a pill that rounds off to a card as it opens
   property real islandRadius: islandExpanded ? Style.space(26) : islandRestHeight / 2
   Behavior on islandRadius {
-    enabled: root.islandMorph && !root.attached && !Style.reduceMotion
+    enabled: root.morph && !root.attached && !Style.reduceMotion
     NumberAnimation { duration: Style.duration(260); easing.type: Easing.OutCubic }
   }
-  readonly property real islandTargetX: Math.round(Math.max(0, Math.min(screenW - contentWidth, screenW / 2 - contentWidth / 2)))
-  property real islandCardX: islandMorph ? (islandExpanded ? islandTargetX : islandRestX) : cardOrigin.x
-  property real islandCardWidth: islandMorph ? (islandExpanded ? contentWidth : islandRestWidth) : contentWidth
+  // The island's panels open centered; a group's, under the widget clicked
+  readonly property real islandTargetX: groupMorph ? cardOrigin.x
+    : Math.round(Math.max(0, Math.min(screenW - contentWidth, screenW / 2 - contentWidth / 2)))
+  property real islandCardX: morph ? (islandExpanded ? islandTargetX : islandRestX) : cardOrigin.x
+  property real islandCardWidth: morph ? (islandExpanded ? contentWidth : islandRestWidth) : contentWidth
+  // The island grows down from where it rests; a group's card drops clear of the bar
+  property real islandCardY: groupMorph && islandExpanded ? cardOrigin.y : islandRestY
 
   Behavior on islandCardX {
-    enabled: root.islandMorph && !Style.reduceMotion
+    enabled: root.morph && !Style.reduceMotion
     SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
   Behavior on islandCardWidth {
-    enabled: root.islandMorph && !Style.reduceMotion
+    enabled: root.morph && !Style.reduceMotion
+    SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
+  }
+  Behavior on islandCardY {
+    enabled: root.groupMorph && !Style.reduceMotion
     SpringAnimation { spring: Style.spring.stiffness; damping: Style.spring.damping; epsilon: Style.spring.epsilon }
   }
   // Flush with the group's inner end, it runs straight down from it: no
@@ -297,7 +321,7 @@ PanelWindow {
   // How far it has grown: a spring to the card's height as it opens, back to
   // nothing as it closes; the contents, at their full size, are clipped to it
   property real shownHeight: grown
-    ? (islandMorph ? (islandExpanded ? contentHeight : islandRestHeight) : open ? contentHeight : 0)
+    ? (morph ? (islandExpanded ? contentHeight : islandRestHeight) : open ? contentHeight : 0)
     : contentHeight
   Behavior on shownHeight {
     enabled: root.grown && !Style.reduceMotion
@@ -384,12 +408,13 @@ PanelWindow {
   // Coordinate on `open`, not `visible`. `visible` lags into the fade-out
   // animation, which made ownership transfer to a sibling popup race.
   onOpenChanged: {
-    if (islandMorph) {
+    if (morph) {
       if (open) {
         islandMorphOut.stop()
         islandExpanded = false
         islandSurfaceShown = true
-        if (bar && typeof bar.beginIslandPanelMorph === "function")
+        // Only the island hands its group over; a side group stays in place
+        if (islandMorph && bar && typeof bar.beginIslandPanelMorph === "function")
           bar.beginIslandPanelMorph(coordinatorKey, anchorWindow)
         islandMorphIn.restart()
       } else if (islandSurfaceShown) {
@@ -631,16 +656,19 @@ PanelWindow {
 
   BorderSurface {
     id: card
-    x: root.islandMorph ? root.islandCardX : root.cardOrigin.x
-    y: root.islandMorph ? root.islandRestY : root.cardOrigin.y
-    width: root.islandMorph ? root.islandCardWidth : root.contentWidth
+    x: root.morph ? root.islandCardX : root.cardOrigin.x
+    y: root.morph ? root.islandCardY : root.cardOrigin.y
+    width: root.morph ? root.islandCardWidth : root.contentWidth
     height: root.grown ? root.shownHeight : root.contentHeight
     clip: root.grown
     color: root.grown ? "transparent" : NekoColor.popups.background
     borderSpec: root.grown ? Border.none() : root.borderSpec
     padding: root.padding
     radius: Style.cornerRadius
+    // A group's card comes in as it leaves the capsule and fades back into it,
+    // so the group never shows doubled
     opacity: root.islandMorph ? (root.islandSurfaceShown ? 1.0 : 0)
+      : root.groupMorph ? (root.islandExpanded ? 1.0 : 0)
       : root.grown ? (root.open || root.shownHeight > 0.5 ? 1.0 : 0)
       : (root.open || root.popoutSwitching ? 1.0 : 0)
 
@@ -652,14 +680,16 @@ PanelWindow {
       color: root.surfaceColor
       // Floating, the island is a pill all round that rounds off to a card;
       // attached, it hangs flat from the screen's edge
-      topLeftRadius: root.islandMorph ? (root.attached ? 0 : root.islandRadius) : root.overhangsStart ? root.freeCorner : 0
-      topRightRadius: root.islandMorph ? (root.attached ? 0 : root.islandRadius) : root.overhangsEnd ? root.freeCorner : 0
-      bottomLeftRadius: root.islandMorph ? (root.attached ? Style.space(26) : root.islandRadius) : root.snappedLeft ? 0 : Style.space(18)
-      bottomRightRadius: root.islandMorph ? (root.attached ? Style.space(26) : root.islandRadius) : root.snappedRight ? 0 : Style.space(18)
+      topLeftRadius: root.morph ? (root.attached ? 0 : root.islandRadius) : root.overhangsStart ? root.freeCorner : 0
+      topRightRadius: root.morph ? (root.attached ? 0 : root.islandRadius) : root.overhangsEnd ? root.freeCorner : 0
+      bottomLeftRadius: root.morph ? (root.attached ? Style.space(26) : root.islandRadius) : root.snappedLeft ? 0 : Style.space(18)
+      bottomRightRadius: root.morph ? (root.attached ? Style.space(26) : root.islandRadius) : root.snappedRight ? 0 : Style.space(18)
     }
 
     Behavior on opacity {
-      enabled: !root.popoutSwitching && !root.popoutSwitchClosing
+      // Switching panels, the old card goes back into its group as the new
+      // one comes out of its own
+      enabled: root.groupMorph || (!root.popoutSwitching && !root.popoutSwitchClosing)
       NumberAnimation { duration: Style.duration(140); easing.type: Easing.OutCubic }
     }
 
