@@ -53,6 +53,9 @@ Panel {
   property var routerPingSamples: []
   property var internetPingSamples: []
   property real routerPingLatency: -1
+  // Both halves of the connection, as neko-netlegs last timed them; null
+  // while it isn't running
+  property var legs: null
   property real internetPingLatency: -1
   property int internetPingPacketLoss: 0
   readonly property int pingHistoryWindow: 24
@@ -946,6 +949,31 @@ Panel {
     }
   }
 
+  // neko-netlegs writes its figures every second; read them while open
+  FileView {
+    id: legsFile
+    path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/neko/netlegs.json"
+    printErrors: false
+    onLoaded: {
+      try {
+        var state = JSON.parse(text())
+        // Stale: the service stopped, so its last word no longer holds
+        root.legs = state && Date.now() - (state.updatedAt || 0) < 5000 ? state : null
+      } catch (error) {
+        root.legs = null
+      }
+    }
+    onLoadFailed: root.legs = null
+  }
+
+  Timer {
+    interval: 1000
+    repeat: true
+    running: root.opened
+    triggeredOnStart: true
+    onTriggered: legsFile.reload()
+  }
+
   Timer {
     id: activeApSignalPoll
     interval: 5000
@@ -1492,6 +1520,172 @@ Panel {
         }
       }
 
+      // Both halves of the connection, timed in the background by neko-netlegs:
+      // this machine to the router, and the router to the internet, so the
+      // slow or broken half is plain to see
+      PanelSeparator {
+        visible: !!root.legs
+        foreground: root.bar.foreground
+      }
+
+      Column {
+        id: legsSection
+        visible: !!root.legs
+        width: parent.width
+        spacing: Style.space(10)
+
+        readonly property var local: root.legs && root.legs.legs ? root.legs.legs.local : ({})
+        readonly property var provider: root.legs && root.legs.legs ? root.legs.legs.provider : ({})
+        readonly property string outageSide: root.legs && root.legs.outage ? root.legs.outage.side : ""
+        readonly property var events: root.legs ? (root.legs.events || []) : []
+
+        // Slow or broken: lossy, laggy past what feels fine, or not answering
+        function troubled(figures, lag, side) {
+          if (legsSection.outageSide === side) return true
+          if (!figures || !figures.count) return false
+          return (figures.loss || 0) > 0.02 || (figures.p95 || 0) > lag
+        }
+        readonly property bool localTroubled: troubled(local, 50, "local")
+        readonly property bool providerTroubled: troubled(provider, 150, "internet")
+
+        readonly property string verdict: {
+          if (!root.legs) return ""
+          if (root.legs.status === "offline") return "No route out"
+          if (outageSide === "local") return "Your network isn't answering"
+          if (outageSide === "internet") return "Your provider is down"
+          if (localTroubled) return "Your network is " + ((local.loss || 0) > 0.02 ? "losing packets" : "slow")
+          if (providerTroubled) return "Your provider is " + ((provider.loss || 0) > 0.02 ? "losing packets" : "slow")
+          return "All good"
+        }
+
+        function ms(value) {
+          return value === undefined || value === null ? "--" : value < 10 ? value.toFixed(1) + " ms" : Math.round(value) + " ms"
+        }
+
+        // The jitter, and the loss only when there is some
+        function detail(figures) {
+          if (!figures || !figures.count) return "waiting"
+          var loss = Math.round((figures.loss || 0) * 100)
+          return "±" + legsSection.ms(figures.jitter) + (loss > 0 ? " · " + loss + "% loss" : "")
+        }
+
+        function when(at) {
+          var date = new Date(at)
+          var today = new Date()
+          var sameDay = date.toDateString() === today.toDateString()
+          return (sameDay ? "Today " : Qt.formatDate(date, "d MMM ")) + Qt.formatTime(date, "HH:mm")
+        }
+
+        function lasted(seconds) {
+          var minutes = Math.floor(seconds / 60)
+          return minutes > 0 ? minutes + "m " + (seconds % 60) + "s" : seconds + "s"
+        }
+
+        Item {
+          width: parent.width
+          implicitHeight: Math.max(legsHeader.implicitHeight, legsVerdict.implicitHeight)
+
+          PanelSectionHeader {
+            id: legsHeader
+            text: "CONNECTION"
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+          }
+
+          Text {
+            id: legsVerdict
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            text: legsSection.verdict
+            color: legsSection.verdict === "All good" ? NekoColor.accent : root.bar.urgent
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+            font.weight: Font.DemiBold
+          }
+        }
+
+        // This machine, the router and the internet, a leg between each
+        RowLayout {
+          width: parent.width
+          spacing: Style.space(6)
+
+          LegNode { glyph: "󰍹"; label: "This PC" }
+          // The same width each, whatever their figures read
+          Leg {
+            Layout.fillWidth: true
+            Layout.preferredWidth: Style.space(100)
+            figures: legsSection.local
+            history: root.legs && root.legs.history ? root.legs.history.local : []
+            troubled: legsSection.localTroubled
+            down: legsSection.outageSide === "local"
+          }
+          LegNode { glyph: "󰑩"; label: "Router" }
+          Leg {
+            Layout.fillWidth: true
+            Layout.preferredWidth: Style.space(100)
+            figures: legsSection.provider
+            history: root.legs && root.legs.history ? root.legs.history.provider : []
+            troubled: legsSection.providerTroubled
+            down: legsSection.outageSide === "internet"
+          }
+          LegNode { glyph: "󰖟"; label: "Internet" }
+        }
+
+        // The outages it logged, newest first, and a report to hand over
+        Item {
+          visible: legsSection.events.length > 0
+          width: parent.width
+          implicitHeight: outagesHeader.implicitHeight
+
+          InfoLabel {
+            id: outagesHeader
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            text: "Recent outages"
+          }
+          PanelActionButton {
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            iconText: "󰆏"
+            tooltipText: "Copy report"
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+            onClicked: Quickshell.execDetached(["bash", "-c", "neko-netlegs report | wl-copy"])
+          }
+        }
+        Repeater {
+          model: legsSection.events.slice(0, 3)
+          RowLayout {
+            required property var modelData
+            width: legsSection.width
+            Text {
+              text: legsSection.when(modelData.start)
+              color: root.bar.foreground
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              Layout.preferredWidth: Style.space(120)
+            }
+            Text {
+              text: legsSection.lasted(modelData.seconds || 0)
+              color: root.bar.urgent
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              Layout.preferredWidth: Style.space(70)
+            }
+            Text {
+              Layout.fillWidth: true
+              text: modelData.side === "local" ? "Your network" : "Your provider"
+              color: Qt.darker(root.bar.foreground, 1.4)
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              elide: Text.ElideRight
+            }
+          }
+        }
+      }
+
       // Wi-Fi band selection. Only on Wi-Fi, and only when the network answers
       // on more than one band -- a single-band AP has nothing to toggle.
       PanelSeparator {
@@ -1757,6 +1951,90 @@ Panel {
   // `selected` (bold) is the pinned choice; with Automatic on nothing is
   // pinned, so only the live band lights up and the two can no longer read as
   // a contradiction. They land on the same pill once a band is pinned.
+  // One end of a leg: what it is, its glyph over its name
+  component LegNode: Column {
+    property string glyph: ""
+    property string label: ""
+    spacing: Style.space(2)
+    Layout.alignment: Qt.AlignTop
+    Text {
+      anchors.horizontalCenter: parent.horizontalCenter
+      text: parent.glyph
+      color: root.bar.foreground
+      font.family: root.bar.fontFamily
+      font.pixelSize: Style.font.iconLarge
+    }
+    Text {
+      anchors.horizontalCenter: parent.horizontalCenter
+      text: parent.label
+      color: Qt.darker(root.bar.foreground, 1.4)
+      font.family: root.bar.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+  }
+
+  // A leg between two ends: its median round trip over a line, its jitter and
+  // loss under it, and the last hour a bar a minute (lossy minutes in red)
+  component Leg: Column {
+    id: leg
+    property var figures: ({})
+    property var history: []
+    property bool troubled: false
+    property bool down: false
+    readonly property color tone: troubled ? root.bar.urgent : NekoColor.accent
+    readonly property real peak: Math.max(1, history.reduce(function(top, minute) { return Math.max(top, minute.p50 || 0) }, 0))
+    spacing: Style.space(3)
+
+    Text {
+      anchors.horizontalCenter: parent.horizontalCenter
+      text: leg.down ? "down" : legsSection.ms(leg.figures ? leg.figures.p50 : null)
+      color: leg.troubled ? root.bar.urgent : root.bar.foreground
+      font.family: root.bar.fontFamily
+      font.pixelSize: Style.font.body
+      font.weight: Font.DemiBold
+    }
+    Rectangle {
+      width: parent.width
+      height: Style.space(3)
+      radius: height / 2
+      color: leg.tone
+      opacity: leg.down ? 0.35 : 1
+    }
+    Text {
+      width: parent.width
+      horizontalAlignment: Text.AlignHCenter
+      elide: Text.ElideRight
+      text: leg.down ? "not answering" : legsSection.detail(leg.figures)
+      color: (leg.figures && (leg.figures.loss || 0) > 0) ? root.bar.urgent : Qt.darker(root.bar.foreground, 1.4)
+      font.family: root.bar.fontFamily
+      font.pixelSize: Style.font.caption
+    }
+    // The last hour, oldest on the left
+    Row {
+      width: parent.width
+      height: Style.space(16)
+      spacing: 1
+      Repeater {
+        model: leg.history
+        Item {
+          required property var modelData
+          width: (leg.width - (leg.history.length - 1)) / Math.max(1, leg.history.length)
+          height: parent.height
+          Rectangle {
+            anchors.bottom: parent.bottom
+            width: parent.width
+            radius: 1
+            readonly property bool lossy: (modelData.loss || 0) > 0.02
+            height: modelData.p50 === null || modelData.p50 === undefined
+              ? (lossy ? parent.height : 1)
+              : Math.max(2, parent.height * Math.min(1, modelData.p50 / leg.peak))
+            color: lossy ? root.bar.urgent : Util.alpha(leg.tone, 0.55)
+          }
+        }
+      }
+    }
+  }
+
   component BandPill: Button {
     id: pill
     required property string band
