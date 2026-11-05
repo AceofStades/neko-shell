@@ -743,7 +743,7 @@ Item {
     var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
 
     position = normalizePosition(config.position)
-    // Transparent wins, so double-clicking the bar goes between it and glass
+    // Transparent wins, so toggleBarTransparency goes between it and glass
     glass = config.glass === true && config.transparent !== true
     barStyle = config.style === "attached" ? "attached" : "floating"
     setRequestedTransparency(config.transparent === true)
@@ -1963,16 +1963,6 @@ Item {
       }
     }
 
-    onDoubleClicked: function(mouse) {
-      if (suppressClick) {
-        suppressClick = false
-        return
-      }
-      if (mouse.button === Qt.LeftButton) {
-        root.toggleTransparency()
-        mouse.accepted = true
-      }
-    }
   }
 
   component ModuleList: Loader {
