@@ -106,6 +106,33 @@ BarWidget {
   // left edge (the bar floats in by its margin)
   property real islandLeft: 0
 
+  // How far from the island's middle a tile beside it reaches, its slot's far
+  // edge. A card opened from a tile grows at least that far either way, so
+  // the pointer lands on the card as it opens and the tile tucks away under
+  // it, instead of the card opening short of the pointer and closing again.
+  function tileReach(id) {
+    if (!root.bar || typeof root.bar.moduleItem !== "function" || typeof root.bar.slotForItem !== "function") return 0
+    root.bar.slotGeometrySerial
+    var item = root.bar.moduleItem(id, root)
+    var slot = item ? root.bar.slotForItem(item) : null
+    if (!slot || slot.width <= 0) return 0
+    // Read for the binding's sake: mapToItem alone doesn't notice them move
+    var moved = slot.x + slot.width + root.width + root.x
+    var center = root.mapToItem(null, root.width / 2, 0).x
+    var left = slot.mapToItem(null, 0, 0).x
+    var right = slot.mapToItem(null, slot.width, 0).x
+    return Math.max(Math.abs(right - center), Math.abs(left - center))
+  }
+  // A card's width: its own, or wider, still centered, to reach past its tile
+  function cardWidth(own, tileId) {
+    var reach = tileReach(tileId)
+    return reach > 0 ? Math.max(own, 2 * (reach + Style.space(12))) : own
+  }
+  readonly property real pomodoroCardWidth: cardWidth(Style.space(400), "neko.pomodoro")
+  readonly property real timerCardWidth: cardWidth(Style.space(400), "neko.timers")
+  readonly property real stopwatchCardWidth: cardWidth(Style.space(400), "neko.stopwatch")
+  readonly property real mediaCardWidth: cardWidth(Style.space(460), "neko.media-players")
+
   function placeIsland() {
     var point = root.mapToItem(null, 0, 0)
     // Attached, the bar meets the screen's sides; floating, it's in by the margin
@@ -188,8 +215,10 @@ BarWidget {
     screen: root.QsWindow.window ? root.QsWindow.window.screen : null
     visible: root.islandUp
     color: "transparent"
-    implicitWidth: Style.space(520)
+    // Room for the widest card; clear outside it, so wider costs nothing
+    implicitWidth: Math.max(Style.space(520), root.pomodoroCardWidth, root.timerCardWidth, root.stopwatchCardWidth, root.mediaCardWidth) + Style.space(40)
     implicitHeight: Style.space(190)
+    onImplicitWidthChanged: root.placeIsland()
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.namespace: "neko-island"
     WlrLayershell.layer: WlrLayer.Overlay
@@ -263,8 +292,10 @@ BarWidget {
 
     Rectangle {
       id: pill
-      readonly property real targetWidth: root.islandMode === "media" ? Style.space(460)
-        : root.islandMode === "pomodoro" || root.islandMode === "timer" || root.islandMode === "stopwatch" ? Style.space(400)
+      readonly property real targetWidth: root.islandMode === "media" ? root.mediaCardWidth
+        : root.islandMode === "pomodoro" ? root.pomodoroCardWidth
+        : root.islandMode === "timer" ? root.timerCardWidth
+        : root.islandMode === "stopwatch" ? root.stopwatchCardWidth
         : root.islandMode === "notification" ? Style.space(410)
         : root.islandMode === "osd" ? root.osdWidth
         : root.islandMode === "faceauth" ? Style.space(120) : root.restWidth
@@ -895,7 +926,11 @@ BarWidget {
         readonly property string nextPhase: Island.pomodoroPhase !== "focus" ? "Focus up next"
           : pomodoroView.round === 4 ? "Long break up next" : "Short break up next"
 
-        anchors.fill: parent
+        // Its own width, centered in a card grown wider to reach its tile
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Style.space(400)
         implicitHeight: Style.space(168)
         opacity: root.islandMode === "pomodoro" ? 1 : 0
         visible: opacity > 0
@@ -1434,7 +1469,11 @@ BarWidget {
     property string status: ""
     default property alias buttons: buttonRow.data
 
-    anchors.fill: parent
+    // Its own width, centered in a card grown wider to reach its tile
+    anchors.top: parent.top
+    anchors.bottom: parent.bottom
+    anchors.horizontalCenter: parent.horizontalCenter
+    width: Style.space(400)
     implicitHeight: Style.space(168)
     opacity: root.islandMode === mode ? 1 : 0
     visible: opacity > 0
