@@ -54,7 +54,7 @@ Panel {
   property string rotation: ""
   property string wallpaper: ""
   property string colors: ""
-  // "" for the main page, or "wallpaper", "display" or "timers" for theirs
+  // "" for the main page, or "wallpaper" or "display" for their settings
   property string page: ""
   // The wallpaper's file name, readable: "a_red_alien.png" reads "a red alien"
   readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
@@ -392,20 +392,75 @@ Panel {
           }
 
           // A month at a glance, under everything else: the clock opens this.
-          // A card like the weather's, today marked like an active tile
+          // A card like the weather's, today marked like an active tile. Its
+          // tabs hold the clock's timers, alarms and stopwatch, at the
+          // calendar's height whichever shows, so the card never resizes.
           Rectangle {
+            id: calendarCard
+            property string tab: "calendar"
             Layout.fillWidth: true
-            implicitHeight: calendar.implicitHeight + Style.space(24)
+            implicitHeight: cardTabs.implicitHeight + Style.space(8) + calendar.implicitHeight + Style.space(24)
             radius: Style.space(14)
             color: Util.alpha(root.foreground, 0.06)
+
+            Connections {
+              target: panel
+              function onOpenChanged() { if (!panel.open) calendarCard.tab = "calendar" }
+            }
+
+            ButtonGroup {
+              id: cardTabs
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.top: parent.top
+              anchors.margins: Style.space(12)
+              fontSize: Style.font.caption
+              options: [
+                { value: "calendar", label: "Calendar" },
+                { value: "timers", label: "Timers" },
+                { value: "alarms", label: "Alarms" },
+                { value: "stopwatch", label: "Stopwatch" }
+              ]
+              value: calendarCard.tab
+              onChanged: function(v) { calendarCard.tab = v }
+            }
+
+            Flickable {
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.top: cardTabs.bottom
+              anchors.bottom: parent.bottom
+              anchors.margins: Style.space(12)
+              anchors.topMargin: Style.space(8)
+              visible: calendarCard.tab !== "calendar"
+              contentHeight: timersPage.implicitHeight
+              clip: true
+              boundsBehavior: Flickable.StopAtBounds
+
+              TimersPage {
+                id: timersPage
+                width: parent.width
+                embedded: true
+                tab: calendarCard.tab
+                shown: panel.open && calendarCard.tab !== "calendar"
+                foreground: root.foreground
+                dim: root.dim
+                accent: root.accent
+                fontFamily: root.fontFamily
+              }
+            }
 
             ColumnLayout {
               id: calendar
               anchors.left: parent.left
               anchors.right: parent.right
-              anchors.top: parent.top
+              anchors.top: cardTabs.bottom
               anchors.margins: Style.space(12)
+              anchors.topMargin: Style.space(8)
               spacing: Style.space(6)
+              // Kept laid out under the other tabs, so the card keeps its height
+              opacity: calendarCard.tab === "calendar" ? 1 : 0
+              enabled: calendarCard.tab === "calendar"
 
               property int viewYear: root.calendarToday.getFullYear()
               property int viewMonth: root.calendarToday.getMonth()
@@ -819,19 +874,11 @@ Panel {
               label: "Pomodoro"
               subtitle: Island.pomodoroActive ? Island.pomodoroTitle + " · " + Island.pomodoroClock(Island.pomodoroRemaining) + (Island.pomodoroRunning ? "" : " paused") : "Start a focus session"
               active: Island.pomodoroActive
+              Layout.columnSpan: root.recorderInstalled ? 1 : 2
               onClicked: Island.togglePomodoro()
             }
             QuickTile {
-              icon: "󰔟"
-              label: "Timers"
-              subtitle: timersPage.summary
-              active: timersPage.busy
-              opensPage: true
-              onClicked: root.page = "timers"
-            }
-            QuickTile {
               visible: root.recorderInstalled
-              Layout.columnSpan: 2
               icon: "󰑊"
               label: "Screen record"
               subtitle: root.recording ? "Recording" : "Off"
@@ -994,26 +1041,6 @@ Panel {
           options: [ { value: "material", label: "From wallpaper" }, { value: "neko", label: "Neko" } ]
           value: root.colors
           onChanged: function(v) { root.act("neko-settings set colors " + v) }
-        }
-      }
-
-      // The timers page scrolls inside the card, as the display page does
-      Flickable {
-        anchors.fill: parent
-        visible: root.page === "timers"
-        contentHeight: timersPage.implicitHeight
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-
-        TimersPage {
-          id: timersPage
-          width: parent.width
-          shown: root.opened && root.page === "timers"
-          foreground: root.foreground
-          dim: root.dim
-          accent: root.accent
-          fontFamily: root.fontFamily
-          onBack: root.page = ""
         }
       }
 

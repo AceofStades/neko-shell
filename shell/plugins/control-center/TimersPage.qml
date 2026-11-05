@@ -5,7 +5,8 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// The control center's timers page: timers, alarms and the stopwatch. neko-clock
+// The clock's timers, alarms and stopwatch, on the control center's calendar
+// card (embedded: the card's tabs pick which) or as a page of its own. neko-clock
 // keeps them and rings them (as its own systemd units, so they ring with the
 // shell down); this page reads its state file and asks it for every change.
 // The countdowns here only draw: nothing on this page has to be on time.
@@ -18,9 +19,12 @@ ColumnLayout {
   property string fontFamily: Style.font.family
   // Whether the page is up, so the countdowns only tick while they're seen
   property bool shown: false
+  // Inside a card whose own tabs choose `tab`: no header or tabs here
+  property bool embedded: false
   signal back()
 
   property string tab: "timers"
+  onTabChanged: problem = ""
   property var state: ({ timers: [], alarms: [], stopwatch: { running: false, startedAt: 0, accumulatedMs: 0, laps: [] }, ringing: [] })
   property double now: Date.now()
   // What neko-clock said about the last thing typed, when it couldn't read it
@@ -29,18 +33,6 @@ ColumnLayout {
   property var alarmDays: []
 
   readonly property var weekdays: ["S", "M", "T", "W", "T", "F", "S"]
-  // For the control center's tile: what's going on, without a ticking clock
-  readonly property int runningTimers: state.timers.filter(function(t) { return t.state === "running" }).length
-  readonly property int alarmsOn: state.alarms.filter(function(a) { return a.enabled }).length
-  readonly property bool busy: runningTimers > 0 || state.stopwatch.running || state.ringing.length > 0
-  readonly property string summary: {
-    if (state.ringing.length > 0) return "Ringing"
-    var parts = []
-    if (runningTimers > 0) parts.push(runningTimers === 1 ? "1 timer" : runningTimers + " timers")
-    if (state.stopwatch.running) parts.push("stopwatch")
-    if (alarmsOn > 0) parts.push(alarmsOn === 1 ? "1 alarm" : alarmsOn + " alarms")
-    return parts.length > 0 ? parts.join(" · ") : "Timers, alarms, stopwatch"
-  }
 
   spacing: Style.space(12)
 
@@ -154,6 +146,7 @@ ColumnLayout {
 
   RowLayout {
     Layout.fillWidth: true
+    visible: !root.embedded
     spacing: Style.space(6)
     PanelActionButton {
       iconText: "󰅁"
@@ -218,6 +211,7 @@ ColumnLayout {
 
   ButtonGroup {
     Layout.fillWidth: true
+    visible: !root.embedded
     fontSize: Style.font.bodySmall
     options: [
       { value: "timers", label: "Timers", icon: "󰔟" },
@@ -255,7 +249,7 @@ ColumnLayout {
         foreground: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
-        placeholderText: "5, 1:30 or 1h 30m"
+        placeholderText: "5 or 1h 30m"
         onAccepted: root.addTimer(text)
       }
       TextField {
@@ -265,7 +259,7 @@ ColumnLayout {
         foreground: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
-        placeholderText: "Label (optional)"
+        placeholderText: "Label"
         onAccepted: root.addTimer(durationField.text)
       }
       Button {
@@ -396,7 +390,7 @@ ColumnLayout {
         foreground: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
-        placeholderText: "7:30, 19:30 or 7pm"
+        placeholderText: "7:30 or 7pm"
         onAccepted: root.addAlarm()
       }
       TextField {
@@ -406,7 +400,7 @@ ColumnLayout {
         foreground: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
-        placeholderText: "Label (optional)"
+        placeholderText: "Label"
         onAccepted: root.addAlarm()
       }
       Button {
