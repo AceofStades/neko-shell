@@ -488,14 +488,18 @@ Panel {
               anchors.bottom: parent.bottom
               anchors.margins: Style.space(12)
               anchors.topMargin: Style.space(8)
+              id: timersFlick
               visible: calendarCard.tab !== "calendar"
+              // Its own width, not its content's: the page centers what it
+              // holds across the card
+              contentWidth: width
               contentHeight: timersPage.implicitHeight
               clip: true
               boundsBehavior: Flickable.StopAtBounds
 
               TimersPage {
                 id: timersPage
-                width: parent.width
+                width: timersFlick.width
                 tab: calendarCard.tab
                 shown: panel.open && calendarCard.tab !== "calendar"
                 foreground: root.foreground
