@@ -23,8 +23,14 @@ hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 
--- Apps and neko's panels
-hl.bind("ALT + Space", hl.dsp.global("neko:menu.apps"), { description = "Apps" })
+-- Apps and neko's panels: Vicinae for apps when it's installed, else neko's menu
+local vicinae = io.open("/usr/bin/vicinae", "r")
+if vicinae then
+  vicinae:close()
+  hl.bind("ALT + Space", hl.dsp.exec_cmd("vicinae toggle"), { description = "Apps" })
+else
+  hl.bind("ALT + Space", hl.dsp.global("neko:menu.apps"), { description = "Apps" })
+end
 hl.bind("SUPER + Return", hl.dsp.exec_cmd(machine.terminal), { description = "Terminal" })
 hl.bind("SUPER + T", hl.dsp.exec_cmd(machine.terminal))
 hl.bind("SUPER + E", hl.dsp.exec_cmd(machine.files), { description = "Files" })

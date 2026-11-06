@@ -29,6 +29,9 @@ hl.layer_rule({ match = { namespace = "^neko-island$" }, blur = true, ignore_alp
 -- windows, so they blur those, as the island's panels do, rather than the
 -- wallpaper alone.
 hl.layer_rule({ match = { namespace = "^neko-keyboard-panel$" }, blur = true, ignore_alpha = 0.2, xray = false })
+-- Vicinae, the launcher, blurs what's behind it as neko's own surfaces do, and
+-- opens without the slide-in Hyprland would give it
+hl.layer_rule({ match = { namespace = "^vicinae$" }, blur = true, ignore_alpha = 0, no_anim = true })
 
 -- The bar's panels (audio, network, clock...) are popups of the bar surface
 hl.config({ decoration = { blur = { popups = true, popups_ignorealpha = 0.2 } } })

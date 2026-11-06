@@ -55,3 +55,4 @@ gum                     optional     gum                  Prompts in some neko c
 aur:howdy-git           optional     howdy                Face unlock (lock screen and sudo)
 fprintd                 optional     fprintd-list         Fingerprint unlock
 tailscale               optional     tailscale            The Tailscale panel
+aur:vicinae-bin         optional     vicinae              The app launcher on Alt+Space (neko's apps menu otherwise)

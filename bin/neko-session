@@ -114,6 +114,10 @@ start() {
   neko-netlegs start > /dev/null 2>&1 || true
   # The display profile that fits, applied as displays come and go
   neko-display-profile start > /dev/null 2>&1 || true
+  # The launcher's server, so it opens at once; its own unit when it ships one
+  if command -v vicinae > /dev/null; then
+    systemctl --user start vicinae.service > /dev/null 2>&1 || setsid -f vicinae server --replace > /dev/null 2>&1
+  fi
   setsid -f neko-wallpaper warm
   neko-hook session-start
   echo "neko-shell started"
