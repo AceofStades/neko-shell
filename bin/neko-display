@@ -291,9 +291,11 @@ undo() {
 }
 
 # The hl.monitor call for an output's settings, off for this session if asked
+# Hyprland keeps a field a later rule leaves out, so turning a display back on
+# has to say disabled = false; without a third argument it isn't mentioned
 rule() {
-  jq -c --arg name "$1" --argjson entry "$2" --argjson off "${3:-false}" \
-    '{ ($name): ($entry + (if $off then { disabled: true } else {} end)) }' <<< '{}' | lua_rules
+  jq -c --arg name "$1" --argjson entry "$2" --arg off "${3:-}" \
+    '{ ($name): ($entry + (if $off == "" then {} else { disabled: ($off == "true") } end)) }' <<< '{}' | lua_rules
 }
 
 save() {
