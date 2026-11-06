@@ -137,12 +137,16 @@ fn load_state() -> Map<String, Value> {
 
 fn save_state(state: &Map<String, Value>) -> Result<(), String> {
     write_json(&state_path(), &Value::Object(state.clone()))?;
-    // The bar's indicator asks rather than watches
-    let _ = Command::new("neko-shell")
+    // The bar's indicator asks rather than watches; waited on aside, so a
+    // take that runs for long doesn't gather finished children
+    if let Ok(mut child) = Command::new("neko-shell")
         .args(["-q", "neko.indicators", "refresh"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .spawn();
+        .spawn()
+    {
+        std::thread::spawn(move || child.wait());
+    }
     Ok(())
 }
 
@@ -168,12 +172,11 @@ fn alive(pid: i64) -> bool {
     pid > 0 && unsafe { libc::kill(pid as i32, 0) } == 0
 }
 
+/// Whether the take's unit is there, including while it stops: stopping it
+/// (a logout) lets the take save, which can take a while
 fn unit_active() -> bool {
-    Command::new("systemctl")
-        .args(["--user", "is-active", "--quiet", &format!("{UNIT}.service")])
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
+    output("systemctl", &["--user", "show", "--property=ActiveState", "--value", &format!("{UNIT}.service")])
+        .is_some_and(|state| matches!(state.trim(), "active" | "activating" | "deactivating" | "reloading"))
 }
 
 /// A take whose process is gone (killed, or the machine went down) is over:
@@ -468,6 +471,8 @@ fn start(args: &[String]) -> Result<(), String> {
         "--user",
         "--quiet",
         "--collect",
+        // The label is a window title, which may hold a $ systemd would expand
+        "--expand-environment=no",
         &format!("--unit={UNIT}"),
         "--property=KillSignal=SIGINT",
         "--property=TimeoutStopSec=300",
@@ -674,7 +679,12 @@ fn take(args: &[String]) -> Result<(), String> {
     let countdown: i64 = setting(&settings, "countdown").parse().unwrap_or(0);
     let pid = std::process::id() as i64;
     update(|state| {
+        // A stop pressed while the webcam came up still stands
+        let stopped = state.get("discard").cloned();
         let mut next = idle(Some(state));
+        if let Some(stopped) = stopped {
+            next.insert("discard".into(), stopped);
+        }
         next.insert("status".into(), json!(if countdown > 0 { "countdown" } else { "starting" }));
         next.insert("holder".into(), json!(pid));
         next.insert("countdownEnds".into(), json!(now_ms() + countdown * 1000));
@@ -754,6 +764,11 @@ fn take(args: &[String]) -> Result<(), String> {
         state.insert("audio".into(), json!(on(&settings, "desktopAudio") || on(&settings, "microphone")));
         state.remove("countdownEnds");
     });
+    // A stop that came while the file appeared found no recorder to signal:
+    // it was a cancel, so end the recorder now and throw the take away
+    if discarded() {
+        unsafe { libc::kill(recorder_pid as i32, libc::SIGINT) };
+    }
 
     let _ = recorder.wait();
     stop_webcam(webcam);
