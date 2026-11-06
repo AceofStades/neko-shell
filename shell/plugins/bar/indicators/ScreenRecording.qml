@@ -1,11 +1,13 @@
 import QtQuick
-import Quickshell.Io
+import qs.Commons
 import qs.Ui
 
+// On while neko-record has a take going: a press stops it, else picks what
+// to record
 BarIndicator {
   id: root
 
-  property bool recording: false
+  readonly property bool recording: Island.recordLive
 
   active: recording
   activeText: "󰻂"
@@ -13,31 +15,7 @@ BarIndicator {
   activeTooltipText: "Stop recording"
   inactiveTooltipText: "Screen Recording"
 
-  function refresh() {
-    if (!root.bar || statusProc.running) return
-    statusProc.command = ["pgrep", "--quiet", "-f", "^gpu-screen-recorder"]
-    statusProc.running = true
-  }
-
-  onBarChanged: refresh()
-  Component.onCompleted: refresh()
-
-  Connections {
-    target: root.indicatorHost
-    ignoreUnknownSignals: true
-    function onRefreshRequested() { root.refresh() }
-  }
-
-  Process {
-    id: statusProc
-    onExited: function(exitCode) {
-      root.recording = exitCode === 0
-    }
-  }
-
   onPressed: function() {
-    if (root.bar) {
-      root.bar.run(root.recording ? "neko-capture-screenrecording --stop-recording" : "neko-menu toggle trigger.capture.screenrecord")
-    }
+    if (root.bar) root.bar.run(root.recording ? "neko-record stop" : "neko-record start")
   }
 }

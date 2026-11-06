@@ -59,7 +59,6 @@ Panel {
   // The wallpaper's file name, readable: "a_red_alien.png" reads "a red alien"
   readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
   property bool recorderInstalled: false
-  property bool recording: false
   // Brightness of the focused display as a tick on the curve (0-64), the
   // laptop panel's backlight or a monitor's over DDC/CI; unavailable when it
   // has neither
@@ -121,7 +120,6 @@ Panel {
       "echo wallpaper=$(readlink -f ~/.local/state/neko/current/background)",
       "echo colors=$(neko-settings get colors)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
-      "echo recording=$(pgrep -f '^gpu-screen-recorder' >/dev/null && echo yes)",
       "echo brightness=$(neko-monitor-state | head -n 1)",
       "echo displays=$(neko-display json)"
     ].join("; ")]
@@ -142,7 +140,6 @@ Panel {
           else if (key === "wallpaper") root.wallpaper = value
           else if (key === "colors") root.colors = value
           else if (key === "recorder") root.recorderInstalled = value === "yes"
-          else if (key === "recording") root.recording = value === "yes"
           else if (key === "brightness" && !brightnessSlider.dragging && !brightnessProc.running) {
             // tick/64, or "unavailable"
             var reading = value.split("/")
@@ -940,11 +937,10 @@ Panel {
               visible: root.recorderInstalled
               icon: "󰑊"
               label: "Screen record"
-              subtitle: root.recording ? "Recording" : "Off"
-              active: root.recording
-              onClicked: root.recording
-                ? root.act("neko-capture-screenrecording --stop-recording")
-                : root.runAndClose("neko-menu toggle trigger.capture.screenrecord")
+              subtitle: Island.recordLive ? (Island.recordStatus === "paused" ? "Paused · " : "Recording · ") + Island.clockText(Island.recordElapsed, false) : "Pick what to record"
+              active: Island.recordLive
+              // The panel goes before the picker freezes the screen
+              onClicked: Island.recordLive ? Island.record(["stop"]) : root.runAndClose("sleep 0.35; exec neko-record start")
             }
             QuickTile {
               icon: root.displays.length > 1 ? "󰍺" : "󰍹"

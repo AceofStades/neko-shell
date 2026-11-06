@@ -8,7 +8,7 @@
 set -euo pipefail
 
 readonly MARGIN=40
-# Has to resolve to whatever neko-capture-screenrecording writes, fallback
+# Has to resolve to the area neko-record writes for its webcam overlay, fallback
 # included, or a recording without a session runtime dir anchors the camera to
 # the whole monitor instead of the region it recorded.
 readonly REGION_FILE="${XDG_RUNTIME_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/neko}/neko-screenrecord-region"
