@@ -11,7 +11,7 @@ import qs.Ui
 // systemd units, so they ring with the shell down); this reads its state
 // file and asks it for every change. The countdowns here only draw: nothing
 // on this page has to be on time.
-ColumnLayout {
+Column {
   id: root
 
   property color foreground: NekoColor.popups.text
@@ -128,7 +128,7 @@ ColumnLayout {
 
   // What's ringing, to quiet it or bring it back in five minutes
   Rectangle {
-    Layout.fillWidth: true
+    width: root.width
     visible: root.state.ringing.length > 0
     implicitHeight: Style.space(44)
     radius: height / 2
@@ -160,7 +160,7 @@ ColumnLayout {
   }
 
   Text {
-    Layout.fillWidth: true
+    width: root.width
     visible: root.problem !== ""
     text: root.problem
     color: NekoColor.urgent
@@ -172,7 +172,7 @@ ColumnLayout {
   // ------------------------------------------------------------ timers
 
   ColumnLayout {
-    Layout.fillWidth: true
+    width: root.width
     visible: root.tab === "timers"
     spacing: Style.space(10)
 
@@ -284,7 +284,7 @@ ColumnLayout {
   // ------------------------------------------------------------ alarms
 
   ColumnLayout {
-    Layout.fillWidth: true
+    width: root.width
     visible: root.tab === "alarms"
     spacing: Style.space(10)
 
@@ -404,7 +404,7 @@ ColumnLayout {
   // --------------------------------------------------------- stopwatch
 
   ColumnLayout {
-    Layout.fillWidth: true
+    width: root.width
     visible: root.tab === "stopwatch"
     spacing: Style.space(10)
 
