@@ -229,7 +229,8 @@ Panel {
     contentWidth: panel.fittedContentWidth(Style.space(root.preferredPanelWidth))
     // The display page keeps the card the size the control panel is, and
     // scrolls inside it, so opening it doesn't resize the card
-    contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight : column.implicitHeight)
+    contentHeight: panel.fittedContentHeight(root.page === "wallpaper" ? wallpaperPage.implicitHeight
+      : root.page === "awake" ? awakePage.implicitHeight : column.implicitHeight)
     // Two islands beside the card while the main page is showing and there
     // is room for them either side: the music on the left, the quick-start
     // timer on the right
@@ -923,9 +924,10 @@ Panel {
             QuickTile {
               icon: "󰅶"
               label: "Stay awake"
-              subtitle: root.stayAwake ? "On" : "Off"
+              subtitle: root.stayAwake ? "On" : "Idle, sleep and the lid"
               active: root.stayAwake
-              onClicked: root.act("neko-toggle-idle toggle")
+              opensPage: true
+              onClicked: root.page = "awake"
             }
             // The bar's Pomodoro shows only while a session is on: start one here
             QuickTile {
@@ -1114,6 +1116,21 @@ Panel {
           value: root.colors
           onChanged: function(v) { root.act("neko-settings set colors " + v) }
         }
+      }
+
+      // Staying awake: the screen kept on, idle, sleep and the lid
+      AwakePage {
+        id: awakePage
+        anchors.left: parent.left
+        anchors.right: parent.right
+        visible: root.page === "awake"
+        foreground: root.foreground
+        dim: root.dim
+        accent: root.accent
+        fontFamily: root.fontFamily
+        onBack: root.page = ""
+        onChanged: root.refresh()
+        onVisibleChanged: if (visible) load()
       }
 
       // The display page scrolls: it holds every setting Hyprland has
