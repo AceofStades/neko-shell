@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.activities",
+  "name": "Live activities",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Shows on the island what just happened: headphones and other Bluetooth devices connecting, the charger in or out, the battery getting low",
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml"
+  }
+}
