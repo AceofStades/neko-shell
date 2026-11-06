@@ -1,12 +1,13 @@
 import QtQuick
 import Quickshell
 import Quickshell.Bluetooth
+import Quickshell.Io
 import Quickshell.Services.UPower
 import qs.Commons
 
-// Live activities for the island: a Bluetooth device connecting or going
-// (with its battery, when it says), the charger plugged in or out, and the
-// battery passing 20% and 10% on its way down. The Bluetooth devices are read
+// Live activities for the island: something copied, a Bluetooth device
+// connecting or going (with its battery, when it says), the charger plugged
+// in or out, and the battery passing 20% and 10% on its way down. The Bluetooth devices are read
 // into plain values every couple of seconds rather than held: BlueZ can take
 // a device object away while something still has it, which crashes the shell.
 // Nothing is shown for what's already so when the shell starts.
@@ -83,6 +84,36 @@ Item {
         Island.showActivity({ icon: mark <= 10 ? "󰂃" : "󰁻", title: "Battery at " + root.percent + "%", detail: left ? "About " + left + " left" : "Plug in soon", tint: NekoColor.urgent }, 3500)
       }
     }
+  }
+
+  // Each copy, as a line: "image", or "text" and its first few hundred
+  // characters. Copies marked sensitive (passwords) never get this far.
+  Process {
+    id: clipboardWatch
+    running: true
+    command: ["setpriv", "--pdeathsig", "TERM", "wl-paste", "--watch", "bash", "-c",
+      "case ${CLIPBOARD_STATE:-data} in sensitive|clear|nil) exit 0 ;; esac; "
+      + "types=$(wl-paste --list-types 2>/dev/null); grep -qx x-kde-passwordManagerHint <<< \"$types\" && exit 0; "
+      + "if grep -q '^image/' <<< \"$types\"; then echo image; "
+      + "else printf 'text\\t'; wl-paste --no-newline --type text 2>/dev/null | head -c 300 | tr '\\n\\t\\r' '   '; echo; fi"]
+    stdout: SplitParser {
+      onRead: function(line) {
+        if (!root.settled) return
+        if (line === "image") {
+          Island.showActivity({ icon: "󰋩", title: "Image copied", detail: "" }, 2000)
+          return
+        }
+        var text = line.indexOf("text\t") === 0 ? line.slice(5).replace(/\s+/g, " ").trim() : ""
+        Island.showActivity({ icon: "󰅌", title: "Copied", detail: text }, 2000)
+      }
+    }
+    onExited: clipboardRewatch.restart()
+  }
+
+  Timer {
+    id: clipboardRewatch
+    interval: 3000
+    onTriggered: clipboardWatch.running = true
   }
 
   Connections {

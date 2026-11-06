@@ -27,8 +27,8 @@ hl.bind("ALT + Space", hl.dsp.exec_cmd("vicinae toggle"), { description = "Apps"
 hl.bind("SUPER + Return", hl.dsp.exec_cmd(machine.terminal), { description = "Terminal" })
 hl.bind("SUPER + T", hl.dsp.exec_cmd(machine.terminal))
 hl.bind("SUPER + E", hl.dsp.exec_cmd(machine.files), { description = "Files" })
-hl.bind("SUPER + V", hl.dsp.global("neko:panel.neko.clipboard"), { description = "Clipboard" })
-hl.bind("SUPER + period", hl.dsp.global("neko:panel.neko.emojis"), { description = "Emojis" })
+hl.bind("SUPER + V", hl.dsp.exec_cmd("vicinae cmd launch clipboard:history"), { description = "Clipboard" })
+hl.bind("SUPER + period", hl.dsp.exec_cmd("vicinae cmd launch core:search-emojis"), { description = "Emojis" })
 hl.bind("SUPER + N", hl.dsp.global("neko:ipc.notifications.showHistory"), { description = "Notifications" })
 
 -- Layouts: cycle master, dwindle and scrolling; Super+H/J/K/L resize the way

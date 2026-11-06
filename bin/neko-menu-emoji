@@ -1,6 +1,0 @@
-#!/bin/bash
-# neko:summary=Launch emojis
-# neko:group=menu
-# neko:examples=neko menu emoji
-
-neko-shell shell toggle neko.emojis
