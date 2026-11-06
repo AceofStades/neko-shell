@@ -6,6 +6,7 @@ mod agents;
 mod bitwarden;
 mod calendar;
 mod clock;
+mod displayprofile;
 mod faceauth;
 mod filepick;
 mod netlegs;
@@ -28,6 +29,7 @@ fn main() -> ExitCode {
         "bitwarden" => bitwarden::run(rest),
         "calendar-events" => calendar::run(rest),
         "clock" => clock::run(rest),
+        "display-profile" => displayprofile::run(rest),
         "faceauth-watch" => faceauth::run(rest),
         "file-select" => filepick::run(rest),
         "netlegs" => netlegs::run_command(rest),

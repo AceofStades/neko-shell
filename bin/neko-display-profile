@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# neko:summary=Save display layouts as profiles, matched by the displays themselves, and switch to the one that fits as they come and go
+# neko:args=<list|save <name>|apply <name>|apply-best|delete <name>|rename <name> <new name>|auto <on|off>|start|stop>
+# neko:examples=neko display-profile save desk | neko display-profile apply desk | neko display-profile auto on
+
+# neko-core's display profiles (core/), which install.sh builds or downloads
+root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
+fi
+exec "$root/core/target/release/neko-core" display-profile "$@"
