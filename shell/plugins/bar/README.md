@@ -47,6 +47,7 @@ Example `shell.json` (bar subtree only shown):
         { "id": "neko.keyboard-layout", "group": "status" },
         { "id": "neko.tray", "group": "status" },
         { "id": "neko.recorder", "group": "status" },
+        { "id": "neko.quickshare", "group": "status" },
         { "id": "neko.agents", "group": "status" },
         { "id": "neko.bluetooth", "group": "status" },
         { "id": "neko.network", "group": "status" },

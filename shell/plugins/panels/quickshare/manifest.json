@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.quickshare",
+  "name": "Quick Share",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Send files to and receive them from Android phones nearby, through the Quick Share service",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Quick Share",
+    "description": "Send files to and receive them from Android phones nearby, through the Quick Share service",
+    "category": "Connectivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

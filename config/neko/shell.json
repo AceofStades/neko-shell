@@ -69,6 +69,10 @@
           "group": "status"
         },
         {
+          "id": "neko.quickshare",
+          "group": "status"
+        },
+        {
           "id": "neko.agents",
           "group": "status"
         },
