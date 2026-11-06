@@ -89,6 +89,16 @@ fn call<B: zbus::export::serde::Serialize + zbus::zvariant::DynamicType>(connect
         })
 }
 
+/// The unique bus name that holds the service's name now
+fn owner(connection: &Connection) -> Option<String> {
+    connection
+        .call_method(Some("org.freedesktop.DBus"), "/org/freedesktop/DBus", Some("org.freedesktop.DBus"), "GetNameOwner", &(BUS,))
+        .ok()?
+        .body()
+        .deserialize::<String>()
+        .ok()
+}
+
 fn snapshot(connection: &Connection) -> Option<String> {
     call(connection, "Snapshot", &()).ok()?.body().deserialize::<String>().ok()
 }
@@ -147,9 +157,16 @@ fn watch() -> Result<(), String> {
     let changed = MessageIterator::for_match_rule(changes, &connection, None).map_err(|error| error.to_string())?;
     let owned = MessageIterator::for_match_rule(owners, &connection, None).map_err(|error| error.to_string())?;
 
+    // Any program on the bus can send a Changed signal: only the one from
+    // whoever owns the service's name now counts
     let signals = tell.clone();
+    let signal_connection = connection.clone();
     thread::spawn(move || {
         for message in changed.flatten() {
+            let sender = message.header().sender().map(|name| name.to_string());
+            if sender.is_none() || sender != owner(&signal_connection) {
+                continue;
+            }
             if let Ok(text) = message.body().deserialize::<String>() {
                 let _ = signals.send(Some(text));
             }
