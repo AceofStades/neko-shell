@@ -30,7 +30,6 @@ imagemagick             recommended  magick               Wallpaper colors and t
 matugen                 recommended  matugen              Colors from the wallpaper (Material You)
 grim                    recommended  grim                 Screenshots
 slurp                   recommended  slurp                Picking a region to capture
-aur:omasnap-bin         recommended  omasnap              Screenshots with an annotation editor and scrolling capture (grim alone otherwise)
 wl-clipboard            recommended  wl-copy              Copying captures and the clipboard manager
 wtype                   recommended  wtype                Pasting from the clipboard history and the emoji picker
 noto-fonts-cjk          recommended  lang:ja              The kanji workspace names
@@ -41,6 +40,7 @@ rust                    optional     cargo                Builds neko-core from 
 power-profiles-daemon   optional     powerprofilesctl     Power profiles (asusctl works instead on ASUS laptops)
 gpu-screen-recorder     optional     gpu-screen-recorder  Screen recording
 hyprpicker              optional     hyprpicker           The color picker
+satty                   optional     satty                Drawing on screenshots and copied images
 hyprsunset              optional     hyprsunset           Night light
 tesseract               optional     tesseract            Copying text out of a screenshot (also install tesseract-data-eng)
 zbar                    optional     zbarimg              Reading QR codes off the screen

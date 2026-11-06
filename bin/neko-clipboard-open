@@ -30,7 +30,11 @@ open_image() {
   local path="$1"
 
   [[ -r $path ]] || exit 1
-  exec omasnap "$path"
+  # Drawn on with satty when it's there, else opened as any image is
+  if command -v satty > /dev/null; then
+    exec satty --filename "$path" --output-filename "$path" --copy-command wl-copy --early-exit
+  fi
+  exec xdg-open "$path"
 }
 
 open_text() {
