@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# neko:summary=Send files to and receive them from Android phones nearby, through the Quick Share service
+# neko:args=<status|watch|visible <seconds>|send <device>|qr-send|qr-stop <id>|accept <id>|reject <id>|cancel <id>|folder <path>|network <on|off>>
+# neko:examples=neko quickshare status | neko quickshare visible 120 | echo '["/home/me/photo.jpg"]' | neko quickshare send <device>
+
+# neko-core's Quick Share client (core/), which install.sh builds or downloads.
+# The service itself is a separate program, installed on its own.
+root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
+fi
+exec "$root/core/target/release/neko-core" quickshare "$@"

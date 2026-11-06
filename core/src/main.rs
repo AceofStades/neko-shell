@@ -10,6 +10,7 @@ mod displayprofile;
 mod faceauth;
 mod filepick;
 mod netlegs;
+mod quickshare;
 mod record;
 
 use std::process::ExitCode;
@@ -33,6 +34,7 @@ fn main() -> ExitCode {
         "faceauth-watch" => faceauth::run(rest),
         "file-select" => filepick::run(rest),
         "netlegs" => netlegs::run_command(rest),
+        "quickshare" => quickshare::run(rest),
         "record" => record::run(rest),
         "agent-account-state" => agents::accounts::run(rest),
         "agent-usage-claude" => agents::claude::run(rest),
