@@ -47,10 +47,12 @@ hl.bind("SUPER + CTRL + D", hl.dsp.layout("removemaster"))
 hl.bind("SUPER + CTRL + Return", hl.dsp.layout("cyclenext"))
 hl.bind("SUPER + ALT + K", hl.dsp.layout("cycleprev"))
 
--- Screenshots and recordings, with the laptop F6 key standing in for Print
+-- Screenshots and recordings, with the laptop F6 key standing in for Print:
+-- Print alone opens the capture panel from the island
 local shot = neko .. "neko-capture-screenshot "
 local record = neko .. "neko-record "
 for _, key in ipairs({ "Print", "F6" }) do
+  hl.bind(key, hl.dsp.global("neko:panel.neko.capture"), { description = "Capture" })
   hl.bind("SUPER + " .. key, hl.dsp.exec_cmd(shot .. "fullscreen"), { description = "Screenshot" })
   hl.bind("SUPER + SHIFT + " .. key, hl.dsp.exec_cmd(shot .. "region"), { description = "Screenshot a region" })
   hl.bind("ALT + " .. key, hl.dsp.exec_cmd(shot .. "windows"), { description = "Screenshot a window" })

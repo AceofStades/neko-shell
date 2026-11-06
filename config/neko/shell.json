@@ -53,6 +53,9 @@
         {
           "id": "neko.stopwatch",
           "separate": true
+        },
+        {
+          "id": "neko.capture"
         }
       ],
       "right": [

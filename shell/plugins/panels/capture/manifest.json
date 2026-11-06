@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.capture",
+  "name": "Capture",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Screenshots and recordings from the island: an area, a window or the screen, with their options",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Capture",
+    "description": "Opens from the island on Print: screenshots and recordings with their options. Takes no room in the bar.",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "center"
+  }
+}

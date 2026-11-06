@@ -24,6 +24,7 @@ panel neko.elsewhen
 panel neko.network
 panel neko.power
 panel neko.power-menu
+panel neko.capture
 audio raise
 audio lower
 audio mute-toggle
