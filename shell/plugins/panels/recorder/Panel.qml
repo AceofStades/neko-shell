@@ -715,6 +715,7 @@ Panel {
     property bool primary: false
     signal clicked()
     Layout.fillWidth: true
+    Layout.fillHeight: true
     Layout.preferredWidth: 1
     implicitHeight: tileColumn.implicitHeight + Style.space(28)
     radius: Style.space(14)
@@ -727,7 +728,7 @@ Panel {
       id: tileColumn
       anchors.left: parent.left
       anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
+      anchors.top: parent.top
       anchors.margins: Style.space(14)
       spacing: Style.space(4)
       RowLayout {
