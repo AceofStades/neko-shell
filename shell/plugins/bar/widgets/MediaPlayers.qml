@@ -50,6 +50,9 @@ BarWidget {
   readonly property bool spotifyPlayer: !!player && (String(player.identity || "") + " " + String(player.desktopEntry || "") + " " + String(player.dbusName || "")).toLowerCase().indexOf("spotify") >= 0
   readonly property bool chromePlayer: !!player && /(^|[^a-z])chrome([^a-z]|$)/i.test(String(player.identity || "") + " " + String(player.desktopEntry || "") + " " + String(player.dbusName || ""))
   readonly property bool playing: !!player && player.isPlaying
+  // Playing and leading the island's left: a take leads it while it runs,
+  // and the music shows only its app then
+  readonly property bool expanded: playing && Island.leftActiveTile === "media"
   readonly property string iconUrl: player && !spotifyPlayer && !chromePlayer ? iconFor(player) : ""
 
   function iconFor(player) {
@@ -115,14 +118,15 @@ BarWidget {
   // As its own island it sizes its own ends: the bar draws the pill a little
   // in from the slot (tileEnd). Paused, the pill is a circle with the app's
   // halo in its middle; playing, it runs on to the right just far enough for
-  // the bars, the halo staying in its round end.
+  // the bars, the halo staying in its round end. While a take leads the
+  // island's left, it stays a circle.
   readonly property bool capsulePadded: !root.separate
   readonly property real tileEnd: 2 + Style.bar.widgetGap / 2
   readonly property real haloSize: root.separate ? root.capsuleHeight - Style.space(6) : Style.space(25)
   readonly property real haloInset: (root.capsuleHeight - root.haloSize) / 2
   implicitWidth: !visible ? 0
-    : root.separate ? root.capsuleHeight + (root.playing ? Style.space(5) + Style.space(22) + root.haloInset + Style.space(2) : 0) + 4
-    : Style.space(root.playing ? 62 : 40)
+    : root.separate ? root.capsuleHeight + (root.expanded ? Style.space(5) + Style.space(22) + root.haloInset + Style.space(2) : 0) + 4
+    : Style.space(root.expanded ? 62 : 40)
   implicitHeight: root.barSize
   Behavior on implicitWidth {
     enabled: !Style.reduceMotion
@@ -271,9 +275,9 @@ BarWidget {
       Item {
         id: compactSpectrum
         anchors.verticalCenter: parent.verticalCenter
-        width: root.playing ? Style.space(22) : 0
+        width: root.expanded ? Style.space(22) : 0
         height: Style.space(18)
-        opacity: root.playing ? 1 : 0
+        opacity: root.expanded ? 1 : 0
         clip: true
 
         Behavior on width { NumberAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic } }

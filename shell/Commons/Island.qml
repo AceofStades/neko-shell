@@ -574,12 +574,16 @@ Singleton {
     Quickshell.execDetached(["neko-record"].concat(args))
   }
 
-  // Which tile beside the island shows its time; the rest show a ring. A take
-  // first, as you want to know you're being recorded; then something ringing,
-  // as it wants you; then what's running, Pomodoro before a timer before the
-  // stopwatch; with nothing running, the first that's there.
+  // Which tile on the island's left leads: a take while it runs, as you want
+  // to know you're being recorded, the music otherwise. The one that doesn't
+  // lead shows only its icon.
+  readonly property string leftActiveTile: recordLive ? "recording" : "media"
+
+  // Which tile on the island's right shows its time; the rest show a ring.
+  // Something ringing first, as it wants you; then what's running, Pomodoro
+  // before a timer before the stopwatch; with nothing running, the first
+  // that's there.
   readonly property string activeTile: {
-    if (recordLive) return "recording"
     if (clockRinging) return "timer"
     if (pomodoroRunning) return "pomodoro"
     if (timerRunning) return "timer"

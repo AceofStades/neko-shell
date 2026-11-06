@@ -20,7 +20,9 @@ BarWidget {
   readonly property bool ringing: timerKind && Island.clockRinging
   readonly property bool present: recordKind ? Island.recordLive : timerKind ? (ringing || !!Island.clockTimer) : Island.stopwatchPresent
   readonly property bool running: ringing || (recordKind ? Island.recordRunning : timerKind ? Island.timerRunning : Island.stopwatchRunning)
-  readonly property bool tileActive: Island.activeTile === kind
+  // A take's tile sits left of the island, with the music; the clock's right
+  readonly property bool leftSide: recordKind
+  readonly property bool tileActive: leftSide ? Island.leftActiveTile === kind : Island.activeTile === kind
   // The timer's time left, or the stopwatch's or the take's sweep round each minute
   readonly property real fraction: timerKind ? Island.timerFraction
     : ((recordKind ? Island.recordElapsed : Island.stopwatchElapsed) % 60000) / 60000
@@ -48,7 +50,7 @@ BarWidget {
   }
   onShownBesideChanged: root.reveal = shownBeside ? 1 : 0
   opacity: reveal
-  transform: Translate { x: (1 - root.reveal) * Style.space(16) * -1 }
+  transform: Translate { x: (1 - root.reveal) * Style.space(16) * (root.leftSide ? 1 : -1) }
   // It sizes its own ends: the bar draws the pill a little in from the slot
   // (tileEnd); the slot is sized so the pill is round when passive and hugs
   // the time when active

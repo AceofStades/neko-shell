@@ -24,6 +24,10 @@
           "separate": true
         },
         {
+          "id": "neko.recording",
+          "separate": true
+        },
+        {
           "id": "neko.workspace-bars-left",
           "group": "unibar",
           "start": 1
@@ -37,10 +41,6 @@
           "id": "neko.workspace-bars-right",
           "group": "unibar",
           "start": 6
-        },
-        {
-          "id": "neko.recording",
-          "separate": true
         },
         {
           "id": "neko.pomodoro",
