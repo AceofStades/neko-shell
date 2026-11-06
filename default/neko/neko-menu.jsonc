@@ -38,7 +38,6 @@
   "system.reboot": {"icon":"󰜉","label":"Reboot","action":"neko-system-reboot"},
   "system.shutdown": {"icon":"󰐥","label":"Shutdown","action":"neko-system-shutdown"},
 
-  "learn.keybindings": {"icon":"","label":"Keybindings","action":"neko-menu-keybindings"},
   "learn.hyprland": {"icon":"","label":"Hyprland","action":"neko-launch-webapp 'https://wiki.hypr.land/'"},
   "learn.arch": {"icon":"󰣇","label":"Arch","action":"neko-launch-webapp 'https://wiki.archlinux.org/title/Main_page'"},
 
