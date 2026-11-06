@@ -217,7 +217,7 @@ BarWidget {
     visible: root.islandUp
     color: "transparent"
     // Room for the widest card; clear outside it, so wider costs nothing
-    implicitWidth: Math.max(Style.space(520), root.pomodoroCardWidth, root.timerCardWidth, root.stopwatchCardWidth, root.mediaCardWidth) + Style.space(40)
+    implicitWidth: Math.max(Style.space(520), root.pomodoroCardWidth, root.timerCardWidth, root.stopwatchCardWidth, root.recordingCardWidth, root.mediaCardWidth) + Style.space(40)
     implicitHeight: Style.space(190)
     onImplicitWidthChanged: root.placeIsland()
     exclusionMode: ExclusionMode.Ignore
@@ -300,6 +300,7 @@ BarWidget {
         : root.islandMode === "recording" ? root.recordingCardWidth
         : root.islandMode === "notification" ? Style.space(410)
         : root.islandMode === "osd" ? root.osdWidth
+        : root.islandMode === "activity" ? activityView.pillWidth
         : root.islandMode === "faceauth" ? Style.space(120) : root.restWidth
       readonly property real targetHeight: root.islandMode === "media" ? mediaView.implicitHeight
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
@@ -307,7 +308,8 @@ BarWidget {
         : root.islandMode === "stopwatch" ? stopwatchView.implicitHeight
         : root.islandMode === "recording" ? recordingView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
-        : root.islandMode === "osd" || root.islandMode === "faceauth" ? Style.space(80) : root.restHeight
+        : root.islandMode === "osd" || root.islandMode === "faceauth" ? Style.space(80)
+        : root.islandMode === "activity" ? Style.space(58) : root.restHeight
 
       readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
         || root.islandMode === "timer" || root.islandMode === "stopwatch" || root.islandMode === "recording"
@@ -468,6 +470,63 @@ BarWidget {
                 width: parent.width * Math.max(0, Math.min(1, steps.filled - parent.index))
                 color: root.accent
               }
+            }
+          }
+        }
+      }
+
+      // A live activity: its icon in a soft round, the title and a line under
+      // it, the pill as wide as they need (and no wider than the card)
+      Item {
+        id: activityView
+        readonly property var a: Island.activity
+        readonly property color tint: a && a.tint ? a.tint : root.accent
+        readonly property real pillWidth: Math.max(root.restWidth, Math.min(Style.space(440), activityRow.implicitWidth + Style.space(40)))
+        anchors.fill: parent
+        opacity: root.islandMode === "activity" ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Style.duration(root.islandMode === "activity" ? 220 : 90) } }
+
+        Row {
+          id: activityRow
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.left: parent.left
+          anchors.leftMargin: Style.space(10)
+          spacing: Style.space(10)
+
+          Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(38)
+            height: width
+            radius: width / 2
+            color: Util.alpha(activityView.tint, 0.2)
+            Text {
+              anchors.centerIn: parent
+              text: activityView.a ? activityView.a.icon : ""
+              color: activityView.tint
+              font.family: root.bar ? root.bar.fontFamily : Style.font.family
+              font.pixelSize: Style.font.icon + 2
+            }
+          }
+
+          Column {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Style.space(1)
+            Text {
+              text: activityView.a ? activityView.a.title : ""
+              color: root.islandText
+              font.pixelSize: Style.font.bodySmall
+              font.weight: Font.DemiBold
+              width: Math.min(implicitWidth, Style.space(340))
+              elide: Text.ElideRight
+            }
+            Text {
+              visible: text !== ""
+              text: activityView.a && activityView.a.detail ? activityView.a.detail : ""
+              color: root.islandDim
+              font.pixelSize: Style.font.caption
+              width: Math.min(implicitWidth, Style.space(340))
+              elide: Text.ElideRight
             }
           }
         }

@@ -150,6 +150,29 @@ Singleton {
     onTriggered: root.osdShown = false
   }
 
+  // ---------- Live activities ----------
+  // Something that happened, shown in the island for a moment as an icon, a
+  // title and a line under it: text copied, headphones connected, the
+  // charger in. { icon, title, detail, tint (optional) }
+  property var activity: null
+  property bool activityShown: false
+
+  function showActivity(state, duration) {
+    activity = state
+    activityShown = true
+    activityTimer.interval = Math.max(800, duration || 2200)
+    activityTimer.restart()
+  }
+
+  function hideActivity() {
+    activityShown = false
+  }
+
+  Timer {
+    id: activityTimer
+    onTriggered: root.activityShown = false
+  }
+
   // ---------- Settings ----------
   // The settings window grows out of the island on the screen it opens on,
   // from where the island rests. While it's up the island there clears its
@@ -651,10 +674,11 @@ Singleton {
   }
 
   // What the island shows: "settings", "faceauth", "osd", "pomodoro", "timer",
-  // "stopwatch", "recording", "media", "notification" or "" (the workspaces). The settings
+  // "stopwatch", "recording", "media", "activity", "notification" or "" (the workspaces). The settings
   // window, grown out of it, holds it while open; then face unlock, asking for
   // you; a passing OSD outranks the card the pointer asked for, which outranks
   // a notification.
   readonly property string mode: !active ? "" : settingsOpen ? "settings" : faceAuth !== "" ? "faceauth" : osdShown ? "osd"
-    : pomodoroShown ? "pomodoro" : clockShown !== "" ? clockShown : mediaShown ? "media" : current ? "notification" : ""
+    : pomodoroShown ? "pomodoro" : clockShown !== "" ? clockShown : mediaShown ? "media"
+    : activityShown && activity ? "activity" : current ? "notification" : ""
 }
