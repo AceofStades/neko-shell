@@ -12,12 +12,12 @@ hl.bind("SUPER + SHIFT + Q", hl.dsp.window.close())
 hl.bind("SUPER + F", hl.dsp.window.float({ action = "toggle" }), { description = "Float window" })
 hl.bind("ALT + Return", hl.dsp.window.fullscreen({ action = "toggle" }), { description = "Fullscreen" })
 hl.bind("SUPER + ALT + P", hl.dsp.window.pseudo())
-hl.bind("SUPER + G", hl.dsp.exec_raw("togglegroup", ""), { description = "Group windows" })
+hl.bind("SUPER + G", hl.dsp.group.toggle(), { description = "Group windows" })
 hl.bind("ALT + Tab", hl.dsp.exec_cmd("hyprctl dispatch 'hl.dsp.window.cycle_next()'"), { description = "Next window" })
 hl.bind("CTRL + ALT + P", hl.dsp.global("neko:menu.system"), { description = "Power menu" })
 hl.bind("XF86PowerOff", hl.dsp.global("neko:menu.system"), { locked = true })
 hl.bind("SUPER + Escape", hl.dsp.exec_cmd(neko .. "neko-session restart"), { description = "Restart neko" })
-hl.bind("CTRL + ALT + Delete", hl.dsp.exec_cmd("hyprctl dispatch exit 0"))
+hl.bind("CTRL + ALT + Delete", hl.dsp.exit())
 
 hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
 hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })
@@ -70,9 +70,9 @@ hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set 5%+"), { locke
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"), { locked = true, repeating = true })
 
 -- Focus and movement
-for key, direction in pairs({ left = "l", right = "r", up = "u", down = "d" }) do
+for _, key in ipairs({ "left", "right", "up", "down" }) do
   hl.bind("SUPER + " .. key, hl.dsp.focus({ direction = key }))
-  hl.bind("SUPER + CTRL + " .. key, hl.dsp.exec_cmd("hyprctl dispatch movewindow " .. direction))
+  hl.bind("SUPER + CTRL + " .. key, hl.dsp.window.move({ direction = key }))
 end
 
 -- Workspaces
@@ -80,7 +80,7 @@ for i = 1, 10 do
   local key = tostring(i % 10)
   hl.bind("SUPER + " .. key, hl.dsp.focus({ workspace = tostring(i) }))
   hl.bind("SUPER + SHIFT + " .. key, hl.dsp.window.move({ workspace = tostring(i) }))
-  hl.bind("SUPER + CTRL + " .. key, hl.dsp.exec_raw("movetoworkspacesilent", tostring(i)))
+  hl.bind("SUPER + CTRL + " .. key, hl.dsp.window.move({ workspace = tostring(i), follow = false }))
 end
 hl.bind("SUPER + Tab", hl.dsp.focus({ workspace = "m+1" }), { description = "Next workspace" })
 hl.bind("SUPER + SHIFT + Tab", hl.dsp.focus({ workspace = "m-1" }))

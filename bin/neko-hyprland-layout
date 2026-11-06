@@ -40,8 +40,8 @@ case ${1:-cycle} in
         case $direction in
           h) dispatch "hl.dsp.layout('mfact -0.05')" ;;
           l) dispatch "hl.dsp.layout('mfact +0.05')" ;;
-          k) dispatch "hl.dsp.exec_raw('resizeactive', '0 -50')" ;;
-          j) dispatch "hl.dsp.exec_raw('resizeactive', '0 50')" ;;
+          k) dispatch "hl.dsp.window.resize({ x = 0, y = -50, relative = true })" ;;
+          j) dispatch "hl.dsp.window.resize({ x = 0, y = 50, relative = true })" ;;
         esac
         ;;
       dwindle)
@@ -55,8 +55,8 @@ case ${1:-cycle} in
         case $direction in
           h) dispatch "hl.dsp.layout('colresize -0.05')" ;;
           l) dispatch "hl.dsp.layout('colresize +0.05')" ;;
-          k) dispatch "hl.dsp.exec_raw('resizeactive', '0 -50')" ;;
-          j) dispatch "hl.dsp.exec_raw('resizeactive', '0 50')" ;;
+          k) dispatch "hl.dsp.window.resize({ x = 0, y = -50, relative = true })" ;;
+          j) dispatch "hl.dsp.window.resize({ x = 0, y = 50, relative = true })" ;;
         esac
         ;;
     esac
