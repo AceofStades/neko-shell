@@ -19,6 +19,7 @@
 //!   folder <path>                 where received files go
 //!   network on|off                whether the service may change the network
 //!                                 (a temporary hotspot) for a transfer
+//!   start                         start the installed service's user unit
 
 use std::io::Read;
 use std::sync::mpsc;
@@ -29,9 +30,13 @@ use zbus::MatchRule;
 use zbus::blocking::{Connection, MessageIterator};
 use zbus::message::Type;
 
+// The service's own names, which it sets and neko can't change: its bus name,
+// object, interface, program and unit. Every one of them is here.
 const BUS: &str = "io.omarchy.QuickShare";
 const PATH: &str = "/io/omarchy/QuickShare";
 const INTERFACE: &str = "io.omarchy.QuickShare1";
+const PROGRAM: &str = "omarchy-quickshare";
+const UNIT: &str = "omarchy-quickshare.service";
 /// Older services lack security fixes the protocol needs
 const MINIMUM: (u64, u64, u64) = (0, 3, 7);
 const MAX_FILES: usize = 1000;
@@ -52,7 +57,7 @@ fn minimum_text() -> String {
 /// Where a copy of the service is installed, if one is
 fn installed() -> bool {
     let home = std::env::var("HOME").unwrap_or_default();
-    ["/usr/bin/omarchy-quickshare".to_string(), format!("{home}/.local/bin/omarchy-quickshare")]
+    [format!("/usr/bin/{PROGRAM}"), format!("{home}/.local/bin/{PROGRAM}")]
         .iter()
         .any(|path| std::path::Path::new(path).is_file())
 }
@@ -184,10 +189,18 @@ fn watch() -> Result<(), String> {
 
 pub fn run(args: &[String]) -> Result<(), String> {
     let Some((verb, rest)) = args.split_first() else {
-        return Err("usage: neko-core quickshare <status|watch|visible|send|qr-send|qr-stop|accept|reject|cancel|folder|network>".into());
+        return Err("usage: neko-core quickshare <status|watch|start|visible|send|qr-send|qr-stop|accept|reject|cancel|folder|network>".into());
     };
     if verb == "watch" {
         return watch();
+    }
+    if verb == "start" {
+        let started = std::process::Command::new("systemctl")
+            .args(["--user", "start", UNIT])
+            .stderr(std::process::Stdio::null())
+            .status()
+            .map_err(|error| format!("can't run systemctl: {error}"))?;
+        return if started.success() { Ok(()) } else { Err("the Quick Share service didn't start".into()) };
     }
     let connection = Connection::session().map_err(|error| format!("can't reach the session bus: {error}"))?;
     if verb == "status" {

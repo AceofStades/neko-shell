@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # neko:summary=Send files to and receive them from Android phones nearby, through the Quick Share service
-# neko:args=<status|watch|visible <seconds>|send <device>|qr-send|qr-stop <id>|accept <id>|reject <id>|cancel <id>|folder <path>|network <on|off>>
+# neko:args=<status|watch|start|visible <seconds>|send <device>|qr-send|qr-stop <id>|accept <id>|reject <id>|cancel <id>|folder <path>|network <on|off>>
 # neko:examples=neko quickshare status | neko quickshare visible 120 | echo '["/home/me/photo.jpg"]' | neko quickshare send <device>
 
 # neko-core's Quick Share client (core/), which install.sh builds or downloads.

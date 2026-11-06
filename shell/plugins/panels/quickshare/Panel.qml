@@ -305,7 +305,7 @@ Panel {
         bordered: true
         foreground: root.foreground
         fontFamily: root.fontFamily
-        onClicked: Quickshell.execDetached(["systemctl", "--user", "start", "omarchy-quickshare.service"])
+        onClicked: root.act(["start"])
       }
 
       // -------------------------------------------------------- settings
