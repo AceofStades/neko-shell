@@ -2148,6 +2148,7 @@ Item {
     readonly property bool islandFollower: group === "unibar"
     readonly property bool islandPart: moduleName === "neko.workspaces"
       || moduleName === "neko.media-players" || moduleName === "neko.pomodoro" || moduleName === "neko.timers" || moduleName === "neko.stopwatch"
+      || moduleName === "neko.recording"
       || moduleName === "neko.unibar-center" || islandFollower
     readonly property bool islandPanelPart: islandFollower && root.islandMorphsSlot(slot)
     readonly property real islandContentOpacity: islandFollower

@@ -4,28 +4,37 @@ import qs.Commons
 import qs.Ui
 
 // A clock tile beside the island, as the Pomodoro is: the timer closest to
-// done (and whatever is ringing), or with `kind` "stopwatch", the stopwatch.
-// The active tile (Island.activeTile) shows its time; a passive one only its
-// icon in a ring of progress. Hovering opens its card in the island; a click
-// pauses or resumes it, and while it rings dismisses (a right click snoozes).
-// neko-clock keeps and rings them; Island reads its state.
+// done (and whatever is ringing), or with `kind` "stopwatch", the stopwatch,
+// or with "recording", a screen recording's take. The active tile
+// (Island.activeTile) shows its time; a passive one only its icon in a ring
+// of progress. Hovering opens its card in the island; a click pauses or
+// resumes it, and while it rings dismisses (a right click snoozes, or stops
+// a take). neko-clock and neko-record keep them; Island reads their state.
 BarWidget {
   id: root
   moduleName: "neko.timers"
   property string kind: "timer"
 
   readonly property bool timerKind: kind === "timer"
+  readonly property bool recordKind: kind === "recording"
   readonly property bool ringing: timerKind && Island.clockRinging
-  readonly property bool present: timerKind ? (ringing || !!Island.clockTimer) : Island.stopwatchPresent
-  readonly property bool running: ringing || (timerKind ? Island.timerRunning : Island.stopwatchRunning)
+  readonly property bool present: recordKind ? Island.recordLive : timerKind ? (ringing || !!Island.clockTimer) : Island.stopwatchPresent
+  readonly property bool running: ringing || (recordKind ? Island.recordRunning : timerKind ? Island.timerRunning : Island.stopwatchRunning)
   readonly property bool tileActive: Island.activeTile === kind
-  // The timer's time left, or the stopwatch's sweep round each minute
-  readonly property real fraction: timerKind ? Island.timerFraction : (Island.stopwatchElapsed % 60000) / 60000
+  // The timer's time left, or the stopwatch's or the take's sweep round each minute
+  readonly property real fraction: timerKind ? Island.timerFraction
+    : ((recordKind ? Island.recordElapsed : Island.stopwatchElapsed) % 60000) / 60000
+  // What's live shows in its own colour: a take in the urgent one, as being
+  // recorded is worth noticing
+  readonly property color liveColor: recordKind ? NekoColor.urgent : NekoColor.accent
 
   readonly property string text: ringing ? (Island.clockState.ringing[0].label || (Island.clockState.ringing[0].kind === "timer" ? "Done" : "Alarm"))
+    : recordKind ? (Island.recordStatus === "countdown" ? String(Island.recordCountdown)
+      : Island.recordStatus === "starting" ? "Starting"
+      : Island.recordStatus === "saving" ? "Saving" : Island.clockText(Island.recordElapsed, false))
     : timerKind ? Island.clockText(Island.timerRemaining, true)
     : Island.clockText(Island.stopwatchElapsed, false)
-  readonly property string icon: ringing ? "󰂞" : timerKind ? "󰔟" : "󱎫"
+  readonly property string icon: ringing ? "󰂞" : recordKind ? (Island.recordStatus === "paused" ? "󰏤" : "󰑊") : timerKind ? "󰔟" : "󱎫"
 
   visible: present && !root.vertical
   enabled: Island.mode === "" || Island.mode === kind
@@ -64,7 +73,11 @@ BarWidget {
     labelVisible: false
     tooltipText: ""
     onPressed: function(mouseButton) {
-      if (root.ringing) Island.clock([mouseButton === Qt.RightButton ? "snooze" : "dismiss"])
+      if (root.recordKind) {
+        if (mouseButton === Qt.RightButton || !Island.recordRunning && Island.recordStatus !== "paused") Island.record(["stop"])
+        else Island.record(["toggle-pause"])
+      }
+      else if (root.ringing) Island.clock([mouseButton === Qt.RightButton ? "snooze" : "dismiss"])
       else if (!root.timerKind) Island.clock(["stopwatch-toggle"])
       else if (Island.clockTimer) Island.clock([Island.clockTimer.state === "running" ? "timer-pause" : "timer-resume", Island.clockTimer.id])
     }
@@ -110,7 +123,7 @@ BarWidget {
 
         ShapePath {
           strokeWidth: progress.stroke + Style.spaceReal(0.3)
-          strokeColor: progress.shownFraction > 0.001 ? (root.running ? NekoColor.accent : Util.alpha(button.foreground, 0.5)) : "transparent"
+          strokeColor: progress.shownFraction > 0.001 ? (root.running ? root.liveColor : Util.alpha(button.foreground, 0.5)) : "transparent"
           strokeStyle: ShapePath.DashLine
           dashPattern: [progress.dash, progress.gap]
           fillColor: "transparent"
@@ -134,7 +147,7 @@ BarWidget {
       Text {
         anchors.verticalCenter: parent.verticalCenter
         text: root.icon
-        color: root.running ? NekoColor.accent : button.foreground
+        color: root.running ? root.liveColor : button.foreground
         opacity: root.running ? 1 : 0.65
         font.family: button.fontFamily
         font.pixelSize: Style.bar.iconFont - 1

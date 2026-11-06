@@ -527,7 +527,7 @@ Singleton {
   Timer {
     interval: 250
     repeat: true
-    running: root.timerRunning || root.stopwatchRunning
+    running: root.timerRunning || root.stopwatchRunning || root.recordLive
     onTriggered: root.clockNow = Date.now()
   }
 
@@ -542,10 +542,44 @@ Singleton {
     Quickshell.execDetached(["neko-clock"].concat(args))
   }
 
-  // Which tile beside the island shows its time; the rest show a ring. Something
-  // ringing first, as it wants you; then what's running, Pomodoro before a
-  // timer before the stopwatch; with nothing running, the first that's there.
+  // ---------- Recorder ----------
+  // neko-record's take, from its state file: what it's doing, since when, and
+  // for how long it was paused. The take runs as its own unit; this only draws.
+  property var recordState: ({ status: "idle" })
+
+  FileView {
+    path: (Quickshell.env("XDG_RUNTIME_DIR") || ((Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state"))) + "/neko/record.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: {
+      try { root.recordState = JSON.parse(text()) } catch (error) {}
+    }
+    onLoadFailed: root.recordState = { status: "idle" }
+  }
+
+  readonly property string recordStatus: recordState.status || "idle"
+  // A take under way, from the countdown until it's saved
+  readonly property bool recordLive: ["countdown", "starting", "recording", "paused", "saving"].indexOf(recordStatus) >= 0
+  readonly property bool recordRunning: recordStatus === "recording"
+  readonly property real recordElapsed: {
+    var started = recordState.startedAt || 0
+    if (recordStatus === "saving" || !started) return recordState.recordedMs || 0
+    var paused = (recordState.pausedMs || 0) + (recordStatus === "paused" ? Math.max(0, clockNow - (recordState.pausedAt || clockNow)) : 0)
+    return Math.max(0, clockNow - started - paused)
+  }
+  readonly property int recordCountdown: recordStatus === "countdown" ? Math.max(1, Math.ceil(((recordState.countdownEnds || 0) - clockNow) / 1000)) : 0
+
+  function record(args) {
+    Quickshell.execDetached(["neko-record"].concat(args))
+  }
+
+  // Which tile beside the island shows its time; the rest show a ring. A take
+  // first, as you want to know you're being recorded; then something ringing,
+  // as it wants you; then what's running, Pomodoro before a timer before the
+  // stopwatch; with nothing running, the first that's there.
   readonly property string activeTile: {
+    if (recordLive) return "recording"
     if (clockRinging) return "timer"
     if (pomodoroRunning) return "pomodoro"
     if (timerRunning) return "timer"
@@ -584,9 +618,9 @@ Singleton {
   ShellIpc {
     target: "clock"
 
-    // The timer's or the stopwatch's card, as hovering its tile opens it
+    // The timer's, the stopwatch's or the take's card, as hovering its tile opens it
     function show(kind: string): string {
-      if (kind !== "timer" && kind !== "stopwatch") return "unknown card: " + kind
+      if (["timer", "stopwatch", "recording"].indexOf(kind) < 0) return "unknown card: " + kind
       root.clockRequested = kind
       root.clockIconHovered = true
       clockCloseTimer.stop()
@@ -613,7 +647,7 @@ Singleton {
   }
 
   // What the island shows: "settings", "faceauth", "osd", "pomodoro", "timer",
-  // "stopwatch", "media", "notification" or "" (the workspaces). The settings
+  // "stopwatch", "recording", "media", "notification" or "" (the workspaces). The settings
   // window, grown out of it, holds it while open; then face unlock, asking for
   // you; a passing OSD outranks the card the pointer asked for, which outranks
   // a notification.

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.recording",
+  "name": "Recording",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "A screen recording beside the island while it runs, its time when it leads, else a ring",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Recording.qml"
+  },
+  "barWidget": {
+    "displayName": "Recording",
+    "description": "A screen recording beside the island while it runs, its time when it leads, else a ring",
+    "category": "Productivity",
+    "allowMultiple": false
+  }
+}

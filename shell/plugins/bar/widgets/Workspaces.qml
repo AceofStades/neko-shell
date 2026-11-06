@@ -131,6 +131,7 @@ BarWidget {
   readonly property real pomodoroCardWidth: cardWidth(Style.space(400), "neko.pomodoro")
   readonly property real timerCardWidth: cardWidth(Style.space(400), "neko.timers")
   readonly property real stopwatchCardWidth: cardWidth(Style.space(400), "neko.stopwatch")
+  readonly property real recordingCardWidth: cardWidth(Style.space(400), "neko.recording")
   readonly property real mediaCardWidth: cardWidth(Style.space(460), "neko.media-players")
 
   function placeIsland() {
@@ -296,6 +297,7 @@ BarWidget {
         : root.islandMode === "pomodoro" ? root.pomodoroCardWidth
         : root.islandMode === "timer" ? root.timerCardWidth
         : root.islandMode === "stopwatch" ? root.stopwatchCardWidth
+        : root.islandMode === "recording" ? root.recordingCardWidth
         : root.islandMode === "notification" ? Style.space(410)
         : root.islandMode === "osd" ? root.osdWidth
         : root.islandMode === "faceauth" ? Style.space(120) : root.restWidth
@@ -303,11 +305,12 @@ BarWidget {
         : root.islandMode === "pomodoro" ? pomodoroView.implicitHeight
         : root.islandMode === "timer" ? timerView.implicitHeight
         : root.islandMode === "stopwatch" ? stopwatchView.implicitHeight
+        : root.islandMode === "recording" ? recordingView.implicitHeight
         : root.islandMode === "notification" ? notificationView.implicitHeight
         : root.islandMode === "osd" || root.islandMode === "faceauth" ? Style.space(80) : root.restHeight
 
       readonly property bool card: root.islandMode === "media" || root.islandMode === "pomodoro"
-        || root.islandMode === "timer" || root.islandMode === "stopwatch"
+        || root.islandMode === "timer" || root.islandMode === "stopwatch" || root.islandMode === "recording"
       readonly property real targetRadius: card ? Style.space(26) : height / 2
       x: Math.round((island.width - width) / 2)
       y: root.restTopInset
@@ -1243,6 +1246,60 @@ BarWidget {
         }
       }
 
+      // A screen recording's card: the time recorded in a dial that sweeps once
+      // a minute, what's being recorded beside it, and pause, stop and discard
+      ClockCard {
+        id: recordingView
+        readonly property string take: Island.recordStatus
+        mode: "recording"
+        fraction: (Island.recordElapsed % 60000) / 60000
+        live: Island.recordRunning
+        liveColor: NekoColor.urgent
+        time: take === "countdown" ? String(Island.recordCountdown) : Island.clockText(Island.recordElapsed, false)
+        timeLabel: take === "countdown" ? "STARTING IN" : take === "saving" ? "RECORDED" : "RECORDING"
+        glyph: "󰑊"
+        title: take === "paused" ? "PAUSED" : take === "saving" ? "SAVING" : "RECORDING"
+        badge: Island.recordState.audio === true ? "SOUND" : ""
+        headline: Island.recordState.label || "Screen"
+        status: take === "countdown" ? "Get ready: stop it to call it off"
+          : take === "starting" ? "Starting the recorder"
+          : take === "saving" ? "Trimming and evening out the sound"
+          : take === "paused" ? "Paused: resume to carry on in the same file"
+          : "Stop to save it to " + String(Island.recordState.output || "").replace(/\/[^\/]*$/, "").replace(Quickshell.env("HOME"), "~")
+
+        // Throwing a take away asks once: the first click arms it
+        PomodoroButton {
+          id: discardButton
+          property bool armed: false
+          glyph: "󰆴"
+          label: armed ? "Discard?" : ""
+          primary: armed
+          enabled: recordingView.take !== "saving"
+          onClicked: {
+            if (!armed) {
+              armed = true
+              disarm.restart()
+              return
+            }
+            armed = false
+            Island.record(["stop", "--discard"])
+          }
+          Timer { id: disarm; interval: 3000; onTriggered: discardButton.armed = false }
+        }
+        PomodoroButton {
+          glyph: "󰓛"
+          label: recordingView.take === "countdown" ? "Cancel" : "Stop"
+          primary: true
+          enabled: recordingView.take !== "saving"
+          onClicked: Island.record(["stop"])
+        }
+        PomodoroButton {
+          glyph: recordingView.take === "paused" ? "󰐊" : "󰏤"
+          enabled: recordingView.take === "recording" || recordingView.take === "paused"
+          onClicked: Island.record(["toggle-pause"])
+        }
+      }
+
       // The newest notification: its icon, the app, the summary and the body
       Item {
         id: notificationView
@@ -1467,6 +1524,7 @@ BarWidget {
     property string badge: ""
     property string headline: ""
     property string status: ""
+    property color liveColor: root.accent
     default property alias buttons: buttonRow.data
 
     // Its own width, centered in a card grown wider to reach its tile
@@ -1510,14 +1568,14 @@ BarWidget {
         }
         ShapePath {
           strokeWidth: Style.space(14)
-          strokeColor: clockDial.hasProgress ? Util.alpha(root.accent, 0.14) : "transparent"
+          strokeColor: clockDial.hasProgress ? Util.alpha(clockCard.liveColor, 0.14) : "transparent"
           fillColor: "transparent"
           capStyle: ShapePath.RoundCap
           PathAngleArc { centerX: clockDial.width / 2; centerY: clockDial.height / 2; radiusX: clockDial.arcRadius; radiusY: clockDial.arcRadius; startAngle: -90; sweepAngle: 360 * clockCard.fraction }
         }
         ShapePath {
           strokeWidth: Style.space(6)
-          strokeColor: clockDial.hasProgress ? (clockCard.live ? root.accent : root.islandDim) : "transparent"
+          strokeColor: clockDial.hasProgress ? (clockCard.live ? clockCard.liveColor : root.islandDim) : "transparent"
           fillColor: "transparent"
           capStyle: ShapePath.RoundCap
           PathAngleArc { centerX: clockDial.width / 2; centerY: clockDial.height / 2; radiusX: clockDial.arcRadius; radiusY: clockDial.arcRadius; startAngle: -90; sweepAngle: 360 * clockCard.fraction }
@@ -1553,7 +1611,7 @@ BarWidget {
         width: Style.space(7)
         height: width
         radius: width / 2
-        color: clockCard.live ? root.accent : root.islandDim
+        color: clockCard.live ? clockCard.liveColor : root.islandDim
         SequentialAnimation on opacity {
           running: clockCard.visible && clockCard.live
           loops: Animation.Infinite
@@ -1574,14 +1632,14 @@ BarWidget {
         Text {
           anchors.verticalCenter: parent.verticalCenter
           text: clockCard.glyph
-          color: root.accent
+          color: clockCard.liveColor
           font.family: root.bar ? root.bar.fontFamily : Style.font.family
           font.pixelSize: Style.font.title
         }
         Text {
           anchors.verticalCenter: parent.verticalCenter
           text: clockCard.title
-          color: root.accent
+          color: clockCard.liveColor
           font.pixelSize: Style.font.caption
           font.weight: Font.Bold
           font.letterSpacing: Style.spaceReal(0.8)
