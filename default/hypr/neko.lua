@@ -57,6 +57,17 @@ hl.layer_rule({
 
 -- Terminals neko opens for short tasks (a custom DNS prompt, a TUI from the
 -- menu) float in the middle of the screen instead of tiling
+-- The webcam mirror, pinned small in the top corner over everything
+hl.window_rule({
+  name = "neko-mirror",
+  match = { class = "^neko-mirror$" },
+  float = true,
+  pin = true,
+  size = "(monitor_w*0.24) (monitor_w*0.135)",
+  move = "(monitor_w*0.75) (monitor_h*0.06)",
+  opacity = "1.0 override",
+})
+
 hl.window_rule({
   name = "neko-floating-terminal",
   match = { class = "^org\\.neko\\.(terminal|btop|bash)$" },

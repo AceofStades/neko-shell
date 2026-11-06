@@ -20,6 +20,8 @@ Panel {
   property var settingsState: ({})
   property bool available: true
   property bool hasWebcam: false
+  // The cameras, for picking the one the overlay (and the mirror) shows
+  property var cameras: []
   property var takes: []
   property int selected: 0
   // main, history or settings
@@ -79,6 +81,7 @@ Panel {
     })
     loadTakes()
     webcamCheck.running = true
+    cameraList.running = true
   }
 
   function loadTakes() {
@@ -218,6 +221,17 @@ Panel {
         if (code !== 0) reply = { error: String(err.text || "").trim().replace(/^neko-core record: /, "") }
         if (handler) handler(code === 0, reply)
         destroy()
+      }
+    }
+  }
+
+  Process {
+    id: cameraList
+    command: ["neko-webcam", "list"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try { root.cameras = JSON.parse(String(text || "[]")) } catch (error) {}
       }
     }
   }
@@ -628,6 +642,27 @@ Panel {
             name: "container"
             options: [{ value: "mp4", label: "MP4" }, { value: "mkv", label: "MKV" }]
           }
+          RowLayout {
+            Layout.fillWidth: true
+            visible: root.cameras.length > 1
+            spacing: Style.space(10)
+            Text {
+              Layout.fillWidth: true
+              text: "Camera"
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+            }
+            Dropdown {
+              Layout.preferredWidth: Style.space(220)
+              showLabel: false
+              fontFamily: root.fontFamily
+              options: [{ value: "", label: "The first one" }].concat(root.cameras.map(function(c) { return { value: c.device, label: c.name } }))
+              value: root.settingsState.webcamDevice || ""
+              onChanged: function(value) { root.set("webcamDevice", value) }
+            }
+          }
+
           SettingChoice {
             visible: root.hasWebcam
             title: "Webcam size"

@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# neko:summary=The webcam: list the cameras, pick the preferred one, or show it as a mirror
+# neko:args=list | preferred [device|auto] | mirror [toggle|on|off|status]
+# neko:examples=neko webcam mirror | neko webcam preferred /dev/video2 | neko webcam list
+
+# The preferred camera is the recorder's webcamDevice setting, so the mirror
+# and a recording's overlay use the same one; "auto" (or none) takes the first
+# camera found. The mirror is mpv showing it flipped, as a mirror is, in a
+# window neko's Hyprland rules pin small in the top corner.
+
+usage() {
+  echo "Usage: neko-webcam list | preferred [device|auto] | mirror [toggle|on|off|status]" >&2
+  exit 1
+}
+
+cameras() {
+  neko-capture-webcam-list 2> /dev/null
+}
+
+preferred() {
+  local chosen
+  chosen=$(neko-record status 2> /dev/null | jq -r '.settings.webcamDevice // ""')
+  if [[ -n $chosen && -e $chosen ]]; then
+    echo "$chosen"
+  else
+    cameras | sed -n '1s/[[:space:]].*//p'
+  fi
+}
+
+mirror_pid() {
+  pgrep -f -- "^mpv .*--wayland-app-id=neko-mirror" | head -n1
+}
+
+mirror_on() {
+  [[ -n $(mirror_pid) ]] && return 0
+  command -v mpv > /dev/null || { neko-notification-send -u critical "The mirror needs mpv" "Install mpv (install.sh offers it)"; exit 1; }
+  local device formats options="framerate=30" resolution
+  device=$(preferred)
+  [[ -n $device ]] || { neko-notification-send -u critical "No camera found"; exit 1; }
+  formats=$(v4l2-ctl --list-formats-ext -d "$device" 2> /dev/null)
+  for resolution in 1280x720 640x360 1920x1080; do
+    if grep -q "$resolution" <<< "$formats"; then
+      options="video_size=$resolution,$options"
+      break
+    fi
+  done
+  setsid -f mpv "av://v4l2:$device" \
+    --profile=low-latency --untimed --no-cache --no-audio \
+    --demuxer-lavf-o="$options" --vf=hflip \
+    --no-osc --osd-level=0 --no-border --really-quiet \
+    --title="Mirror" --wayland-app-id=neko-mirror > /dev/null 2>&1
+}
+
+mirror_off() {
+  local pid
+  pid=$(mirror_pid)
+  [[ -n $pid ]] && kill "$pid"
+  return 0
+}
+
+case ${1:-} in
+  list)
+    cameras | jq -Rn '[inputs | select(length > 0) | capture("^(?<device>\\S+)\\s+(?<name>.*)$")]'
+    ;;
+  preferred)
+    if [[ -z ${2:-} ]]; then
+      preferred
+    elif [[ $2 == auto ]]; then
+      neko-record set webcamDevice ""
+    elif [[ $2 == /dev/video* ]]; then
+      neko-record set webcamDevice "$2"
+    else
+      usage
+    fi
+    ;;
+  mirror)
+    case ${2:-toggle} in
+      on) mirror_on ;;
+      off) mirror_off ;;
+      status) [[ -n $(mirror_pid) ]] && echo on || echo off ;;
+      toggle) if [[ -n $(mirror_pid) ]]; then mirror_off; else mirror_on; fi ;;
+      *) usage ;;
+    esac
+    ;;
+  *) usage ;;
+esac

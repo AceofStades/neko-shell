@@ -59,6 +59,8 @@ Panel {
   // The wallpaper's file name, readable: "a_red_alien.png" reads "a red alien"
   readonly property string wallpaperName: wallpaper.split("/").pop().replace(/\.[^.]*$/, "").replace(/[_-]+/g, " ")
   property bool recorderInstalled: false
+  property bool hasWebcam: false
+  property bool mirrorOn: false
   // Brightness of the focused display as a tick on the curve (0-64), the
   // laptop panel's backlight or a monitor's over DDC/CI; unavailable when it
   // has neither
@@ -120,6 +122,8 @@ Panel {
       "echo wallpaper=$(readlink -f ~/.local/state/neko/current/background)",
       "echo colors=$(neko-settings get colors)",
       "echo recorder=$(command -v gpu-screen-recorder >/dev/null && echo yes)",
+      "echo webcam=$(neko-hw-webcam && echo yes)",
+      "echo mirror=$(neko-webcam mirror status)",
       "echo brightness=$(neko-monitor-state | head -n 1)",
       "echo displays=$(neko-display json)"
     ].join("; ")]
@@ -140,6 +144,8 @@ Panel {
           else if (key === "wallpaper") root.wallpaper = value
           else if (key === "colors") root.colors = value
           else if (key === "recorder") root.recorderInstalled = value === "yes"
+          else if (key === "webcam") root.hasWebcam = value === "yes"
+          else if (key === "mirror") root.mirrorOn = value === "on"
           else if (key === "brightness" && !brightnessSlider.dragging && !brightnessProc.running) {
             // tick/64, or "unavailable"
             var reading = value.split("/")
@@ -950,9 +956,23 @@ Panel {
               opensPage: true
               onClicked: root.page = "display"
             }
+            // The webcam as a mirror, pinned in the corner
+            QuickTile {
+              visible: root.hasWebcam
+              icon: "󰖠"
+              label: "Mirror"
+              subtitle: root.mirrorOn ? "On" : "See yourself"
+              active: root.mirrorOn
+              onClicked: {
+                root.mirrorOn = !root.mirrorOn
+                root.act("neko-webcam mirror " + (root.mirrorOn ? "on" : "off"))
+              }
+            }
             QuickTile {
               icon: "󰸉"
               label: "Wallpaper"
+              // Left on its own beside the mirror, it takes the row
+              Layout.columnSpan: root.hasWebcam ? 2 : 1
               subtitle: root.rotation ? "New one every " + root.rotationLabel(root.rotation) : root.wallpaperName
               active: root.rotation !== ""
               opensPage: true
