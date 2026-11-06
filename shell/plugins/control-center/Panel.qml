@@ -15,9 +15,9 @@ import "../../services/BrightnessModel.js" as BrightnessModel
 import "../../services/VolumeModel.js" as VolumeModel
 
 // The cat button and its control center: quick toggles, volume and
-// brightness, weather and wallpaper in one popup. Left click opens it,
-// right click opens the neko menu. The wallpaper and display tiles open pages
-// of their own with their settings; Escape or the back button returns.
+// brightness, weather and wallpaper in one popup. The wallpaper and display
+// tiles open pages of their own with their settings; Escape or the back
+// button returns.
 Panel {
   id: root
   moduleName: "neko.control-center"
@@ -214,10 +214,7 @@ Panel {
     bar: root.bar
     text: "󰄛"
     tooltipText: ""
-    onPressed: function(b) {
-      if (b === Qt.RightButton) root.bar.run("neko-shell shell toggle neko.menu '{\"menu\":\"root\"}'")
-      else root.toggle()
-    }
+    onPressed: function(b) { root.toggle() }
   }
 
   KeyboardPanel {

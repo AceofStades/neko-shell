@@ -1,19 +1,11 @@
-# Hyprland global shortcuts the Neko shell registers, one per line: a menu
-# route to toggle, a panel plugin to toggle, a volume or brightness key, or an
-# argument-free IPC call as target.method. A binding written as o.bind(keys,
-# description, { menu = "theme" }), { panel = "neko.audio" },
-# { audio = "raise" }, { brightness = "raise" } or { ipc = "media.next" }
-# dispatches the matching shortcut straight to the shell, with no process to
-# spawn per keypress. Anything missing here still binds, through the
-# neko-menu, neko-shell, neko-audio-output-volume or
+# Hyprland global shortcuts the Neko shell registers, one per line: a panel
+# plugin to toggle, a volume or brightness key, or an argument-free IPC call
+# as target.method. A binding written as o.bind(keys, description,
+# { panel = "neko.audio" }), { audio = "raise" }, { brightness = "raise" } or
+# { ipc = "media.next" } dispatches the matching shortcut straight to the
+# shell, with no process to spawn per keypress. Anything missing here still
+# binds, through the neko-shell, neko-audio-output-volume or
 # neko-brightness-display command instead.
-menu capture
-menu toggle
-menu hardware
-menu system
-menu background
-menu theme
-menu share
 panel neko.audio
 panel neko.bluetooth
 panel neko.monitor

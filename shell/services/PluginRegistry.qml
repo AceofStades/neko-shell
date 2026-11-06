@@ -184,8 +184,7 @@ QtObject {
   // A bar widget is on when it sits in the bar, whoever shipped it. That is a
   // different question from isEnabled(), which decides whether the widget's
   // component is loaded at all — a built-in stays loadable so it can be put
-  // back, and so a plugin that is both a widget and a menu (neko.menu)
-  // cannot be locked out of the shell by taking its button off the bar.
+  // back.
   function inBar(id) {
     var config = shellConfigProvider ? shellConfigProvider() : null
     return findEntryLocation(config, id).kind === "bar"

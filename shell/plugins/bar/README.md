@@ -76,7 +76,6 @@ The music and Pomodoro widgets beside the island take one of three looks: `"sepa
 
 | Name | What it does | Interactions |
 |---|---|---|
-| `neko.menu` | Neko menu launcher | left = menu · right = terminal |
 | `neko.workspaces` | Workspaces 1 to 10 in kanji; on a horizontal bar also the island, which grows out of them to show notifications and the OSD (volume, brightness...) in their place | left = focus workspace · on a notification: left = open it, right = dismiss, hover = hold it |
 | `neko.media-players` | An icon per media player (Spotify, a browser playing YouTube...), in the accent while it plays; hovering one drops its card below the island: art, track, buttons and a seek bar | left = play/pause · hover = its card |
 | `neko.system-monitor` | CPU, CPU temperature and memory as rings around their icons; a popup with every core, the temperatures, memory and swap, disks, network, battery draw and the busiest processes | left = popup · middle = btop |
@@ -191,7 +190,7 @@ First-party bar widgets are manifest-backed just like third-party widgets.
 Simple widgets carry sibling manifests such as `widgets/Workspaces.manifest.json`;
 richer popup plugins live in feature directories such as `../panels/audio/`,
 `../panels/network/`, and `../agents/`; and feature plugins such as
-`neko.menu` and `neko.media` declare their bar-widget entry points in their own
+`neko.media` declare their bar-widget entry points in their own
 `manifest.json`. Bar layout ids are namespaced, e.g. `neko.audio`,
 `neko.network`, and `neko.clock`.
 

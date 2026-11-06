@@ -15,7 +15,6 @@ User-installed plugins live alongside these conceptually but on disk under
 |---------------|---------------------------|-------------------------|---------------------------------------|
 | Bar           | `neko.bar`             | `bar`                   | `bar/Bar.qml`                         |
 | Image picker  | `neko.image-picker`    | `overlay`               | `image-picker/ImagePicker.qml`        |
-| Neko menu  | `neko.menu`            | `menu`, `bar-widget`    | `menu/Menu.qml`, `menu/BarWidget.qml` |
 | Notifications | `neko.notifications`   | `service`               | `notifications/Service.qml`           |
 | Audio         | `neko.audio`           | `bar-widget`            | `panels/audio/Panel.qml`              |
 | Bluetooth     | `neko.bluetooth`       | `bar-widget`            | `panels/bluetooth/Panel.qml`          |
@@ -93,26 +92,6 @@ Theme-aware authentication dialog for privileged actions. It uses
 Quickshell's native `Quickshell.Services.Polkit.PolkitAgent` backend and
 runs inside the long-lived `neko-shell` process, replacing the old
 `polkit-gnome-authentication-agent-1` autostart.
-
-## Neko menu
-
-Quickshell-powered Neko command menu.
-The menu UI lives in `menu/Menu.qml` as a first-party `menu` plugin and is
-summoned through the shell (`neko-shell shell summon neko.menu ...`),
-so it shares the long-running `neko-shell` process instead of starting a
-second Quickshell instance.
-
-The menu definition lives outside the shell host code:
-
-- defaults: `default/neko/neko-menu.jsonc`
-- user extensions: `~/.config/neko/extensions/neko-menu.jsonc`
-
-The shell parses both JSONC files at startup (with `watchChanges: true`
-so edits take effect without a restart), evaluates `when:` / `checked:`
-bash expressions in a single batched subprocess, and executes the
-selected `action:` string directly via `Quickshell.execDetached`. The
-long-running shell process keeps the parsed menu in memory, so the
-keybind → IPC → visible path costs ~30ms cold.
 
 ## Coming soon
 

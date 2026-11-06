@@ -47,7 +47,7 @@ ShellRoot {
       transparent: false,
       centerAnchor: "neko.clock",
       layout: {
-        left: [{ id: "neko.menu" }, { id: "neko.workspaces" }],
+        left: [{ id: "neko.workspaces" }],
         center: [{ id: "neko.clock", format: "dddd HH:mm" }],
         right: [{ id: "neko.audio" }]
       }
@@ -1133,7 +1133,7 @@ ShellRoot {
     if (!m || !Array.isArray(m.kinds)) return false
     if (m.kinds.indexOf("bar-widget") === -1) return false
     // Plugins that are also panel/overlay/menu kinds are owned by the
-    // panel loader (e.g. neko.menu); let that path handle them.
+    // panel loader; let that path handle them.
     var loaderKinds = ["panel", "overlay", "menu"]
     for (var i = 0; i < loaderKinds.length; i++) {
       if (m.kinds.indexOf(loaderKinds[i]) !== -1) return false
@@ -1564,7 +1564,7 @@ ShellRoot {
     var lines = String(raw || "").split("\n")
     for (var i = 0; i < lines.length; i++) {
       var match = /^([A-Za-z]+)\s+(\S+)\s*$/.exec(lines[i])
-      if (match && ["menu", "panel", "audio", "brightness", "ipc"].indexOf(match[1]) !== -1)
+      if (match && ["panel", "audio", "brightness", "ipc"].indexOf(match[1]) !== -1)
         entries.push({ kind: match[1], target: match[2], name: match[1] + "." + match[2] })
     }
     return entries
@@ -1574,9 +1574,7 @@ ShellRoot {
   readonly property var ipcShortcutServices: ({ media: "neko.media", notifications: "neko.notifications" })
 
   function runShortcut(entry) {
-    if (entry.kind === "menu") {
-      shell.toggle("neko.menu", JSON.stringify({ menu: entry.target }))
-    } else if (entry.kind === "ipc") {
+    if (entry.kind === "ipc") {
       // "media.next" runs the media service's own IPC handler for next.
       var dot = entry.target.indexOf(".")
       var target = entry.target.slice(0, dot)

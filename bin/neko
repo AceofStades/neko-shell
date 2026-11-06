@@ -46,7 +46,6 @@ GROUP_DESCRIPTIONS[hook]="User hook runner"
 GROUP_DESCRIPTIONS[hw]="Hardware detection and controls"
 GROUP_DESCRIPTIONS[hyprland]="Hyprland window, monitor, and toggle controls"
 GROUP_DESCRIPTIONS[launch]="Application launchers"
-GROUP_DESCRIPTIONS[menu]="Neko menu commands"
 GROUP_DESCRIPTIONS[monitor]="Monitor status helpers"
 GROUP_DESCRIPTIONS[network]="Network status helpers"
 GROUP_DESCRIPTIONS[notification]="Notification helpers"
@@ -535,7 +534,6 @@ Common commands:
   neko session restart     Reload the shell after changing its code
   neko wallpaper pick      Pick a wallpaper
   neko theme material      Theme neko from the wallpaper
-  neko menu keybindings    Show the keybindings cheat sheet
 
 Anything else goes to the running shell, as neko <target> <method> [args]:
   neko pomodoro start, neko network open, neko notifications toggleDnd
