@@ -48,12 +48,15 @@ hl.bind("SUPER + CTRL + D", hl.dsp.layout("removemaster"))
 hl.bind("SUPER + CTRL + Return", hl.dsp.layout("cyclenext"))
 hl.bind("SUPER + ALT + K", hl.dsp.layout("cycleprev"))
 
--- Screenshots, with the laptop F6 key standing in for Print
+-- Screenshots and recordings, with the laptop F6 key standing in for Print
 local shot = neko .. "neko-capture-screenshot "
+local record = neko .. "neko-record "
 for _, key in ipairs({ "Print", "F6" }) do
   hl.bind("SUPER + " .. key, hl.dsp.exec_cmd(shot .. "fullscreen"), { description = "Screenshot" })
   hl.bind("SUPER + SHIFT + " .. key, hl.dsp.exec_cmd(shot .. "region"), { description = "Screenshot a region" })
   hl.bind("ALT + " .. key, hl.dsp.exec_cmd(shot .. "windows"), { description = "Screenshot a window" })
+  hl.bind("SUPER + ALT + " .. key, hl.dsp.exec_cmd(record .. "toggle"), { description = "Record the screen, or stop" })
+  hl.bind("SUPER + CTRL + " .. key, hl.dsp.exec_cmd(record .. "toggle-pause"), { description = "Pause or resume the recording" })
 end
 hl.bind("SUPER + SHIFT + S", hl.dsp.exec_cmd(shot .. "region copy"), { description = "Copy a region" })
 
