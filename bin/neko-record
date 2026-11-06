@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# neko:summary=Record the screen: an area, a window or a display, with pause, a countdown and a history
+# neko:args=<status|start [--monitor[=NAME]|--window] [--set key=value]...|toggle|stop [--discard]|pause|resume|toggle-pause|history [limit]|trash <file>|set <key> <value>>
+# neko:examples=neko record start | neko record start --monitor --set microphone=on | neko record toggle-pause | neko record stop | neko record set countdown 0
+
+# neko-core's recorder (core/), which install.sh builds or downloads
+root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+if [[ ! -x $root/core/target/release/neko-core ]]; then
+  echo "${0##*/}: neko-core isn't set up; run $root/install.sh, which builds it with Rust or downloads the release build" >&2
+  exit 1
+fi
+exec "$root/core/target/release/neko-core" record "$@"

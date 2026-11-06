@@ -9,6 +9,7 @@ mod clock;
 mod faceauth;
 mod filepick;
 mod netlegs;
+mod record;
 
 use std::process::ExitCode;
 
@@ -30,6 +31,7 @@ fn main() -> ExitCode {
         "faceauth-watch" => faceauth::run(rest),
         "file-select" => filepick::run(rest),
         "netlegs" => netlegs::run_command(rest),
+        "record" => record::run(rest),
         "agent-account-state" => agents::accounts::run(rest),
         "agent-usage-claude" => agents::claude::run(rest),
         "agent-usage-codex" => agents::codex::run(rest),
