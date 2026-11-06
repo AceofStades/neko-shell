@@ -885,7 +885,7 @@ Panel {
               iconText: "󰐥"
               tooltipText: "Power"
               foreground: root.foreground
-              onClicked: root.runAndClose("neko-menu summon system")
+              onClicked: root.runAndClose("neko-shell shell toggle neko.power-menu")
             }
           }
 

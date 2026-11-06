@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.power-menu",
+  "name": "Power menu",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Lock, sleep, log out, restart or shut down",
+  "kinds": [
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "PowerMenu.qml"
+  }
+}

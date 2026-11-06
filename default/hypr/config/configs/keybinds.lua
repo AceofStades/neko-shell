@@ -13,8 +13,8 @@ hl.bind("ALT + Return", hl.dsp.window.fullscreen({ action = "toggle" }), { descr
 hl.bind("SUPER + ALT + P", hl.dsp.window.pseudo())
 hl.bind("SUPER + G", hl.dsp.group.toggle(), { description = "Group windows" })
 hl.bind("ALT + Tab", hl.dsp.exec_cmd("hyprctl dispatch 'hl.dsp.window.cycle_next()'"), { description = "Next window" })
-hl.bind("CTRL + ALT + P", hl.dsp.global("neko:menu.system"), { description = "Power menu" })
-hl.bind("XF86PowerOff", hl.dsp.global("neko:menu.system"), { locked = true })
+hl.bind("CTRL + ALT + P", hl.dsp.global("neko:panel.neko.power-menu"), { description = "Power menu" })
+hl.bind("XF86PowerOff", hl.dsp.global("neko:panel.neko.power-menu"), { locked = true })
 hl.bind("SUPER + Escape", hl.dsp.exec_cmd(neko .. "neko-session restart"), { description = "Restart neko" })
 hl.bind("CTRL + ALT + Delete", hl.dsp.exit())
 

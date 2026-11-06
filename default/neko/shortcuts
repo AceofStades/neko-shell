@@ -23,6 +23,7 @@ panel neko.clock
 panel neko.elsewhen
 panel neko.network
 panel neko.power
+panel neko.power-menu
 audio raise
 audio lower
 audio mute-toggle
