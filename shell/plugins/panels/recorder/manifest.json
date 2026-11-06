@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.recorder",
+  "name": "Recorder",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Record an area, a window or a display, with sound, a countdown and a history of takes",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Recorder",
+    "description": "Record an area, a window or a display, with sound, a countdown and a history of takes",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

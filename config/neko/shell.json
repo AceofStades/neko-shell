@@ -39,6 +39,10 @@
           "start": 6
         },
         {
+          "id": "neko.recording",
+          "separate": true
+        },
+        {
           "id": "neko.pomodoro",
           "separate": true
         },
@@ -58,6 +62,10 @@
         },
         {
           "id": "neko.tray",
+          "group": "status"
+        },
+        {
+          "id": "neko.recorder",
           "group": "status"
         },
         {

@@ -38,6 +38,7 @@ Example `shell.json` (bar subtree only shown):
         { "id": "neko.workspace-bars-left", "group": "unibar", "start": 1 },
         { "id": "neko.unibar-center", "group": "unibar", "format": "HH:mm" },
         { "id": "neko.workspace-bars-right", "group": "unibar", "start": 6 },
+        { "id": "neko.recording", "separate": true },
         { "id": "neko.pomodoro", "separate": true },
         { "id": "neko.timers", "separate": true },
         { "id": "neko.stopwatch", "separate": true }
@@ -45,6 +46,7 @@ Example `shell.json` (bar subtree only shown):
       "right": [
         { "id": "neko.keyboard-layout", "group": "status" },
         { "id": "neko.tray", "group": "status" },
+        { "id": "neko.recorder", "group": "status" },
         { "id": "neko.agents", "group": "status" },
         { "id": "neko.bluetooth", "group": "status" },
         { "id": "neko.network", "group": "status" },
