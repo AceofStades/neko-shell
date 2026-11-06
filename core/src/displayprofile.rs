@@ -21,8 +21,9 @@
 //!   watch                 the watcher itself
 
 use std::collections::HashMap;
-use std::fs;
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader};
+use std::os::unix::io::AsRawFd;
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -37,7 +38,7 @@ const MAX_NAME: usize = 40;
 /// Displays come up one by one, docks most of all: wait for them to settle
 const SETTLE: Duration = Duration::from_millis(2500);
 
-// Scores, as hyprmoncfg weighs them: a display the profile turns on and that
+// Scores: a display the profile turns on and that
 // is here counts most; one it keeps off, half; one it wants that isn't here,
 // or one here it doesn't know, counts against it
 const ENABLED_MATCH: i64 = 100;
@@ -89,11 +90,41 @@ fn load() -> Map<String, Value> {
     store
 }
 
+/// Held while the profiles are read, changed and written: the watcher and a
+/// save from the panel can reach for them at once. It lasts while it's open.
+struct Lock(#[allow(dead_code)] File);
+
+impl Lock {
+    fn take() -> Result<Lock, String> {
+        let dir = config_dir();
+        fs::create_dir_all(&dir).map_err(|error| format!("can't create {}: {error}", dir.display()))?;
+        let file = OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .write(true)
+            .open(dir.join(".display-profiles.lock"))
+            .map_err(|error| format!("can't open the profiles' lock: {error}"))?;
+        if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } != 0 {
+            return Err("can't lock the display profiles".into());
+        }
+        Ok(Lock(file))
+    }
+}
+
+/// The profiles read afresh, changed and written back under the lock, so a
+/// change made meanwhile (a save, auto off) isn't written over
+fn change(edit: impl FnOnce(&mut Map<String, Value>) -> Result<(), String>) -> Result<(), String> {
+    let _lock = Lock::take()?;
+    let mut store = load();
+    edit(&mut store)?;
+    save_store(&store)
+}
+
 /// Written whole and moved into place
 fn save_store(store: &Map<String, Value>) -> Result<(), String> {
     let dir = config_dir();
     fs::create_dir_all(&dir).map_err(|error| format!("can't create {}: {error}", dir.display()))?;
-    let temp = dir.join(".display-profiles.json.new");
+    let temp = dir.join(format!(".display-profiles.json.{}", std::process::id()));
     let text = serde_json::to_string_pretty(&Value::Object(store.clone())).map_err(|error| error.to_string())? + "\n";
     fs::write(&temp, text).map_err(|error| format!("can't write {}: {error}", temp.display()))?;
     fs::rename(&temp, store_path()).map_err(|error| format!("can't write {}: {error}", store_path().display()))
@@ -355,9 +386,13 @@ fn apply(profile: &Value) -> Result<(), String> {
     for (output, connector) in ordered {
         let settings = output["settings"].as_object().cloned().unwrap_or_default();
         let mut args = vec!["set".to_string(), connector.clone(), "disabled=false".to_string()];
+        let mirrors = settings.contains_key("mirror");
         for (key, value) in &settings {
+            // A mirror shows another display, so it has no place of its own
             if key == "position" {
-                placements.push(format!("{connector}={}", setting_text(value)));
+                if !mirrors {
+                    placements.push(format!("{connector}={}", setting_text(value)));
+                }
                 continue;
             }
             // The mirrored display by its connector now, not the one it was saved on
@@ -379,8 +414,7 @@ fn apply(profile: &Value) -> Result<(), String> {
     if !placements.is_empty() {
         let mut args = vec!["place".to_string()];
         args.extend(placements);
-        // A mirror has no place of its own: neko-display refuses it, which is fine
-        let _ = neko_display(&args);
+        neko_display(&args)?;
     }
     for (output, connector) in &pairs {
         if output["enabled"].as_bool() != Some(true) {
@@ -395,26 +429,28 @@ fn connected_keys() -> Result<Vec<String>, String> {
 }
 
 fn apply_named(name: &str) -> Result<(), String> {
-    let mut store = load();
-    let list = profiles(&store);
+    let list = profiles(&load());
     let profile = find(&list, name).ok_or_else(|| format!("no profile called {name}"))?.clone();
     apply(&profile)?;
-    store.insert("last".into(), profile["name"].clone());
-    save_store(&store)
+    change(|store| {
+        store.insert("last".into(), profile["name"].clone());
+        Ok(())
+    })
 }
 
 /// The profile that fits the displays exactly, if one does
 fn apply_best(quiet: bool) -> Result<(), String> {
-    let mut store = load();
-    let list = profiles(&store);
+    let list = profiles(&load());
     let connected = connected_keys()?;
     let Some(profile) = best(&list, &connected, true).cloned() else {
         return if quiet { Ok(()) } else { Err("no profile fits the displays connected".into()) };
     };
     apply(&profile)?;
     let name = profile["name"].as_str().unwrap_or_default().to_string();
-    store.insert("last".into(), json!(name));
-    save_store(&store)?;
+    change(|store| {
+        store.insert("last".into(), json!(name));
+        Ok(())
+    })?;
     let _ = Command::new("neko-notification-send")
         .args(["-u", "low", "-g", "󰍹", "Display profile", &name])
         .stdout(Stdio::null())
@@ -569,6 +605,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             if !outputs.iter().any(|output| output["enabled"].as_bool() == Some(true)) {
                 return Err("no display is on".into());
             }
+            let _lock = Lock::take()?;
             let mut store = load();
             let mut list: Vec<Value> = profiles(&store)
                 .into_iter()
@@ -583,6 +620,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         "apply-best" => apply_best(false),
         "delete" => {
             let name = name()?;
+            let _lock = Lock::take()?;
             let mut store = load();
             let list = profiles(&store);
             if find(&list, name).is_none() {
@@ -598,6 +636,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         }
         "rename" => {
             let (old, new) = (name()?, clean_name(rest.get(1).ok_or("rename to what?")?)?);
+            let _lock = Lock::take()?;
             let mut store = load();
             let mut list = profiles(&store);
             if !old.eq_ignore_ascii_case(&new) && find(&list, &new).is_some() {
@@ -620,9 +659,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 Some("off") => false,
                 _ => return Err("auto takes on or off".into()),
             };
-            let mut store = load();
-            store.insert("auto".into(), json!(on));
-            save_store(&store)?;
+            change(|store| {
+                store.insert("auto".into(), json!(on));
+                Ok(())
+            })?;
             if on {
                 start()?;
                 apply_best(true)
