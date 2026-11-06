@@ -13,6 +13,11 @@
 #   bar.capsules  on | off  (pill behind each bar widget)
 #   bar.glass     on | off  (the bar and its groups as tinted glass over a blur)
 #   app.<name>    on | off  (kitty, btop, tmux or gtk follows the theme)
+#   idle.screensaver, idle.lock
+#                 seconds of idle before the screensaver and the lock, 0 for
+#                 never (shell.json's idle section)
+#   sleep         on | off  (whether the machine may suspend: off keeps it up)
+#   lid.awake     on | off  (keep working with the laptop's lid closed)
 #
 # Bar settings are overrides in ~/.config/neko/shell.toml, which the shell
 # watches live; turning a setting back to the theme's choice removes the override.
@@ -140,11 +145,28 @@ get() {
     app.*)
       [[ " $(themed_apps) " == *" ${1#app.} "* ]] && echo on || echo off
       ;;
+    idle.screensaver)
+      jq -r '.idle.screensaver // 150' "$(layout_file)"
+      ;;
+    idle.lock)
+      jq -r '.idle.lock // 300' "$(layout_file)"
+      ;;
+    sleep)
+      neko-toggle-enabled suspend-off && echo off || echo on
+      ;;
+    lid.awake)
+      neko-lid awake status
+      ;;
     *)
       echo "Unknown setting: $1" >&2
       exit 1
       ;;
   esac
+}
+
+# The bar layout file in use: yours, or neko's default until you have one
+layout_file() {
+  if [[ -f $layout ]]; then echo "$layout"; else echo "$NEKO_PATH/config/neko/shell.json"; fi
 }
 
 set_value() {
@@ -217,6 +239,21 @@ set_value() {
         set_themed_apps "$(echo $apps)"
         neko-theme-apps --remove "$app"
       fi
+      ;;
+    idle.screensaver | idle.lock)
+      [[ $value =~ ^[0-9]+$ ]] || { echo "$key takes seconds (0 for never)" >&2; exit 1; }
+      if [[ ! -f $layout ]]; then
+        mkdir -p "$(dirname "$layout")"
+        cp "$NEKO_PATH/config/neko/shell.json" "$layout"
+      fi
+      jq --indent 2 --arg key "${key#idle.}" --argjson seconds "$value" '.idle[$key] = $seconds' "$layout" > "$layout.tmp" && mv "$layout.tmp" "$layout"
+      ;;
+    sleep)
+      [[ $value == on ]] && neko-toggle suspend-off off || neko-toggle suspend-off on
+      ;;
+    lid.awake)
+      neko-lid awake "$value"
+      neko-lid apply
       ;;
     *)
       echo "Unknown setting: $key" >&2
