@@ -4,6 +4,11 @@
 # neko:group=capture
 # neko:examples=neko capture qr
 
+if ! command -v zbarimg > /dev/null; then
+  neko-notification-send -g 󰐲 -u critical "Reading QR codes needs zbar" "Install zbar (install.sh offers it)"
+  exit 1
+fi
+
 # Keep hyprpicker alive until after grim captures so the screenshot sees the
 # frozen overlay rather than live content shifting during teardown.
 cleanup_freeze() {
