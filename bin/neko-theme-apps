@@ -5,7 +5,7 @@
 
 # Each app is pointed once at a file the theme renders under
 # ~/.local/state/neko/current/theme (an include line, a symlink, a
-# setting), then told to reload. Supported: kitty btop tmux gtk.
+# setting), then told to reload. Supported: kitty btop tmux gtk vicinae.
 # Nothing happens to an app unless it is listed.
 
 theme=$HOME/.local/state/neko/current/theme
@@ -139,6 +139,19 @@ theme_gtk() {
   ensure_line "$gtk4_css" "$import" "neko-shell colors"
 }
 
+# Vicinae watches its theme folder, so a copy there (not a link: the folder's
+# watch doesn't see a link's target change) is picked up live; the theme is
+# chosen once, while its server runs
+theme_vicinae() {
+  local themes=$HOME/.local/share/vicinae/themes
+  [[ -f $theme/vicinae.toml ]] || return 0
+  mkdir -p "$themes"
+  cp "$theme/vicinae.toml" "$themes/neko.toml.tmp" && mv "$themes/neko.toml.tmp" "$themes/neko.toml"
+  if command -v vicinae > /dev/null; then
+    vicinae theme set neko > /dev/null 2>&1 || true
+  fi
+}
+
 unhook_kitty() {
   remove_line "$HOME/.config/kitty/kitty.conf" "include $theme/kitty.conf"
   pkill -USR1 -x kitty
@@ -170,9 +183,18 @@ unhook_gtk() {
   fi
 }
 
+unhook_vicinae() {
+  local mode
+  rm -f "$HOME/.local/share/vicinae/themes/neko.toml"
+  mode=$(sed -n 's/^mode = "\(light\|dark\)"$/\1/p' "$theme/colors.toml" 2> /dev/null)
+  if command -v vicinae > /dev/null; then
+    vicinae theme set "vicinae-${mode:-dark}" > /dev/null 2>&1 || true
+  fi
+}
+
 for app in "${apps[@]}"; do
   case $app in
-    kitty | btop | tmux | gtk)
+    kitty | btop | tmux | gtk | vicinae)
       if [[ $remove == true ]]; then
         "unhook_$app"
       else

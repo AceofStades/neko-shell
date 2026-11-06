@@ -1478,7 +1478,7 @@ Item {
 
               SectionTitle { text: "Themed apps" }
               Repeater {
-                model: [ { app: "gtk", label: "GTK apps" }, { app: "btop", label: "btop" }, { app: "tmux", label: "tmux" }, { app: "kitty", label: "kitty" } ]
+                model: [ { app: "gtk", label: "GTK apps" }, { app: "btop", label: "btop" }, { app: "tmux", label: "tmux" }, { app: "kitty", label: "kitty" }, { app: "vicinae", label: "Vicinae" } ]
                 delegate: SettingRow {
                   required property var modelData
                   label: modelData.label
