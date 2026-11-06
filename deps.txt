@@ -30,6 +30,7 @@ imagemagick             recommended  magick               Wallpaper colors and t
 matugen                 recommended  matugen              Colors from the wallpaper (Material You)
 grim                    recommended  grim                 Screenshots
 slurp                   recommended  slurp                Picking a region to capture
+aur:omasnap-bin         recommended  omasnap              Screenshots with an annotation editor and scrolling capture (grim alone otherwise)
 wl-clipboard            recommended  wl-copy              Copying captures and the clipboard manager
 wtype                   recommended  wtype                Pasting from the clipboard history and the emoji picker
 noto-fonts-cjk          recommended  lang:ja              The kanji workspace names

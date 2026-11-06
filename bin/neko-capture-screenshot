@@ -6,18 +6,56 @@
 # neko:examples=neko screenshot | neko capture screenshot region
 # neko:aliases=neko screenshot
 
-if [[ -n ${NEKO_SCREENSHOT_DIR:-} && -z ${OMASNAP_SCREENSHOT_DIR:-} ]]; then
-  export OMASNAP_SCREENSHOT_DIR="$NEKO_SCREENSHOT_DIR"
+# omasnap takes the shot and offers its editor when it's installed. Without
+# it, grim takes it over neko's picker (frozen screen, a click for a window
+# or display, a drag for an area): copied, saved, and announced with a
+# notification that opens it. Scrolling captures need omasnap.
+
+[[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
+dir=${NEKO_SCREENSHOT_DIR:-${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots}
+
+if command -v omasnap > /dev/null; then
+  [[ -n ${NEKO_SCREENSHOT_DIR:-} && -z ${OMASNAP_SCREENSHOT_DIR:-} ]] && export OMASNAP_SCREENSHOT_DIR="$NEKO_SCREENSHOT_DIR"
+  omasnap_args=()
+  for arg in "$@"; do
+    case "$arg" in
+      copy) omasnap_args+=(--copy) ;;
+      save) omasnap_args+=(--save) ;;
+      slurp) ;;
+      *) omasnap_args+=("$arg") ;;
+    esac
+  done
+  exec omasnap "${omasnap_args[@]}"
 fi
 
-omasnap_args=()
+mode=smart
+copy=1
+save=1
 for arg in "$@"; do
   case "$arg" in
-    copy) omasnap_args+=(--copy) ;;
-    save) omasnap_args+=(--save) ;;
-    slurp) ;;
-    *) omasnap_args+=("$arg") ;;
+    smart | region | windows | fullscreen) mode=$arg ;;
+    scroll)
+      neko-notification-send -u critical "Scrolling screenshots need omasnap" "Install omasnap-bin (install.sh offers it)"
+      exit 1
+      ;;
+    copy) save=0 ;;
+    save) copy=0 ;;
   esac
 done
 
-exec omasnap "${omasnap_args[@]}"
+geometry=$(neko-capture-region "$mode") || exit 1
+[[ -n $geometry ]] || exit 1
+
+mkdir -p "$dir"
+file="$dir/screenshot-$(date +'%Y-%m-%d_%H-%M-%S').png"
+grim -g "$geometry" "$file" || {
+  neko-notification-send -u critical "Screenshot failed" "grim couldn't capture the screen"
+  exit 1
+}
+(( copy )) && wl-copy --type image/png < "$file"
+if (( save )); then
+  neko-notification-send -t 6000 --image "$file" "Screenshot saved" "${file/#$HOME/\~}$( (( copy )) && echo ' · copied')" --exec xdg-open "$file"
+else
+  neko-notification-send -t 4000 --image "$file" "Screenshot copied"
+  ( sleep 2; rm -f "$file" ) &
+fi
