@@ -139,42 +139,9 @@ theme_gtk() {
   ensure_line "$gtk4_css" "$import" "neko-shell colors"
 }
 
-# Vicinae watches its theme folder, so a copy there (not a link: the folder's
-# watch doesn't see a link's target change) is picked up live. neko's look
-# (the theme, glass, compact mode) is a config file of its own that Vicinae's
-# settings import, so anything set there still wins.
-vicinae_base=${NEKO_PATH:-$HOME/.local/share/neko}/default/vicinae/neko.json
-vicinae_settings=$HOME/.config/vicinae/settings.json
-
+# Vicinae's colors: neko-vicinae copies the rendered theme into its folder
 theme_vicinae() {
-  local themes=$HOME/.local/share/vicinae/themes
-  [[ -f $theme/vicinae.toml ]] || return 0
-  mkdir -p "$themes"
-  cp "$theme/vicinae.toml" "$themes/neko.toml.tmp" && mv "$themes/neko.toml.tmp" "$themes/neko.toml"
-  vicinae_import add
-}
-
-# Add neko's file to the imports of Vicinae's settings, or take it out. The
-# settings are JSON with comment lines, which jq can't read: the comment lines
-# (only Vicinae's header) go.
-vicinae_import() {
-  local action=$1 current
-  mkdir -p "$(dirname "$vicinae_settings")"
-  current=$(grep -v '^[[:space:]]*//' "$vicinae_settings" 2> /dev/null)
-  [[ -n $current ]] || current='{}'
-  # A theme picked as "neko" in the settings themselves would outlive the theme
-  current=$(jq 'if .theme then .theme |= with_entries(select(.value.name != "neko")) else . end | if .theme == {} then del(.theme) else . end' <<< "$current")
-  if [[ $action == "add" ]]; then
-    if jq -e --arg base "$vicinae_base" '(.imports // []) | index($base)' <<< "$current" > /dev/null; then
-      return 0
-    fi
-    current=$(jq --arg base "$vicinae_base" '.imports = ((.imports // []) + [$base])' <<< "$current")
-  else
-    current=$(jq --arg base "$vicinae_base" '.imports = ((.imports // []) - [$base])' <<< "$current")
-  fi
-  [[ -n $current ]] || return 0
-  printf '%s\n' "$current" > "$vicinae_settings.neko-tmp" && mv "$vicinae_settings.neko-tmp" "$vicinae_settings"
-  systemctl --user try-restart vicinae.service > /dev/null 2>&1 || true
+  neko-vicinae theme on
 }
 
 unhook_kitty() {
@@ -209,8 +176,7 @@ unhook_gtk() {
 }
 
 unhook_vicinae() {
-  rm -f "$HOME/.local/share/vicinae/themes/neko.toml"
-  vicinae_import remove
+  neko-vicinae theme off
 }
 
 for app in "${apps[@]}"; do

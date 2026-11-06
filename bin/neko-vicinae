@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# neko:summary=Give Vicinae neko's look (blur, 60% opacity, rounded, compact) or neko's colors, or take them away
+# neko:args=<look|theme> <on|off>
+# neko:examples=neko vicinae look on | neko vicinae theme off
+
+# The look is a config file of neko's that Vicinae's settings import, so
+# anything set in Vicinae itself still wins. The colors are a theme the
+# current neko theme renders, copied into Vicinae's theme folder (a copy, as
+# the folder's watch doesn't see a link's target change), which Vicinae picks
+# up live. Vicinae's settings are JSON with comment lines, which jq can't
+# read: those lines (only Vicinae's own header) go when this edits them.
+
+base=${NEKO_PATH:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}/default/vicinae/neko.json
+settings=$HOME/.config/vicinae/settings.json
+themes=$HOME/.local/share/vicinae/themes
+rendered=$HOME/.local/state/neko/current/theme/vicinae.toml
+
+usage() {
+  echo "Usage: neko-vicinae <look|theme> <on|off>" >&2
+  exit 1
+}
+
+# Vicinae's settings, edited by a jq filter, written whole
+edit_settings() {
+  local current
+  mkdir -p "$(dirname "$settings")"
+  current=$(grep -v '^[[:space:]]*//' "$settings" 2> /dev/null)
+  [[ -n $current ]] || current='{}'
+  current=$(jq --arg base "$base" "$1" <<< "$current") || return 1
+  printf '%s\n' "$current" > "$settings.neko-tmp" && mv "$settings.neko-tmp" "$settings"
+}
+
+restart() {
+  systemctl --user try-restart vicinae.service > /dev/null 2>&1 || true
+}
+
+[[ $# -eq 2 && ($2 == on || $2 == off) ]] || usage
+
+case $1 in
+  look)
+    if [[ $2 == on ]]; then
+      edit_settings '.imports = (((.imports // []) - [$base]) + [$base])'
+    else
+      edit_settings '.imports = ((.imports // []) - [$base])'
+    fi
+    restart
+    ;;
+  theme)
+    if [[ $2 == on ]]; then
+      [[ -f $rendered ]] || exit 0
+      mkdir -p "$themes"
+      cp "$rendered" "$themes/neko.toml.tmp" && mv "$themes/neko.toml.tmp" "$themes/neko.toml"
+      edit_settings '.theme = ((.theme // {}) | .dark.name = "neko" | .light.name = "neko")'
+    else
+      rm -f "$themes/neko.toml"
+      # A theme picked as "neko" would outlive the theme: back to Vicinae's own
+      edit_settings 'if .theme then .theme |= with_entries(select(.value.name != "neko")) else . end | if .theme == {} then del(.theme) else . end'
+    fi
+    restart
+    ;;
+  *) usage ;;
+esac

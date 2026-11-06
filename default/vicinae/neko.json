@@ -1,11 +1,7 @@
 {
   "$schema": "https://vicinae.com/schemas/config.json",
-  "theme": {
-    "light": { "name": "neko" },
-    "dark": { "name": "neko" }
-  },
   "launcher_window": {
-    "opacity": 0.7,
+    "opacity": 0.6,
     "material": "blur",
     "rounding": 16,
     "compact_mode": { "enabled": true }

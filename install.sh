@@ -1104,6 +1104,18 @@ write_zshrc() {
   cp "$NEKO_PATH/default/zsh/zshrc" "$HOME/.zshrc"
 }
 
+# Vicinae, the launcher on Alt+Space: neko's look (blur, 60% opacity, rounded,
+# compact) as a config its settings import, so its own settings still win
+plan_vicinae() {
+  command -v vicinae > /dev/null 2>&1 || [[ " ${AUR_PACKAGES[*]} " == *" vicinae-bin "* ]] || return 0
+  grep -qF "$NEKO_PATH/default/vicinae/neko.json" "$HOME/.config/vicinae/settings.json" 2> /dev/null && return 0
+  plan_user "give Vicinae neko's look (an import in ~/.config/vicinae/settings.json)" "write_vicinae_look"
+}
+
+write_vicinae_look() {
+  NEKO_PATH="$NEKO_PATH" "$NEKO_PATH/bin/neko-vicinae" look on
+}
+
 # ------------------------------------------------------------- the plan
 
 show_plan() {
@@ -1252,6 +1264,14 @@ uninstall() {
     warn "Your Hyprland config loads neko outside install.sh's block; take those lines out yourself"
   fi
 
+  # Vicinae's import of neko's look, and neko's colors if they were on
+  if grep -qF "$NEKO_PATH/default/vicinae/neko.json" "$HOME/.config/vicinae/settings.json" 2> /dev/null; then
+    NEKO_PATH="$NEKO_PATH" "$NEKO_PATH/bin/neko-vicinae" look off && say "  Took neko's look out of Vicinae's settings"
+  fi
+  if [[ -f $HOME/.local/share/vicinae/themes/neko.toml ]]; then
+    NEKO_PATH="$NEKO_PATH" "$NEKO_PATH/bin/neko-vicinae" theme off && say "  Took neko's colors out of Vicinae"
+  fi
+
   # System files install.sh changed, each with the backup it made
   local touched file keep_pam=0
   touched=$(state_values pam_touched | sort -u)
@@ -1340,6 +1360,7 @@ case $MODE in
     fi
     plan_hyprland
     plan_hardware_lua
+    plan_vicinae
 
     show_plan
     if (( DRY_RUN )); then
