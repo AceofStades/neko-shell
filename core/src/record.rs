@@ -345,8 +345,13 @@ fn window_at(x: i64, y: i64, width: i64, height: i64) -> Option<String> {
         .map(|client| {
             let class = client["class"].as_str().unwrap_or_default();
             let title = client["title"].as_str().unwrap_or_default();
-            let name = if title.is_empty() { class } else { title };
-            name.chars().take(40).collect()
+            // The app, and which of its windows: a title alone can be just "~"
+            let name = match (class.is_empty(), title.is_empty() || title == class) {
+                (true, _) => title.to_string(),
+                (false, true) => class.to_string(),
+                (false, false) => format!("{class} · {title}"),
+            };
+            name.chars().take(48).collect()
         })
 }
 
