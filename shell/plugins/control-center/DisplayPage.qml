@@ -265,6 +265,45 @@ ColumnLayout {
     runner.running = true
   }
 
+  // neko-display-profile list: the saved layouts and how each fits
+  property var profiles: ({ auto: true, profiles: [] })
+  property string armedProfile: ""
+
+  function loadProfiles() {
+    if (!profileList.running) profileList.running = true
+  }
+
+  function profileCommand(args) {
+    run(["neko-display-profile"].concat(args))
+  }
+
+  function saveProfile() {
+    var name = profileName.text.trim()
+    if (!name) return
+    profileName.text = ""
+    profileCommand(["save", name])
+  }
+
+  onDisplaysChanged: loadProfiles()
+  Component.onCompleted: loadProfiles()
+
+  Process {
+    id: profileList
+    command: ["neko-display-profile", "list"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try { root.profiles = JSON.parse(String(text || "").trim() || "{}") } catch (error) {}
+      }
+    }
+  }
+
+  Timer {
+    id: disarmProfile
+    interval: 3000
+    onTriggered: root.armedProfile = ""
+  }
+
   Process {
     id: runner
     stderr: StdioCollector {
@@ -598,6 +637,125 @@ ColumnLayout {
             checked: root.snapping
             onToggled: root.snapping = !root.snapping
           }
+        }
+      }
+
+      // Profiles: layouts saved by name, matched to the displays by what they
+      // are, and applied when they fit as displays come and go
+      RowLayout {
+        Layout.fillWidth: true
+        Layout.topMargin: Style.space(6)
+        Caption { Layout.fillWidth: true; text: "Profiles" }
+        Caption { text: "Switch automatically" }
+        ToggleSwitch {
+          checked: root.profiles.auto !== false
+          onToggled: root.profileCommand(["auto", root.profiles.auto !== false ? "off" : "on"])
+        }
+      }
+
+      Repeater {
+        model: root.profiles.profiles || []
+        delegate: Rectangle {
+          id: profileRow
+          required property var modelData
+          readonly property bool inUse: modelData.exact && root.profiles.last === modelData.name
+          readonly property bool armed: root.armedProfile === modelData.name
+          Layout.fillWidth: true
+          implicitHeight: profileLine.implicitHeight + Style.space(16)
+          radius: Style.space(10)
+          color: profileMouse.containsMouse ? Util.alpha(root.foreground, 0.1) : Util.alpha(root.foreground, 0.05)
+          border.width: inUse ? 1 : 0
+          border.color: Util.alpha(root.accent, 0.5)
+
+          MouseArea {
+            id: profileMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.profileCommand(["apply", profileRow.modelData.name])
+          }
+
+          RowLayout {
+            id: profileLine
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: Style.space(12)
+            anchors.rightMargin: Style.space(4)
+            spacing: Style.space(8)
+            Text {
+              text: profileRow.modelData.displays.length > 1 ? "󰍺" : "󰍹"
+              color: profileRow.modelData.exact ? root.accent : root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.icon
+            }
+            ColumnLayout {
+              Layout.fillWidth: true
+              spacing: 0
+              Text {
+                Layout.fillWidth: true
+                text: profileRow.modelData.name
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                elide: Text.ElideRight
+              }
+              Caption {
+                Layout.fillWidth: true
+                text: {
+                  var on = profileRow.modelData.displays.filter(function(d) { return d.enabled }).length
+                  var all = profileRow.modelData.displays.length
+                  var what = on + (on === 1 ? " display on" : " displays on") + (all > on ? ", " + (all - on) + " off" : "")
+                  return what + (profileRow.inUse ? " · in use" : profileRow.modelData.exact ? " · fits these displays" : "")
+                }
+                elide: Text.ElideRight
+              }
+            }
+            PanelActionButton {
+              iconText: profileRow.armed ? "󰗨" : "󰆴"
+              tooltipText: profileRow.armed ? "Again to delete it" : "Delete"
+              foreground: profileRow.armed ? NekoColor.urgent : root.foreground
+              fontFamily: root.fontFamily
+              onClicked: {
+                if (!profileRow.armed) {
+                  root.armedProfile = profileRow.modelData.name
+                  disarmProfile.restart()
+                  return
+                }
+                root.armedProfile = ""
+                root.profileCommand(["delete", profileRow.modelData.name])
+              }
+            }
+          }
+        }
+      }
+
+      Caption {
+        Layout.fillWidth: true
+        visible: (root.profiles.profiles || []).length === 0
+        text: "Save a layout here to come back to it, or to have it set itself up when these displays are connected again."
+        wrapMode: Text.WordWrap
+      }
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: Style.space(6)
+        TextField {
+          id: profileName
+          Layout.fillWidth: true
+          foreground: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.bodySmall
+          placeholderText: "Save this layout as…"
+          onAccepted: root.saveProfile()
+        }
+        PanelActionButton {
+          iconText: "󰆓"
+          tooltipText: "Save"
+          enabled: profileName.text.trim() !== ""
+          foreground: root.foreground
+          fontFamily: root.fontFamily
+          onClicked: root.saveProfile()
         }
       }
     }
