@@ -293,58 +293,9 @@ Item {
     return MenuModel.slugify(value)
   }
 
-  // The apps provider is QML-native: rows come from the shared AppLibrary
-  // (DesktopEntries) instead of a bash enumeration, so they carry image
-  // icons, launch feedback, and uninstall support like the launcher.
-  function mergeAppRows() {
-    if (!root.appLibrary) return
-
-    var rows = root.appLibrary.sortedEntries("")
-    var appRows = []
-    for (var j = 0; j < rows.length; j++) {
-      var entry = rows[j].entry
-      var appId = String(entry.id || "")
-      if (!appId) continue
-      var subtext = root.appLibrary.entrySubtext(entry)
-      var aliases = subtext ? [subtext] : []
-      try {
-        if (entry.keywords && typeof entry.keywords.join === "function") aliases = aliases.concat(entry.keywords)
-      } catch (e) { }
-      appRows.push({
-        id: "apps." + appId,
-        parent: "apps",
-        kind: "app",
-        icon: "",
-        appIcon: String(entry.icon || ""),
-        appId: appId,
-        label: root.appLibrary.entryName(entry),
-        title: "",
-        target: "",
-        description: subtext,
-        action: "",
-        provider: "",
-        aliases: aliases,
-        when: "",
-        checked: "",
-        disabled: "",
-        order: 0
-      })
-    }
-
-    var merged = MenuModel.mergeAppRows(root.items, root.itemOrder, appRows)
-    root.items = merged.items
-    root.itemOrder = merged.itemOrder
-    if (root.opened) root.rebuildDisplay()
-  }
-
   function startProviderForMenu(id) {
     var entry = root.item(id)
     if (!entry || !entry.provider || root.providersLoaded[id]) return
-    if (entry.provider === "apps") {
-      root.providersLoaded[id] = true
-      root.mergeAppRows()
-      return
-    }
     var spec = root.providers[entry.provider]
     if (!spec) return
 
@@ -427,12 +378,6 @@ Item {
   function loadProviderForMenu(id) {
     var entry = root.item(id)
     if (!entry || !entry.provider || root.providersLoaded[id]) return
-
-    // Native providers don't touch providerProc, so they never need to queue.
-    if (entry.provider === "apps") {
-      root.startProviderForMenu(id)
-      return
-    }
 
     if (providerProc.running) {
       if (root.providerQueue.indexOf(id) < 0) root.providerQueue = root.providerQueue.concat([id])
@@ -663,21 +608,6 @@ Item {
         rows.push(root.displayRow(child, child.description, child.order))
       }
 
-      // DesktopEntries can reorder its values when an application starts.
-      // Keep the Apps menu alphabetical independently of provider refreshes.
-      if (active === "apps") {
-        rows.sort(function(a, b) {
-          var aLabel = String(a.label || "").toLowerCase()
-          var bLabel = String(b.label || "").toLowerCase()
-          if (aLabel < bLabel) return -1
-          if (aLabel > bLabel) return 1
-          var aId = String(a.itemId || "")
-          var bId = String(b.itemId || "")
-          if (aId < bId) return -1
-          if (aId > bId) return 1
-          return 0
-        })
-      }
     }
 
     for (var k = 0; k < rows.length; k++) displayModel.append(rows[k])
@@ -960,13 +890,6 @@ Item {
   PointerMoveGate {
     id: pointerGate
     referenceItem: card
-  }
-
-  Connections {
-    target: root.appLibrary
-    function onAppsChanged() {
-      if (root.providersLoaded["apps"]) root.mergeAppRows()
-    }
   }
 
   // The JSONC sources are watched so live edits to the default file (or the

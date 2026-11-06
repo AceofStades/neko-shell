@@ -20,7 +20,6 @@
   //                  rows use it so software already on the machine reads as
   //                  installed instead of vanishing from the list.
 
-  "apps": {"icon":"󰀻","label":"Apps","aliases":["app","applications"],"provider":"apps"},
 
   "learn": {"icon":"󰧑","label":"Learn"},
 

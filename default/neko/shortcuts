@@ -8,7 +8,6 @@
 # neko-menu, neko-shell, neko-audio-output-volume or
 # neko-brightness-display command instead.
 menu root
-menu apps
 menu capture
 menu toggle
 menu hardware

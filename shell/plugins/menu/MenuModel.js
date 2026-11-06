@@ -95,43 +95,10 @@ function mergeMenuSources(defaultItems, userItems) {
   }
 }
 
-// Both merges below return fresh items/itemOrder objects for the caller to
-// assign in one go. They must never write into the maps they are handed: those
+// The merge below returns fresh items/itemOrder objects for the caller to
+// assign in one go. It must never write into the maps it is handed: those
 // live in QML `var` properties, and an in-place write into such an object is
 // occasionally dropped by the engine — the key lands with an undefined value.
-// A lost write used to leave an id in itemOrder with no item behind it, and
-// the next merge then kept that orphan and appended a second row for the same
-// app, so the launcher listed it twice (and again on every later rescan).
-
-// Swaps every app row for the current set. Rows keep the order they arrive in;
-// ids already claimed (including duplicate desktop ids) are listed once.
-function mergeAppRows(items, itemOrder, appRows) {
-  var source = items || ({})
-  var order = Array.isArray(itemOrder) ? itemOrder : []
-  var rows = Array.isArray(appRows) ? appRows : []
-  var nextItems = ({})
-  var nextOrder = []
-
-  for (var i = 0; i < order.length; i++) {
-    var id = order[i]
-    var existing = source[id]
-    // Orphans (an id with no item) are dropped rather than carried forward,
-    // so a single lost write cannot compound into a duplicate row.
-    if (!existing || existing.kind === "app") continue
-    nextItems[id] = existing
-    nextOrder.push(id)
-  }
-
-  for (var j = 0; j < rows.length; j++) {
-    var row = rows[j]
-    if (!row || !row.id || nextItems[row.id]) continue
-    row.order = nextOrder.length
-    nextItems[row.id] = row
-    nextOrder.push(row.id)
-  }
-
-  return { items: nextItems, itemOrder: nextOrder }
-}
 
 // Swaps the rows one provider contributed, leaving every other item untouched.
 // Rows carry the id of the submenu that produced them, so a provider that runs
@@ -505,7 +472,6 @@ if (typeof module !== "undefined") {
     normalizeItem: normalizeItem,
     parseMenuJsonc: parseMenuJsonc,
     mergeMenuSources: mergeMenuSources,
-    mergeAppRows: mergeAppRows,
     swapProviderRows: swapProviderRows,
     item: item,
     resolveRoute: resolveRoute,
