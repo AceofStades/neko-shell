@@ -2,7 +2,7 @@
 
 # neko:summary=Send an IPC call to the running Neko shell
 # neko:args=[-q] <target> <method> [args...]
-# neko:examples=neko shell shell ping | neko-shell shell toggle neko.menu '{"menu":"root"}'
+# neko:examples=neko shell shell ping | neko-shell shell toggle neko.menu '{"menu":"system"}'
 
 QUIET=0
 if [[ ${1:-} == "-q" ]]; then
@@ -31,7 +31,7 @@ Examples:
   neko-shell shell ping
   neko-shell -q neko.indicators refresh
   neko-shell shell listPlugins
-  neko-shell shell toggle neko.menu '{"menu":"root"}'
+  neko-shell shell toggle neko.menu '{"menu":"system"}'
 USAGE
   exit 0
 fi

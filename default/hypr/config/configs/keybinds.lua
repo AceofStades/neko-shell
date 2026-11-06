@@ -1,5 +1,4 @@
--- Keys. neko's module adds the media, brightness and lid keys, the menu
--- (Super+Alt+Space), the keybindings cheat sheet (Super+/), the wallpaper
+-- Keys. neko's module adds the media, brightness and lid keys, the wallpaper
 -- picker (Super+W) and the lock (Ctrl+Alt+L) while neko runs; the volume and
 -- brightness keys here are the fallback for when it doesn't.
 

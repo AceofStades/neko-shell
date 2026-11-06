@@ -7,7 +7,6 @@
 # spawn per keypress. Anything missing here still binds, through the
 # neko-menu, neko-shell, neko-audio-output-volume or
 # neko-brightness-display command instead.
-menu root
 menu capture
 menu toggle
 menu hardware

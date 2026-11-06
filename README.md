@@ -46,8 +46,7 @@ System steps (packages, PAM, modules, services) run through `sudo` once, after y
 
 | Keys / command | What it does |
 |---|---|
-| `Super+Alt+Space` | The neko menu: apps, settings, captures, power |
-| `Super+/` | Every keybinding, searchable |
+| `Alt+Space` | Apps, files and more (Vicinae) |
 | `Super+W` | Pick a wallpaper |
 | `Ctrl+Alt+L` | Lock the screen |
 | `neko settings` | The settings window (`neko settings widgets` opens a tab) |
