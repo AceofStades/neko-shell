@@ -95,6 +95,7 @@ Item {
     root.windowShown = true
     root.reload()
     if (root.fonts.length === 0 && !fontsProc.running) fontsProc.running = true
+    if (!zonesProc.running) zonesProc.running = true
     // Once the window is on its screen, so it knows which island it grows from
     Qt.callLater(card.begin)
   }
@@ -117,6 +118,24 @@ Item {
   // A command as an argument list (or a string for bash), run one at a time
   // in order, the state read again after each
   property var queue: []
+  // The system's time zone and every one it could be: timedatectl changes it,
+  // asking through polkit
+  property string timezone: ""
+  property var timezones: []
+
+  Process {
+    id: zonesProc
+    command: ["bash", "-c", "timedatectl show -p Timezone --value; timedatectl list-timezones"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var lines = String(text || "").split("\n").filter(function(line) { return line !== "" })
+        root.timezone = lines.length > 0 ? lines[0] : ""
+        root.timezones = lines.slice(1)
+      }
+    }
+  }
+
   function run(command) {
     root.queue = root.queue.concat([typeof command === "string" ? ["bash", "-c", command] : command])
     root.runNext()
@@ -1212,6 +1231,22 @@ Item {
                   root.setOption(root.clockEntry.section, root.clockEntry.index, key, value)
                 }
               }
+              SectionTitle { text: "Time zone" }
+              SettingRow {
+                label: "Zone"
+                SearchableDropdown {
+                  Layout.preferredWidth: Style.space(260)
+                  foreground: root.foreground
+                  options: root.timezones
+                  value: root.timezone
+                  placeholderText: "Search time zones"
+                  onChanged: function(v) {
+                    if (v === root.timezone) return
+                    root.timezone = v
+                    root.run(["bash", "-c", "timedatectl set-timezone \"$1\" && neko-shell -q neko.clock refresh", "bash", v])
+                  }
+                }
+              }
             }
 
             // ---------------------------------------------------- Wallpaper
@@ -1344,18 +1379,6 @@ Item {
                       weatherField.text = ""
                       root.run(["neko-weather-location", "--clear"])
                     }
-                  }
-                }
-              }
-              SettingRow {
-                label: "Timezone"
-                Button {
-                  text: "Change..."
-                  bordered: true
-                  foreground: root.foreground
-                  onClicked: {
-                    root.close()
-                    root.run(["neko-menu-timezone"])
                   }
                 }
               }

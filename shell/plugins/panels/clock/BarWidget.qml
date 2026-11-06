@@ -211,7 +211,7 @@ BarWidget {
     // click the timezone picker, right click the clock's customization
     // popup; scrolling cycles the format
     onPressed: function(b) {
-      if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("neko-menu-timezone") }
+      if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("neko-shell shell summon neko.settings '{\"tab\":\"clock\"}'") }
       else if (b === Qt.RightButton) { root.openCustomizer(); return }
       else if (root.bar) root.bar.run("neko-shell neko.control-center toggle || neko-shell neko.clock toggle")
     }
