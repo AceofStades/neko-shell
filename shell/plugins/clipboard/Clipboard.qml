@@ -83,6 +83,26 @@ Item {
     root.history = ClipboardHistory.addEntry(root.history, normalized, root.historyLimit)
     root.saveHistory()
     if (root.opened) root.rebuildDisplay()
+    root.announce(normalized)
+  }
+
+  // A copy shows on the island for a moment: what was copied, its first line.
+  // Not while the watchers start, as they read what's already on the
+  // clipboard; marked-sensitive copies (passwords) never reach here at all.
+  property bool announcing: false
+
+  Timer {
+    id: announceSettle
+    interval: 3000
+    running: true
+    onTriggered: root.announcing = true
+  }
+
+  function announce(entry) {
+    if (!root.announcing) return
+    var image = entry.type !== "text"
+    var text = image ? "" : String(entry.text || "").replace(/\s+/g, " ").trim()
+    Island.showActivity({ icon: image ? "󰋩" : "󰅌", title: image ? "Image copied" : "Copied", detail: text }, 2000)
   }
 
   function addClipboardJson(line) {
@@ -283,7 +303,11 @@ Item {
   Process {
     id: textWatchProc
     command: ["setpriv", "--pdeathsig", "TERM", "wl-paste", "--type", "text", "--watch", root.captureScript, "text"]
-    onExited: watchRestartTimer.restart()
+    onExited: {
+      root.announcing = false
+      announceSettle.restart()
+      watchRestartTimer.restart()
+    }
     stdout: SplitParser {
       onRead: function(data) { root.addClipboardJson(data) }
     }
@@ -292,7 +316,11 @@ Item {
   Process {
     id: imageWatchProc
     command: ["setpriv", "--pdeathsig", "TERM", "wl-paste", "--type", "image/png", "--watch", root.captureScript, "image/png"]
-    onExited: watchRestartTimer.restart()
+    onExited: {
+      root.announcing = false
+      announceSettle.restart()
+      watchRestartTimer.restart()
+    }
     stdout: SplitParser {
       onRead: function(data) { root.addClipboardJson(data) }
     }
