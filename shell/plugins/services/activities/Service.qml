@@ -6,8 +6,9 @@ import Quickshell.Services.UPower
 import qs.Commons
 
 // Live activities for the island: something copied, a Bluetooth device
-// connecting or going (with its battery, when it says), the charger plugged
-// in or out, and the battery passing 20% and 10% on its way down. The Bluetooth devices are read
+// connecting or going (with its battery, when it says), Wi-Fi or a cable
+// joining or dropping, the charger plugged in or out, and the battery passing
+// 20% and 10% on its way down. The Bluetooth devices are read
 // into plain values every couple of seconds rather than held: BlueZ can take
 // a device object away while something still has it, which crashes the shell.
 // Nothing is shown for what's already so when the shell starts.
@@ -130,6 +131,39 @@ Item {
     }
   }
 
+  // The network in use: "wifi:<name>", "ethernet:<name>", or "" for none.
+  // Loopback, bridges and the like don't count.
+  property string network: "unknown"
+
+  Process {
+    id: networkProbe
+    command: ["nmcli", "-t", "-f", "TYPE,STATE,CONNECTION", "device"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var now = ""
+        String(text || "").split("\n").forEach(function(line) {
+          var parts = line.split(":")
+          if (now !== "" || parts.length < 3 || parts[1] !== "connected") return
+          if (parts[0] === "wifi" || parts[0] === "ethernet") now = parts[0] + ":" + parts.slice(2).join(":")
+        })
+        root.noteNetwork(now)
+      }
+    }
+  }
+
+  function noteNetwork(now) {
+    var was = root.network
+    root.network = now
+    if (was === "unknown" || was === now || !root.settled) return
+    if (now === "") {
+      Island.showActivity({ icon: was.indexOf("wifi") === 0 ? "󰤭" : "󰈂", title: "Offline", detail: was.indexOf("wifi") === 0 ? "Left " + was.slice(5) : "The cable came out", tint: NekoColor.urgent }, 2600)
+      return
+    }
+    var wifi = now.indexOf("wifi") === 0
+    Island.showActivity({ icon: wifi ? "󰤨" : "󰈀", title: wifi ? "Connected to " + now.slice(5) : "Wired network", detail: wifi ? "Wi-Fi" : now.slice(9) }, 2400)
+  }
+
   Timer {
     interval: 2000
     repeat: true
@@ -138,6 +172,7 @@ Item {
     onTriggered: {
       root.checkBluetooth()
       root.checkLow()
+      if (!networkProbe.running) networkProbe.running = true
     }
   }
 
