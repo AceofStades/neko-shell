@@ -43,6 +43,7 @@ QtObject {
   property var _targetBelongsToWindow: null
   property var _moduleWidgets: null
   property var _run: null
+  property var _barWheel: null
   property var _setCenterHoverRevealSuppressed: null
 
   function setCenterHoverRevealSuppressed(value) {
@@ -83,6 +84,11 @@ QtObject {
 
   function moduleWidgets(id) {
     return _moduleWidgets ? _moduleWidgets(String(id || "")) : []
+  }
+
+  // The wheel a widget doesn't use: the bar turns the brightness or the volume
+  function barWheel(item, x, y, delta) {
+    if (_barWheel) _barWheel(item, x, y, delta)
   }
 
   function run(command) {

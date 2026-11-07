@@ -326,6 +326,7 @@ Item {
           ? root.moduleWidgets(moduleName) : []
       },
       _run: function(command) { root.run(command) },
+      _barWheel: function(item, x, y, delta) { root.barWheel(item, x, y, delta) },
       _setCenterHoverRevealSuppressed: function(value) {
         root.centerHoverRevealSuppressed = !!value
       }
@@ -998,6 +999,23 @@ Item {
     onTriggered: if (!root.centerSectionHovered && !root.barHovered) root.centerSectionRevealHeld = false
   }
 
+  // The wheel over the bar where no widget takes it: the left half turns the
+  // brightness, the right half the volume (top and bottom on a bar standing
+  // on its side). `item` is where it turned, to tell which half.
+  property real wheelAccumulator: 0
+  function barWheel(item, x, y, delta) {
+    if (!item || !item.QsWindow || !item.QsWindow.window) return
+    var window = item.QsWindow.window
+    var point = item.mapToItem(window.contentItem, x, y)
+    var wheel = Util.wheelSteps(root.wheelAccumulator, delta)
+    root.wheelAccumulator = wheel.remainder
+    if (wheel.steps === 0) return
+    var near = root.vertical ? point.y < window.height / 2 : point.x < window.width / 2
+    var up = wheel.steps > 0
+    var command = near ? "neko-brightness-step " + (up ? "up" : "down") : "neko-audio-output-volume " + (up ? "raise" : "lower")
+    for (var i = 0; i < Math.abs(wheel.steps); i++) root.run(command)
+  }
+
   function run(command) {
     if (!command) return
 
@@ -1487,21 +1505,11 @@ Item {
     // The wheel over the bar, where no widget takes it: the left half turns
     // the brightness, the right half the volume (top and bottom on a bar
     // standing on its side)
-    Item {
+    MouseArea {
+      id: barWheelArea
       anchors.fill: parent
-      WheelHandler {
-        id: barWheel
-        property real accumulator: 0
-        onWheel: function(event) {
-          var wheel = Util.wheelSteps(accumulator, event.angleDelta.y)
-          accumulator = wheel.remainder
-          if (wheel.steps === 0) return
-          var near = root.vertical ? barWheel.point.position.y < parent.height / 2 : barWheel.point.position.x < parent.width / 2
-          var up = wheel.steps > 0
-          var command = near ? "neko-brightness-step " + (up ? "up" : "down") : "neko-audio-output-volume " + (up ? "raise" : "lower")
-          for (var i = 0; i < Math.abs(wheel.steps); i++) Quickshell.execDetached(["bash", "-c", command])
-        }
-      }
+      acceptedButtons: Qt.NoButton
+      onWheel: function(wheel) { root.barWheel(barWheelArea, wheel.x, wheel.y, wheel.angleDelta.y) }
     }
 
     Loader {
