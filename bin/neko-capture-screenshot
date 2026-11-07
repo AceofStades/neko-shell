@@ -2,34 +2,75 @@
 
 # neko:summary=Take a screenshot
 # neko:group=capture
-# neko:args=[smart|region|windows|fullscreen] [copy|save|edit]
-# neko:examples=neko screenshot | neko capture screenshot region | neko capture screenshot windows edit
+# neko:args=[smart|region|windows|fullscreen] [copy|save|edit|both] | settings | set <folder|after> <value>
+# neko:examples=neko screenshot | neko capture screenshot region | neko capture screenshot windows edit | neko capture screenshot set after copy
 # neko:aliases=neko screenshot
 
 # grim takes it over neko's picker (a frozen screen: a click takes a window
 # or the display, a drag an area). It's copied and saved, or only one of
 # those, and announced with a notification that opens it; `edit` opens it in
-# satty to draw on, which saves and copies it when you're done.
+# satty to draw on, which saves and copies it when you're done. Without one
+# of those, the default in the settings goes ("both" until changed).
+#
+# Settings, in ~/.local/state/neko/screenshot.json: the folder shots are
+# saved in, and that default. `settings` prints them as JSON.
 
+settings_file=$HOME/.local/state/neko/screenshot.json
 [[ -f ~/.config/user-dirs.dirs ]] && source ~/.config/user-dirs.dirs
-dir=${NEKO_SCREENSHOT_DIR:-${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots}
+default_dir=${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots
+
+setting() {
+  jq -r --arg key "$1" '.[$key] // empty' "$settings_file" 2> /dev/null
+}
+
+usage() {
+  echo "Usage: neko-capture-screenshot [smart|region|windows|fullscreen] [copy|save|edit|both] | settings | set <folder|after> <value>" >&2
+  exit 1
+}
+
+dir=${NEKO_SCREENSHOT_DIR:-$(setting folder)}
+dir=${dir:-$default_dir}
+after=$(setting after)
+after=${after:-both}
+
+case ${1:-} in
+  settings)
+    jq -n --arg folder "$dir" --arg after "$after" '{ folder: $folder, after: $after }'
+    exit 0
+    ;;
+  set)
+    key=${2:-} value=${3:-}
+    case $key in
+      folder)
+        value=${value/#\~/$HOME}
+        [[ $value == /* ]] || { echo "The folder needs a full path" >&2; exit 1; }
+        ;;
+      after) [[ $value =~ ^(both|copy|save|edit)$ ]] || { echo "after is both, copy, save or edit" >&2; exit 1; } ;;
+      *) usage ;;
+    esac
+    mkdir -p "$(dirname "$settings_file")"
+    current=$(cat "$settings_file" 2> /dev/null || echo '{}')
+    jq --arg key "$key" --arg value "$value" '.[$key] = $value' <<< "$current" > "$settings_file.tmp" && mv "$settings_file.tmp" "$settings_file"
+    exit 0
+    ;;
+esac
 
 mode=smart
-copy=1
-save=1
-edit=0
 for arg in "$@"; do
   case "$arg" in
     smart | region | windows | fullscreen) mode=$arg ;;
-    copy) save=0 ;;
-    save) copy=0 ;;
-    edit) edit=1 ;;
-    *)
-      echo "Usage: neko-capture-screenshot [smart|region|windows|fullscreen] [copy|save|edit]" >&2
-      exit 1
-      ;;
+    copy | save | edit | both) after=$arg ;;
+    *) usage ;;
   esac
 done
+copy=1
+save=1
+edit=0
+case $after in
+  copy) save=0 ;;
+  save) copy=0 ;;
+  edit) edit=1 ;;
+esac
 
 if (( edit )) && ! command -v satty > /dev/null; then
   neko-notification-send -u critical "Drawing on screenshots needs satty" "Install satty (install.sh offers it)"
