@@ -33,6 +33,13 @@ User-installed plugins live alongside these conceptually but on disk under
 | Lock screen   | `neko.lock`            | `service`               | `lock/Service.qml`                    |
 | OSD           | `neko.osd`             | `panel`                 | `osd/Osd.qml`                         |
 | Polkit agent  | `neko.polkit`          | `service`               | `polkit/PolkitAgent.qml`              |
+| Power menu    | `neko.power-menu`      | `overlay`               | `power-menu/PowerMenu.qml`            |
+| Keybindings   | `neko.keybindings`     | `overlay`               | `keybindings/Keybindings.qml`         |
+| Live activities | `neko.activities`    | `service`               | `services/activities/Service.qml`     |
+| Capture       | `neko.capture`         | `bar-widget`            | `panels/capture/Panel.qml`            |
+| Recorder      | `neko.recorder`        | `bar-widget`            | `panels/recorder/Panel.qml`           |
+| Bitwarden     | `neko.bitwarden`       | `bar-widget`            | `panels/bitwarden/Panel.qml`          |
+| Quick Share   | `neko.quickshare`      | `bar-widget`            | `panels/quickshare/Panel.qml`         |
 
 First-party bar-only widgets also carry manifests next to their QML files,
 e.g. `bar/widgets/Workspaces.manifest.json`. Rich popup widgets live in their

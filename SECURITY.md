@@ -34,11 +34,17 @@ If the shell dies while the screen is locked, Hyprland keeps the session locked 
 - Calendar addresses (`~/.config/neko/calendars`) are secrets; the file and the feed cache (`~/.cache/neko/calendars`) are readable only by you.
 - Settings and state stay in `~/.config/neko` and `~/.local/state/neko`. Nothing is sent anywhere except the requests below.
 - The lock screen keeps no copy of your screen; it shows your wallpaper.
+- Bitwarden: `neko-bitwarden` holds the unlocked vault in its own process's memory (never on disk), behind a socket only you can open, and forgets it when it locks (on its timer, with the screen if you choose, or when you lock it). A PIN, if you set one, unlocks it again from a salted PBKDF2 hash kept in that memory; five wrong tries forget it. Face or fingerprint unlock keeps the master password in your login keyring, unlocked by PAM as the lock screen is. Copied passwords and codes are marked sensitive, so clipboard history leaves them out, and are cleared after the time you set.
+- The island's notice of something copied skips copies marked sensitive. Clipboard history itself is Vicinae's.
+- Screenshots and recordings are saved only to the folders you choose; recordings run as your user unit `neko-record`.
 
 ### What it connects to
 
 - Weather: `wttr.in` (which also guesses your city from your IP address unless you set one in Settings → System) and `open-meteo.com`.
 - Connectivity checks: `ping.archlinux.org`, to notice Wi-Fi sign-in pages.
+- Network legs: while neko runs, `neko-netlegs` pings your router (ICMP) and opens a TCP connection to `1.1.1.1:443` and `8.8.8.8:443` every second, sending nothing over them, to time each half of the connection for the network panel.
+- Bitwarden: the Bitwarden CLI talks to your Bitwarden server, only to unlock, sync and save.
+- Vicinae: neko's settings for it turn its telemetry off.
 - Calendars: the iCal feeds you add.
 - Speed test: `fast.com`, when you run it.
 - Agent usage: the AI providers' APIs (Anthropic, OpenAI, xAI, Fireworks), with your own credentials, only for the agents you use.

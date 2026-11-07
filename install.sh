@@ -1382,6 +1382,6 @@ case $MODE in
     fi
     offer_start
     say ""
-    say "${green}Done.${reset} Run ${bold}neko${reset} for its commands; Alt+Space opens apps."
+    say "${green}Done.${reset} Run ${bold}neko${reset} for its commands; Alt+Space opens apps, Print captures, Super+/ shows every key."
     ;;
 esac
