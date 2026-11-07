@@ -46,6 +46,7 @@ BarWidget {
       if (b === Qt.MiddleButton) root.bar.run("neko-shell shell toggle neko.audio")
       else root.toggleMute()
     }
+    scrollable: true
     onWheelMoved: function(delta) {
       if (!root.source || !root.source.audio) return
       var step = 0.05

@@ -111,6 +111,7 @@ BarWidget {
       if (mouseButton === Qt.LeftButton) controlCenter.toggle()
     }
 
+    scrollable: true
     onWheelMoved: function(delta) {
       var wheel = Util.wheelSteps(root.wheelAccumulator, delta)
       root.wheelAccumulator = wheel.remainder

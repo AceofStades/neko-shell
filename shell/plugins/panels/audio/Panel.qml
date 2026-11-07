@@ -661,6 +661,7 @@ Panel {
       else root.toggle()
     }
 
+    scrollable: true
     onWheelMoved: function(delta) {
       if (!root.hasOutput) return
       var wheel = Util.wheelSteps(root.wheelAccumulator, delta)

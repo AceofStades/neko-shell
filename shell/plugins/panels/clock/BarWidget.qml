@@ -215,6 +215,7 @@ BarWidget {
       else if (b === Qt.RightButton) { root.openCustomizer(); return }
       else if (root.bar) root.bar.run("neko-shell neko.control-center toggle || neko-shell neko.clock toggle")
     }
+    scrollable: true
     onWheelMoved: function(delta) { root.cycleFormat() }
 
     Column {

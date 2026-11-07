@@ -39,6 +39,10 @@ Item {
 
   signal pressed(int button)
   signal wheelMoved(int delta)
+  // Whether the widget does something with the wheel (and connects to
+  // wheelMoved): if not, the wheel goes on to the bar, which turns the volume
+  // or the brightness with it
+  property bool scrollable: false
 
   function triggerPress(button) {
     if (root.bar) root.bar.hideTooltip(root)
@@ -172,6 +176,9 @@ Item {
       root.pressActive = false
     }
     onClicked: function(mouse) { if (root.pressable) root.triggerPress(mouse.button) }
-    onWheel: function(wheel) { root.wheelMoved(wheel.angleDelta.y) }
+    onWheel: function(wheel) {
+      if (root.scrollable) root.wheelMoved(wheel.angleDelta.y)
+      else wheel.accepted = false
+    }
   }
 }

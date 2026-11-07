@@ -1484,6 +1484,26 @@ Item {
       radius: Style.bar.floatRadius
     }
 
+    // The wheel over the bar, where no widget takes it: the left half turns
+    // the brightness, the right half the volume (top and bottom on a bar
+    // standing on its side)
+    Item {
+      anchors.fill: parent
+      WheelHandler {
+        id: barWheel
+        property real accumulator: 0
+        onWheel: function(event) {
+          var wheel = Util.wheelSteps(accumulator, event.angleDelta.y)
+          accumulator = wheel.remainder
+          if (wheel.steps === 0) return
+          var near = root.vertical ? barWheel.point.position.y < parent.height / 2 : barWheel.point.position.x < parent.width / 2
+          var up = wheel.steps > 0
+          var command = near ? "neko-brightness-step " + (up ? "up" : "down") : "neko-audio-output-volume " + (up ? "raise" : "lower")
+          for (var i = 0; i < Math.abs(wheel.steps); i++) Quickshell.execDetached(["bash", "-c", command])
+        }
+      }
+    }
+
     Loader {
       id: barContent
       readonly property int endPadding: barWindow.floating && !barWindow.centerAttached ? Math.round(Style.bar.floatRadius / 2) : 0

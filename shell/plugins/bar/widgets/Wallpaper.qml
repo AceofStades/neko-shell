@@ -40,6 +40,7 @@ BarWidget {
       else if (b === Qt.MiddleButton) root.bar.run(root.rotating ? "neko-wallpaper auto off" : "neko-wallpaper auto 30")
       else root.bar.run("neko-wallpaper pick")
     }
+    scrollable: true
     onWheelMoved: function(delta) {
       root.bar.run("neko-wallpaper random")
     }
