@@ -53,7 +53,10 @@ Panel {
   readonly property bool headerHasCursor: cursorActive && focusSection === "header" && tailscale.installed
   readonly property color iconColor: tailscale.active ? foreground : dim
   readonly property string toggleHint: tailscale.active ? "Turn Tailscale off" : (tailscale.needsLogin ? "Authorize this device" : "Turn Tailscale on")
-  readonly property color barIconColor: tailscale.active ? barForeground : Qt.darker(barForeground, 1.55)
+  // Connected, in the accent; up but signed out, the bar's own color; down,
+  // crossed and dimmed
+  readonly property color barIconColor: !tailscale.active ? Util.alpha(barForeground, 0.45)
+    : tailscale.needsLogin ? barForeground : NekoColor.accent
   readonly property color hoverFill: bar ? Style.hoverFillFor(bar.foreground, NekoColor.accent) : "transparent"
   readonly property color selectedFill: bar ? Style.selectedFillFor(bar.foreground, NekoColor.accent) : "transparent"
 

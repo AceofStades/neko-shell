@@ -661,6 +661,8 @@ Panel {
     // In the accent while a device is connected
     active: root.connectedDevices.length > 0
     activeColor: NekoColor.accent
+    // Switched off: its crossed mark, dimmed
+    dimmed: !!root.adapter && !root.adapter.enabled
     onPressed: function(b) {
       if (b === Qt.RightButton) root.toggleBluetooth()
       else root.toggle()

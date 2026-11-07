@@ -220,7 +220,9 @@ Panel {
     bar: root.bar
     text: "󰒗"
     // A phone asking stands out; so does being visible, or a transfer going
-    active: root.requests.length > 0
+    // A phone asking stands out; being visible to phones takes the accent
+    active: root.requests.length > 0 || root.visibleNow || root.busy
+    activeColor: root.requests.length > 0 ? NekoColor.urgent : NekoColor.accent
     dimmed: !root.ready
     tooltipText: root.requests.length > 0 ? "Quick Share · " + root.requests[0].device_name + " wants to send you files"
       : root.visibleNow ? "Quick Share · visible to phones nearby"

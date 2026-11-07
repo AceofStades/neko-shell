@@ -517,7 +517,10 @@ Panel {
   }, connectivityChecksEnabled)
   readonly property bool hasCaptivePortal: connectivity === "portal"
   readonly property bool restricted: hasCaptivePortal || connectivity === "limited"
-  readonly property string icon: Model.connectionIcon(kind, signalStrength, connectivity)
+  // Connected, the icon takes the accent; on with nothing joined, the plain
+  // Wi-Fi mark; with the radio off and no cable, a crossed one, dimmed
+  readonly property bool networkOff: kind === "" && (!wifiDevice || !Networking.wifiEnabled)
+  readonly property string icon: kind === "" ? (networkOff ? "󰤮" : "󰤯") : Model.connectionIcon(kind, signalStrength, connectivity)
   // Keyed on the device rather than the SSID: on an OWE transition-mode
   // network the listed network comes and goes with every scan while the link
   // stays up, and a real network switch already passes through "disconnected".
@@ -1128,7 +1131,9 @@ Panel {
     width: implicitWidth
     bar: root.bar
     text: root.icon
-    active: root.restricted
+    active: root.restricted || root.kind !== ""
+    activeColor: root.restricted ? NekoColor.urgent : NekoColor.accent
+    dimmed: root.networkOff
     tooltipText: root.hasCaptivePortal ? "Sign in to this network"
       : (root.restricted ? "Limited internet access" : "")
 

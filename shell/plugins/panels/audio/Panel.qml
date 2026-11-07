@@ -654,6 +654,8 @@ Panel {
     anchors.fill: parent
     bar: root.bar
     text: root.outputIcon()
+    // Muted, dimmed like anything switched off
+    dimmed: root.outputMuted
     onPressed: function(b) {
       if (b === Qt.RightButton) root.toggleAllMuted()
       else root.toggle()

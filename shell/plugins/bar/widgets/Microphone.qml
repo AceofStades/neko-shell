@@ -40,6 +40,7 @@ BarWidget {
     bar: root.bar
     text: root.muted ? "󰍭" : "󰍬"
     active: root.inUse
+    dimmed: root.muted
     tooltipText: root.muted ? "Microphone muted" : (root.inUse ? "Microphone in use" : "Microphone live")
     onPressed: function(b) {
       if (b === Qt.MiddleButton) root.bar.run("neko-shell shell toggle neko.audio")

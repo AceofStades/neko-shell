@@ -364,6 +364,7 @@ Panel {
     bar: root.bar
     text: root.vaultState === "unlocked" ? "󰦝" : "󰒘"
     active: root.vaultState === "unlocked"
+    activeColor: NekoColor.accent
     tooltipText: root.vaultState === "unlocked" ? "Bitwarden · unlocked" : "Bitwarden"
     onPressed: function(b) { root.toggle() }
   }
