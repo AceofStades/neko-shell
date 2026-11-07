@@ -14,7 +14,7 @@ end
 -- Blur what shows through the translucent bar, menus and overlays.
 -- ignore_alpha keeps nearly clear pixels (shadows, rounded corners) sharp.
 hl.layer_rule({
-  match = { namespace = "^neko-(notifications|osd|image-selector|keyboard-panel|network-qr|polkit|settings|power-menu)$" },
+  match = { namespace = "^neko-(notifications|osd|image-selector|keyboard-panel|network-qr|polkit|settings|power-menu|keybindings)$" },
   blur = true,
   ignore_alpha = 0.2,
 })
@@ -50,7 +50,7 @@ hl.config({ decoration = { rounding = 14 } })
 -- grow from a parked 1x1, which Hyprland would otherwise animate as a slide.
 hl.layer_rule({ match = { namespace = "^neko-bar$" }, no_anim = true, animation = "none" })
 hl.layer_rule({
-  match = { namespace = "^neko-(image-selector|keyboard-panel|osd|network-qr|settings|island|power-menu)$" },
+  match = { namespace = "^neko-(image-selector|keyboard-panel|osd|network-qr|settings|island|power-menu|keybindings)$" },
   no_anim = true,
   animation = "none",
 })
@@ -102,7 +102,7 @@ if flag then
     "XF86MonBrightnessUp", "XF86MonBrightnessDown", "SUPER + XF86MonBrightnessUp", "SUPER + XF86MonBrightnessDown",
     "XF86KbdBrightnessUp", "XF86KbdBrightnessDown",
     "XF86AudioPlay", "XF86AudioPause",
-    "SUPER + W", "CTRL + ALT + L",
+    "SUPER + SLASH", "SUPER + W", "CTRL + ALT + L",
     "switch:on:Lid Switch", "switch:off:Lid Switch",
   }
   for _, key in ipairs(keys) do
@@ -126,6 +126,16 @@ if flag then
   hl.bind("XF86KbdBrightnessDown", hl.dsp.exec_cmd(run .. "neko-kbd-brightness down"), { locked = true, repeating = true })
   hl.bind("XF86AudioPlay", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
   hl.bind("XF86AudioPause", hl.dsp.global("neko:ipc.media.playPause"), { locked = true })
+  hl.bind("SUPER + SLASH", hl.dsp.global("neko:panel.neko.keybindings"), { description = "Keybindings" })
+  -- While the keybindings viewer is open nothing else runs: Hyprland sits in
+  -- this submap, where Super+/ closes it. That key leaves the submap itself
+  -- first, so a shell that went away can't leave you stuck in it.
+  hl.define_submap("neko-keybindings", function()
+    hl.bind("SUPER + SLASH", function()
+      hl.dispatch(hl.dsp.submap("reset"))
+      hl.exec_cmd(run .. "neko-shell -q shell hide neko.keybindings")
+    end)
+  end)
   hl.bind("SUPER + W", hl.dsp.exec_cmd(run .. "neko-wallpaper pick"), { description = "Pick a wallpaper" })
   hl.bind("CTRL + ALT + L", hl.dsp.exec_cmd(run .. "neko-system-lock"), { description = "Lock screen" })
 

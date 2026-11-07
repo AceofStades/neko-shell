@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "neko.keybindings",
+  "name": "Keybindings",
+  "version": "1.0.0",
+  "author": "Neko",
+  "description": "Every keybinding on a drawn keyboard: hold keys to see what they do",
+  "kinds": [
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "Keybindings.qml"
+  }
+}
