@@ -99,6 +99,9 @@ BarWidget {
   readonly property bool glassBar: !!root.bar && root.bar.glass === true
   readonly property color islandText: root.glassBar ? "#f2f2f2" : root.bar ? root.bar.barForeground : NekoColor.foreground
   readonly property color islandColor: root.glassBar && root.bar.glassIslandCapsule ? root.bar.glassIslandCapsule : Qt.rgba(0, 0, 0, 0.32)
+  // Grown into anything (a card, a notification, the OSD), the darker glass
+  // the bar gives it over something bright
+  readonly property color islandOpenColor: root.glassBar && root.bar.glassIslandCard ? root.bar.glassIslandCard : root.islandColor
   readonly property color islandDim: Util.alpha(root.islandText, 0.65)
   readonly property color islandTrack: Util.alpha(root.islandText, 0.2)
 
@@ -326,7 +329,9 @@ BarWidget {
       topRightRadius: flush ? 0 : targetRadius
       bottomLeftRadius: targetRadius
       bottomRightRadius: targetRadius
-      color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule : root.islandColor
+      color: card && !root.glassBar && NekoColor.bar.capsule.a > 0 ? NekoColor.bar.capsule
+        : root.islandMode !== "" ? root.islandOpenColor : root.islandColor
+      Behavior on color { ColorAnimation { duration: Style.duration(180) } }
       // Held while it shrinks back into the capsule, then swapped out
       // The settings window draws its own card where the pill would be
       opacity: root.islandMode !== "" && root.islandMode !== "settings" || Island.settling ? 1 : 0

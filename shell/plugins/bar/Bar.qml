@@ -77,6 +77,10 @@ Item {
   // over a light wallpaper; the island's pills share it, and so do its cards
   readonly property color glassCapsule: Qt.rgba(0, 0, 0, backdropLight ? 0.46 : glassOverLight ? 0.3 : 0.2)
   readonly property color glassIslandCapsule: glassCapsule
+  // The island grown into a card, or a panel grown out of it: the capsule's
+  // glass, but over something bright far darker, as a card holds more text
+  // than a pill and a pale backdrop shows right through a thin tint
+  readonly property color glassIslandCard: backdropLight ? Qt.rgba(0, 0, 0, 0.76) : glassCapsule
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
   // Attached, a side group's panel grows out of it, and the group takes the
@@ -210,6 +214,7 @@ Item {
     api.centerTopAttached = Qt.binding(function() { return root.centerTopAttached })
     api.attachedPanelColor = Qt.binding(function() { return root.attachedPanelColor })
     api.backdropLight = Qt.binding(function() { return root.backdropLight })
+    api.glassIslandCard = Qt.binding(function() { return root.glassIslandCard })
     api.foregroundAnimationEnabled = Qt.binding(function() { return root.foregroundAnimationEnabled })
     api.centerSectionRevealHeld = Qt.binding(function() { return root.centerSectionRevealHeld })
     api._centerHoverRevealSuppressed = Qt.binding(function() { return root.centerHoverRevealSuppressed })

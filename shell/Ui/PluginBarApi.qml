@@ -25,6 +25,7 @@ QtObject {
   property bool centerTopAttached: false
   property color attachedPanelColor: "transparent"
   property bool backdropLight: false
+  property color glassIslandCard: "transparent"
   property bool foregroundAnimationEnabled: true
   property bool centerSectionRevealHeld: false
   property bool _centerHoverRevealSuppressed: false

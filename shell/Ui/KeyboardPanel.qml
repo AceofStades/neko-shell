@@ -251,7 +251,8 @@ PanelWindow {
     ColorAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic }
   }
   readonly property color surfaceColor: islandMorph && bar && bar.glassIslandCapsule !== undefined
-    ? bar.glassIslandCapsule : groupMorph ? groupMorphColor : attachedColor
+    ? (islandExpanded && bar.glassIslandCard !== undefined ? bar.glassIslandCard : bar.glassIslandCapsule)
+    : groupMorph ? groupMorphColor : attachedColor
   readonly property real snapReach: Style.space(40)
   readonly property bool snappedLeft: attached && cardOrigin.x <= 0.5
   readonly property bool snappedRight: attached && cardOrigin.x + contentWidth >= screenW - 0.5
