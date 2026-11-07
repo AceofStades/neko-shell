@@ -246,10 +246,12 @@ Item {
           }
         }
 
-        // What the keys do
+        // What the keys do. Always this tall, whatever is listed: the card is
+        // centered, so a list that grew and shrank as the pointer moved over
+        // the keys would move the keys out from under it, and round again.
         Flickable {
           Layout.fillWidth: true
-          Layout.preferredHeight: Math.min(listFlow.implicitHeight, Style.space(220))
+          Layout.preferredHeight: Style.space(220)
           contentHeight: listFlow.implicitHeight
           clip: true
           boundsBehavior: Flickable.StopAtBounds
