@@ -240,7 +240,12 @@ PanelWindow {
   // From the capsule's tint to the panel's as it leaves the group
   readonly property color groupRestColor: bar && bar.glass === true && bar.glassCapsule !== undefined
     ? bar.glassCapsule : NekoColor.bar.capsule
-  property color groupMorphColor: islandExpanded ? NekoColor.popups.background : groupRestColor
+  // Open, the panel's own background, deeper over something bright (the bar
+  // measures what's under it) so its text stays readable
+  readonly property color openColor: bar && bar.backdropLight === true
+    ? Qt.rgba(NekoColor.popups.background.r, NekoColor.popups.background.g, NekoColor.popups.background.b, Math.max(NekoColor.popups.background.a, 0.9))
+    : NekoColor.popups.background
+  property color groupMorphColor: islandExpanded ? openColor : groupRestColor
   Behavior on groupMorphColor {
     enabled: root.groupMorph && !Style.reduceMotion
     ColorAnimation { duration: Style.duration(220); easing.type: Easing.OutCubic }
