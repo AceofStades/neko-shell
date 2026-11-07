@@ -164,6 +164,24 @@ Panel {
     }
   }
 
+  // The graphics card: neko-system-stats --gpu, null without one. Asked only
+  // while there's one, after the first answer.
+  property var gpu: null
+  property bool gpuChecked: false
+  readonly property real gpuUse: gpu && gpu.use !== null ? gpu.use : 0
+
+  Process {
+    id: gpuProc
+    command: ["neko-system-stats", "--gpu"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try { root.gpu = JSON.parse(String(text || "null")) } catch (error) { root.gpu = null }
+        root.gpuChecked = true
+      }
+    }
+  }
+
   Timer {
     interval: 2000
     running: root.visible
@@ -173,6 +191,7 @@ Panel {
       statFile.reload()
       memoryFile.reload()
       if (root.temperatureFile) temperatureReader.reload()
+      if ((!root.gpuChecked || root.gpu) && !gpuProc.running) gpuProc.running = true
       if (root.opened && !detailsProc.running) detailsProc.running = true
     }
   }
@@ -220,6 +239,7 @@ Panel {
       Ring { icon: "󰻠"; value: root.cpu / 100; tint: root.levelColor(root.cpu, 80, 90) }
       Ring { icon: "󰔏"; value: root.temperature / 100; tint: root.levelColor(root.temperature, 70, 80) }
       Ring { icon: "󰍛"; value: root.memory / 100; tint: root.levelColor(root.memory, 80, 90) }
+      Ring { visible: !!root.gpu && root.gpu.use !== null; icon: "󰢮"; value: root.gpuUse / 100; tint: root.levelColor(root.gpuUse, 80, 90) }
     }
   }
 
@@ -286,10 +306,7 @@ Panel {
             Layout.fillWidth: true
             text: root.details ? root.details.freqs.length + " threads, " + (root.averageFreq / 1000).toFixed(2) + " GHz on average" : ""
           }
-          Caption {
-            visible: !!root.details && !!root.details.gpu
-            text: root.details && root.details.gpu ? "Graphics " + root.details.gpu.mhz + " / " + root.details.gpu.max + " MHz" : ""
-          }
+
         }
         Row {
           id: cores
@@ -398,6 +415,35 @@ Panel {
         }
 
         PanelSeparator { foreground: root.foreground; Layout.fillWidth: true }
+
+        // The graphics card: its use, its memory on a bar, and the rest
+        ColumnLayout {
+          Layout.fillWidth: true
+          visible: !!root.gpu
+          spacing: Style.space(8)
+          Section {
+            title: root.gpu ? "GPU · " + String(root.gpu.name || "").replace(/^NVIDIA GeForce |^AMD Radeon /, "") : "GPU"
+            value: root.gpu && root.gpu.use !== null ? Math.round(root.gpu.use) + "%" : ""
+            tint: root.levelColor(root.gpuUse, 80, 90)
+          }
+          Meter {
+            Layout.fillWidth: true
+            visible: !!root.gpu && root.gpu.vramTotal > 0
+            value: root.gpu && root.gpu.vramTotal > 0 ? root.gpu.vramUsed / root.gpu.vramTotal : 0
+            tint: root.accent
+          }
+          RowLayout {
+            Layout.fillWidth: true
+            Figure { Layout.minimumWidth: Style.space(170); visible: !!root.gpu && root.gpu.vramTotal > 0; label: "Video memory"; value: root.gpu && root.gpu.vramTotal > 0 ? (root.gpu.vramUsed / 1024).toFixed(1) + " of " + (root.gpu.vramTotal / 1024).toFixed(0) + " GiB" : "" }
+            Figure { Layout.minimumWidth: Style.space(170); visible: !!root.gpu && root.gpu.temp !== null; label: "Temperature"; value: root.gpu && root.gpu.temp !== null ? root.gpu.temp + "°C" : "" }
+          }
+          RowLayout {
+            Layout.fillWidth: true
+            Figure { Layout.minimumWidth: Style.space(170); visible: !!root.gpu && root.gpu.power !== null; label: "Power"; value: root.gpu && root.gpu.power !== null ? Math.round(root.gpu.power) + " W" : "" }
+            Figure { Layout.minimumWidth: Style.space(170); visible: !!root.gpu && root.gpu.mhz !== null; label: "Clock"; value: root.gpu && root.gpu.mhz !== null ? root.gpu.mhz + (root.gpu.max ? " / " + root.gpu.max : "") + " MHz" : "" }
+          }
+          PanelSeparator { foreground: root.foreground; Layout.fillWidth: true }
+        }
 
         // Disks, one per filesystem
         Section { title: "Disks" }

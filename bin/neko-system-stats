@@ -2,7 +2,7 @@
 
 # neko:summary=Print CPU and memory stats for the shell
 # neko:group=system
-# neko:args=[--bar-widget|--cpu-temperature-file|--details]
+# neko:args=[--bar-widget|--cpu-temperature-file|--details|--gpu]
 
 bar_widget_stats() {
   awk '
@@ -82,14 +82,7 @@ details() {
 
   power=null
   [[ -r /sys/class/power_supply/BAT0/power_now ]] && power=$(awk '{ printf "%.2f", $1 / 1000000 }' /sys/class/power_supply/BAT0/power_now)
-  gpu=null
-  local card
-  for card in /sys/class/drm/card*; do
-    if [[ -r $card/gt_cur_freq_mhz ]]; then
-      gpu=$(jq -nc --argjson now "$(< "$card/gt_cur_freq_mhz")" --argjson max "$(< "$card/gt_max_freq_mhz")" '{ mhz: $now, max: $max }')
-      break
-    fi
-  done
+  gpu=$(gpu_stats)
 
   procs=$(top -bn2 -d 0.4 -o %CPU -w 512 2> /dev/null |
     awk '/^ *PID/ { frame++; next } frame == 2 && n < 6 && $12 != "top" && $5 != 0 { cmd = $12; for (i = 13; i <= NF; i++) cmd = cmd " " $i; printf "%s\t%s\t%s\t%s\n", $1, $9, $10, cmd; n++ }' |
@@ -105,8 +98,57 @@ details() {
       time: (now * 1000 | floor) }'
 }
 
+# The graphics card, as one JSON object (null without one): its name, use
+# (%), temperature (°C), video memory used and in all (MiB), power (W) and
+# clock against its highest (MHz), each null where the card doesn't say.
+# NVIDIA through nvidia-smi, AMD through its sysfs files, and Intel's
+# integrated graphics, which give only their clock.
+gpu_stats() {
+  local line card device hwmon value
+  if command -v nvidia-smi > /dev/null && line=$(nvidia-smi --query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total,power.draw,clocks.gr,clocks.max.gr --format=csv,noheader,nounits 2> /dev/null | head -n1) && [[ -n $line ]]; then
+    jq -Rnc --arg line "$line" '
+      ($line | split(", ") | map(gsub("^ +| +$"; ""))) as $f
+      | def num($v): ($v | tonumber? // null);
+      { name: $f[0], use: num($f[1]), temp: num($f[2]), vramUsed: num($f[3]), vramTotal: num($f[4]),
+        power: num($f[5]), mhz: num($f[6]), max: num($f[7]) }'
+    return
+  fi
+  for card in /sys/class/drm/card[0-9]; do
+    device=$card/device
+    if [[ -r $device/gpu_busy_percent ]]; then
+      hwmon=$(ls -d "$device"/hwmon/hwmon* 2> /dev/null | head -n1)
+      jq -nc \
+        --arg name "$(cat "$device/product_name" 2> /dev/null || echo "AMD graphics")" \
+        --arg use "$(< "$device/gpu_busy_percent")" \
+        --arg temp "$(cat "$hwmon/temp1_input" 2> /dev/null)" \
+        --arg used "$(cat "$device/mem_info_vram_used" 2> /dev/null)" \
+        --arg total "$(cat "$device/mem_info_vram_total" 2> /dev/null)" \
+        --arg power "$(cat "$hwmon/power1_average" 2> /dev/null || cat "$hwmon/power1_input" 2> /dev/null)" \
+        --arg mhz "$(sed -n 's/^[0-9]*: \([0-9]*\)Mhz \*$/\1/p' "$device/pp_dpm_sclk" 2> /dev/null)" \
+        --arg max "$(tail -n1 "$device/pp_dpm_sclk" 2> /dev/null | sed -n 's/^[0-9]*: \([0-9]*\)Mhz.*/\1/p')" '
+        def num($v): ($v | tonumber? // null);
+        { name: $name, use: num($use), temp: (num($temp) | if . then . / 1000 | round else null end),
+          vramUsed: (num($used) | if . then . / 1048576 | round else null end),
+          vramTotal: (num($total) | if . then . / 1048576 | round else null end),
+          power: (num($power) | if . then . / 1000000 * 10 | round / 10 else null end),
+          mhz: num($mhz), max: num($max) }'
+      return
+    fi
+    if [[ -r $card/gt_cur_freq_mhz ]]; then
+      jq -nc --argjson now "$(< "$card/gt_cur_freq_mhz")" --argjson max "$(< "$card/gt_max_freq_mhz")" \
+        '{ name: "Intel graphics", use: null, temp: null, vramUsed: null, vramTotal: null, power: null, mhz: $now, max: $max }'
+      return
+    fi
+  done
+  echo null
+}
+
 case "${1:-}" in
   "")
+    ;;
+  --gpu)
+    gpu_stats
+    exit
     ;;
   --bar-widget)
     bar_widget_stats
@@ -121,7 +163,7 @@ case "${1:-}" in
     exit
     ;;
   *)
-    echo "Usage: neko-system-stats [--bar-widget|--cpu-temperature-file|--details]" >&2
+    echo "Usage: neko-system-stats [--bar-widget|--cpu-temperature-file|--details|--gpu]" >&2
     exit 1
     ;;
 esac
