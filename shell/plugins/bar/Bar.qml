@@ -66,46 +66,21 @@ Item {
   // every group hanging flat-topped from the top edge (shell.json's
   // bar.style; only a top bar attaches)
   property string barStyle: "floating"
-  readonly property bool glassOverLight: glass && (backdropLight || (useTransparentForeground && transparentForeground.hslLightness < 0.5))
-  // What's actually under the bar, wallpaper or windows (a light page, say):
-  // neko-bar-backdrop measures the band below it every few seconds, while
-  // the island rests and no panel is open, since those would measure their
-  // own glass. Over something bright every glass surface deepens.
-  property real backdropLightness: 0
-  readonly property bool backdropLight: backdropLightness > 0.55
+  readonly property bool glassOverLight: glass && useTransparentForeground && transparentForeground.hslLightness < 0.5
   // Every group takes the same tint, dark enough to read the widgets on
-  // over a light wallpaper; the island's pills share it, and so do its cards
-  readonly property color glassCapsule: Qt.rgba(0, 0, 0, backdropLight ? 0.46 : glassOverLight ? 0.3 : 0.2)
+  // whatever is behind them, a little deeper over a light wallpaper; the
+  // island's pills share it
+  readonly property color glassCapsule: Qt.rgba(0, 0, 0, glassOverLight ? 0.38 : 0.3)
   readonly property color glassIslandCapsule: glassCapsule
-  // The island grown into a card, or a panel grown out of it: the capsule's
-  // glass, but over something bright far darker, as a card holds more text
-  // than a pill and a pale backdrop shows right through a thin tint
-  readonly property color glassIslandCard: backdropLight ? Qt.rgba(0, 0, 0, 0.76) : glassCapsule
+  // The island grown into a card, or a panel grown out of it: darker than the
+  // pills, as a card holds more text and a pale page would show through a
+  // thin tint, but not so dark it stops looking like glass
+  readonly property color glassIslandCard: Qt.rgba(0, 0, 0, 0.58)
   readonly property string glassDarkText: "#141414"
   readonly property string glassLightText: "#f2f2f2"
   // Attached, a side group's panel grows out of it, and the group takes the
   // panel's glass while it's open so the two read as one
-  readonly property color attachedPanelColor: glass ? Qt.rgba(0.02, 0.02, 0.03, backdropLight ? 0.8 : 0.62) : NekoColor.popups.background
-
-  Process {
-    id: backdropProbe
-    command: ["neko-bar-backdrop", String(root.barSize + Style.bar.floatMargin * 2)]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var value = Number(String(text || "").trim())
-        if (isFinite(value) && String(text || "").trim() !== "") root.backdropLightness = value
-      }
-    }
-  }
-
-  Timer {
-    interval: 3000
-    repeat: true
-    triggeredOnStart: true
-    running: root.glass && root.position === "top" && Island.mode === "" && !Island.settling && root.activePopout === null
-    onTriggered: if (!backdropProbe.running) backdropProbe.running = true
-  }
+  readonly property color attachedPanelColor: glass ? Qt.rgba(0.02, 0.02, 0.03, 0.7) : NekoColor.popups.background
   // Set by an attached panel that lines up with its group's inner end
   // (the start or the end away from the screen's side), so the group's corner
   // there squares off and runs straight down into the panel
@@ -213,7 +188,6 @@ Item {
     api.glassIslandCapsule = Qt.binding(function() { return root.glassIslandCapsule })
     api.centerTopAttached = Qt.binding(function() { return root.centerTopAttached })
     api.attachedPanelColor = Qt.binding(function() { return root.attachedPanelColor })
-    api.backdropLight = Qt.binding(function() { return root.backdropLight })
     api.glassIslandCard = Qt.binding(function() { return root.glassIslandCard })
     api.foregroundAnimationEnabled = Qt.binding(function() { return root.foregroundAnimationEnabled })
     api.centerSectionRevealHeld = Qt.binding(function() { return root.centerSectionRevealHeld })
