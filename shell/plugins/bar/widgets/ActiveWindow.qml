@@ -80,6 +80,7 @@ BarWidget {
   }
 
   MouseArea {
+    id: titleArea
     anchors.fill: parent
     hoverEnabled: true
     acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
@@ -97,5 +98,9 @@ BarWidget {
     }
     onEntered: if (root.bar) root.bar.showTooltip(root, root.tooltip)
     onExited: if (root.bar) root.bar.hideTooltip(root)
+    // The wheel is the bar's: brightness on this side
+    onWheel: function(wheel) {
+      if (root.bar && typeof root.bar.barWheel === "function") root.bar.barWheel(titleArea, wheel.x, wheel.y, wheel.angleDelta.y)
+    }
   }
 }
