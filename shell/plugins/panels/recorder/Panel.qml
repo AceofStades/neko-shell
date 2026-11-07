@@ -28,7 +28,6 @@ Panel {
   property string page: "main"
   // A take to throw away, armed by the first press
   property string armedTrash: ""
-  property bool armedDiscard: false
   property string note: ""
 
   readonly property color foreground: bar ? bar.foreground : NekoColor.foreground
@@ -48,7 +47,6 @@ Panel {
     if (!opened) {
       page = "main"
       armedTrash = ""
-      armedDiscard = false
       note = ""
       return
     }
@@ -112,16 +110,6 @@ Panel {
     close()
     startDelay.args = ["start"].concat(args || [])
     startDelay.restart()
-  }
-
-  function discard() {
-    if (!armedDiscard) {
-      armedDiscard = true
-      disarmTimer.restart()
-      return
-    }
-    armedDiscard = false
-    Island.record(["stop", "--discard"])
   }
 
   function openTake(entry) {
@@ -194,15 +182,9 @@ Panel {
       if (text === ",") page = "main"
       return
     }
-    if (live) {
-      if (text === "p") Island.record(["toggle-pause"])
-      else if (text === "s") Island.record(["stop"])
-      else if (text === "d") discard()
-      return
-    }
-    if (text === "r") record([])
-    else if (text === "d") record(["--monitor"])
-    else if (text === "h") page = "history"
+    if (controls.key(text)) return
+    if (live) return
+    if (text === "h") page = "history"
     else if (text === ",") page = "settings"
     else if (text === "o") openFolder()
   }
@@ -252,10 +234,7 @@ Panel {
   Timer {
     id: disarmTimer
     interval: 3000
-    onTriggered: {
-      root.armedTrash = ""
-      root.armedDiscard = false
-    }
+    onTriggered: root.armedTrash = ""
   }
 
   Timer {
@@ -383,193 +362,22 @@ Panel {
           }
         }
 
-        // ------------------------------------------------------ not installed
-
-        Text {
+        // What to record, or the take running: the same as the capture panel
+        RecordControls {
+          id: controls
           Layout.fillWidth: true
-          visible: root.page === "main" && !root.available
-          text: "Recording needs gpu-screen-recorder. install.sh offers it, or install it with your package manager, then open this again."
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          wrapMode: Text.WordWrap
-        }
-
-        // ----------------------------------------------------------- a take
-
-        ColumnLayout {
-          Layout.fillWidth: true
-          visible: root.page === "main" && root.live
-          spacing: Style.space(14)
-
-          Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: liveColumn.implicitHeight + Style.space(28)
-            radius: Style.space(16)
-            color: Util.alpha(NekoColor.urgent, root.take === "recording" ? 0.1 : 0.05)
-            border.width: 1
-            border.color: Util.alpha(NekoColor.urgent, 0.25)
-
-            ColumnLayout {
-              id: liveColumn
-              anchors.left: parent.left
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(2)
-
-              Row {
-                Layout.alignment: Qt.AlignHCenter
-                spacing: Style.space(10)
-                Rectangle {
-                  anchors.verticalCenter: parent.verticalCenter
-                  width: Style.space(12)
-                  height: width
-                  radius: width / 2
-                  color: root.take === "recording" ? NekoColor.urgent : root.dim
-                  SequentialAnimation on opacity {
-                    running: root.opened && root.take === "recording" && !Style.reduceMotion
-                    loops: Animation.Infinite
-                    NumberAnimation { to: 0.3; duration: 700; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 1; duration: 700; easing.type: Easing.InOutSine }
-                  }
-                }
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: root.take === "countdown" ? String(Island.recordCountdown) : Island.clockText(Island.recordElapsed, false)
-                  color: root.foreground
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.displayLarge
-                  font.weight: Font.Bold
-                  font.features: { "tnum": 1 }
-                }
-              }
-              Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: root.take === "countdown" ? "Starting in a moment"
-                  : root.take === "starting" ? "Starting the recorder"
-                  : root.take === "paused" ? "Paused · resume to carry on in the same file"
-                  : root.take === "saving" ? "Trimming it and evening out the sound"
-                  : (Island.recordState.audio ? "With sound · " : "Silent · ") + (Island.recordState.label || "")
-                color: root.dim
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-              }
-            }
-          }
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: Style.space(8)
-            Button {
-              Layout.fillWidth: true
-              iconText: root.take === "paused" ? "󰐊" : "󰏤"
-              text: root.take === "paused" ? "Resume" : "Pause"
-              tooltipText: "p"
-              bordered: true
-              enabled: root.take === "recording" || root.take === "paused"
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              onClicked: Island.record(["toggle-pause"])
-            }
-            Button {
-              Layout.fillWidth: true
-              iconText: "󰓛"
-              text: root.take === "countdown" ? "Cancel" : "Stop and save"
-              tooltipText: "s"
-              selected: true
-              enabled: root.take !== "saving"
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              onClicked: Island.record(["stop"])
-            }
-            Button {
-              Layout.fillWidth: true
-              iconText: "󰆴"
-              text: root.armedDiscard ? "Throw away?" : "Discard"
-              tooltipText: "d, twice"
-              bordered: true
-              enabled: root.take === "recording" || root.take === "paused"
-              foreground: root.armedDiscard ? NekoColor.urgent : root.foreground
-              fontFamily: root.fontFamily
-              onClicked: root.discard()
-            }
-          }
-        }
-
-        // ------------------------------------------------------- ready to go
-
-        ColumnLayout {
-          Layout.fillWidth: true
-          visible: root.page === "main" && !root.live && root.available
-          spacing: Style.space(12)
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: Style.space(10)
-            TargetTile {
-              glyph: "󰩭"
-              title: "Area or window"
-              detail: "Click a window or a display, or drag an area"
-              keyHint: "r"
-              primary: true
-              onClicked: root.record([])
-            }
-            TargetTile {
-              glyph: "󰍹"
-              title: "Whole display"
-              detail: "The display you're on"
-              keyHint: "d"
-              onClicked: root.record(["--monitor"])
-            }
-          }
-
-          // What goes into the take beside the picture
-          Flow {
-            Layout.fillWidth: true
-            spacing: Style.space(6)
-            Chip { glyph: "󰕾"; label: "Desktop sound"; on: root.settingsState.desktopAudio === "on"; onClicked: root.flip("desktopAudio") }
-            Chip { glyph: "󰍬"; label: "Microphone"; on: root.settingsState.microphone === "on"; onClicked: root.flip("microphone") }
-            Chip { glyph: "󰆽"; label: "Pointer"; on: root.settingsState.cursor === "on"; onClicked: root.flip("cursor") }
-            Chip { glyph: "󰖠"; label: "Webcam"; visible: root.hasWebcam; on: root.settingsState.webcam === "on"; onClicked: root.flip("webcam") }
-          }
-
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: Style.space(10)
-            Text {
-              text: "Countdown"
-              color: root.dim
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
-            }
-            Item { Layout.fillWidth: true }
-            ButtonGroup {
-              options: [{ value: "0", label: "Off" }, { value: "3", label: "3 s" }, { value: "5", label: "5 s" }, { value: "10", label: "10 s" }]
-              value: root.settingsState.countdown || "3"
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              fontSize: Style.font.bodySmall
-              focusable: false
-              onChanged: function(value) { root.set("countdown", value) }
-            }
-          }
-
-          // The newest take, a click from playing it
-          TakeRow {
-            visible: root.takes.length > 0
-            entry: root.takes.length > 0 ? root.takes[0] : null
-            compact: true
-          }
-
-          Text {
-            Layout.fillWidth: true
-            visible: !!Island.recordState.error
-            text: Island.recordState.error || ""
-            color: NekoColor.urgent
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            wrapMode: Text.WordWrap
-          }
+          visible: root.page === "main"
+          foreground: root.foreground
+          dim: root.dim
+          fontFamily: root.fontFamily
+          settings: root.settingsState
+          available: root.available
+          hasWebcam: root.hasWebcam
+          lastTake: root.takes.length > 0 ? root.takes[0] : null
+          shown: root.opened
+          onRecord: function(args) { root.record(args) }
+          onSetSetting: function(name, value) { root.set(name, value) }
+          onOpenTake: function(entry) { root.openTake(entry) }
         }
 
         // ---------------------------------------------------------- the takes
@@ -740,133 +548,17 @@ Panel {
     }
   }
 
-  // What to record: a big tile to click
-  component TargetTile: Rectangle {
-    id: tile
-    property string glyph: ""
-    property string title: ""
-    property string detail: ""
-    property string keyHint: ""
-    property bool primary: false
-    signal clicked()
-    Layout.fillWidth: true
-    Layout.fillHeight: true
-    Layout.preferredWidth: 1
-    implicitHeight: tileColumn.implicitHeight + Style.space(28)
-    radius: Style.space(14)
-    color: tileMouse.containsMouse ? root.softer : root.soft
-    border.width: 1
-    border.color: primary ? Util.alpha(NekoColor.urgent, tileMouse.containsMouse ? 0.5 : 0.3) : Util.alpha(root.foreground, 0.08)
-    Behavior on color { ColorAnimation { duration: Style.duration(120) } }
-
-    ColumnLayout {
-      id: tileColumn
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.top: parent.top
-      anchors.margins: Style.space(14)
-      spacing: Style.space(4)
-      RowLayout {
-        Layout.fillWidth: true
-        Text {
-          text: tile.glyph
-          color: tile.primary ? NekoColor.urgent : root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.iconLarge
-        }
-        Item { Layout.fillWidth: true }
-        Text {
-          text: tile.keyHint
-          color: root.dim
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-        }
-      }
-      Text {
-        Layout.fillWidth: true
-        Layout.topMargin: Style.space(4)
-        text: tile.title
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        font.weight: Font.DemiBold
-        elide: Text.ElideRight
-      }
-      Text {
-        Layout.fillWidth: true
-        text: tile.detail
-        color: root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.caption
-        wrapMode: Text.WordWrap
-      }
-    }
-
-    MouseArea {
-      id: tileMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: tile.clicked()
-    }
-  }
-
-  // Something to record along with the picture, on or off
-  component Chip: Rectangle {
-    id: chip
-    property string glyph: ""
-    property string label: ""
-    property bool on: false
-    signal clicked()
-    implicitWidth: chipRow.implicitWidth + Style.space(22)
-    implicitHeight: Style.space(32)
-    radius: height / 2
-    color: on ? Util.alpha(NekoColor.accent, chipMouse.containsMouse ? 0.26 : 0.18) : chipMouse.containsMouse ? root.softer : root.soft
-    border.width: 1
-    border.color: on ? Util.alpha(NekoColor.accent, 0.4) : Util.alpha(root.foreground, 0.08)
-    Behavior on color { ColorAnimation { duration: Style.duration(120) } }
-
-    Row {
-      id: chipRow
-      anchors.centerIn: parent
-      spacing: Style.space(6)
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        text: chip.glyph
-        color: chip.on ? NekoColor.accent : root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.icon
-      }
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        text: chip.label
-        color: chip.on ? root.foreground : root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
-      }
-    }
-
-    MouseArea {
-      id: chipMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: chip.clicked()
-    }
-  }
-
   // A saved take: its picture, what it was, when and how long; a click plays it
   component TakeRow: Rectangle {
     id: row
     property var entry: null
     property bool picked: false
-    property bool compact: false
     readonly property bool armed: !!entry && root.armedTrash === entry.file
     signal hoveredRow()
     Layout.fillWidth: true
-    implicitHeight: rowLayout.implicitHeight + Style.space(compact ? 16 : 14)
+    implicitHeight: rowLayout.implicitHeight + Style.space(14)
     radius: Style.space(12)
-    color: picked || rowMouse.containsMouse ? root.softer : compact ? root.soft : "transparent"
+    color: picked || rowMouse.containsMouse ? root.softer : "transparent"
     Behavior on color { ColorAnimation { duration: Style.duration(100) } }
 
     MouseArea {
@@ -888,7 +580,7 @@ Panel {
       spacing: Style.space(12)
 
       ClippingRectangle {
-        implicitWidth: Style.space(compact ? 88 : 104)
+        implicitWidth: Style.space(104)
         implicitHeight: Math.round(implicitWidth * 9 / 16)
         radius: Style.space(8)
         color: Util.alpha(root.foreground, 0.08)
@@ -924,15 +616,6 @@ Panel {
         spacing: Style.space(2)
         Text {
           Layout.fillWidth: true
-          text: row.compact ? "Last take" : (row.entry ? row.entry.label || "Screen" : "")
-          color: row.compact ? root.dim : root.foreground
-          font.family: root.fontFamily
-          font.pixelSize: row.compact ? Style.font.caption : Style.font.body
-          elide: Text.ElideRight
-        }
-        Text {
-          Layout.fillWidth: true
-          visible: row.compact
           text: row.entry ? row.entry.label || "Screen" : ""
           color: root.foreground
           font.family: root.fontFamily
@@ -950,7 +633,7 @@ Panel {
       }
 
       PanelActionButton {
-        visible: !row.compact && (rowMouse.containsMouse || row.picked)
+        visible: rowMouse.containsMouse || row.picked
         iconText: "󰆏"
         tooltipText: "Copy the path (c)"
         foreground: root.foreground
@@ -958,7 +641,7 @@ Panel {
         onClicked: root.copyPath(row.entry)
       }
       PanelActionButton {
-        visible: !row.compact && (rowMouse.containsMouse || row.picked || row.armed)
+        visible: rowMouse.containsMouse || row.picked || row.armed
         iconText: row.armed ? "󰗨" : "󰆴"
         tooltipText: row.armed ? "Again to move it to the trash" : "Move to the trash (x)"
         foreground: row.armed ? NekoColor.urgent : root.foreground

@@ -4,14 +4,16 @@ import Quickshell
 import Quickshell.Io
 import qs.Ui
 import qs.Commons
+import "../recorder" as Recorder
 
 // Capture, grown out of the island on Print: a screenshot or a recording of
 // an area, a window or the screen, with what goes with it (copy or save, a
 // delay; sound, the microphone, the pointer, the webcam, a countdown), and
 // the screen tools beside them (text, a QR code, a color). It takes no room
 // in the bar: its card anchors to the island's centre, so it opens from it.
-// neko-capture-screenshot and neko-record do the work; while a take runs,
-// the panel shows its controls instead.
+// neko-capture-screenshot and neko-record do the work. Recording is the
+// Recorder panel's own controls, so the two always offer the same; while a
+// take runs, those show its controls instead.
 Panel {
   id: root
   moduleName: "neko.capture"
@@ -20,6 +22,8 @@ Panel {
   // screenshot or record
   property string kind: "screenshot"
   property var recordSettings: ({})
+  property bool recordAvailable: true
+  property var lastTake: null
   property bool hasWebcam: false
   property string after: "both"
   property int delay: 0
@@ -41,22 +45,20 @@ Panel {
   onOpenedChanged: {
     if (!opened) return
     statusProc.running = true
+    historyProc.running = true
     webcamCheck.running = true
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
   // The card goes first, so it isn't in the picker's frozen screen or the shot
-  function capture(target) {
-    var command
-    if (recording) {
-      command = ["neko-record", "start"].concat(target === "screen" ? ["--monitor"] : target === "window" ? ["--window"] : [])
-    } else {
-      var mode = target === "screen" ? "fullscreen" : target === "window" ? "windows" : "smart"
-      command = ["neko-capture-screenshot", mode].concat(after === "both" ? [] : [after])
-    }
+  function later(seconds, command) {
     close()
-    var wait = (recording ? 0 : delay) + 0.35
-    Quickshell.execDetached(["bash", "-c", "sleep " + wait + "; exec \"$@\"", "capture"].concat(command))
+    Quickshell.execDetached(["bash", "-c", "sleep " + (seconds + 0.35) + "; exec \"$@\"", "capture"].concat(command))
+  }
+
+  function screenshot(target) {
+    var mode = target === "screen" ? "fullscreen" : target === "window" ? "windows" : "smart"
+    later(delay, ["neko-capture-screenshot", mode].concat(after === "both" ? [] : [after]))
   }
 
   function tool(command) {
@@ -71,16 +73,14 @@ Panel {
     Quickshell.execDetached(["neko-record", "set", name, value])
   }
 
-  function flip(name) {
-    setRecord(name, recordSettings[name] === "on" ? "off" : "on")
-  }
-
   function textKey(text) {
+    if ((recording || Island.recordLive) && recordControls.key(text)) return
+    if (Island.recordLive) return
     if (text === "1") kind = "screenshot"
     else if (text === "2") kind = "record"
-    else if (text === "a") capture("area")
-    else if (text === "w") capture("window")
-    else if (text === "s") capture("screen")
+    else if (!recording && text === "a") screenshot("area")
+    else if (!recording && text === "w") screenshot("window")
+    else if (!recording && text === "s") screenshot("screen")
     else if (text === "t") tool("neko-capture-text")
     else if (text === "q") tool("neko-capture-qr")
     else if (text === "c") tool("hyprpicker -a")
@@ -92,7 +92,25 @@ Panel {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        try { root.recordSettings = JSON.parse(String(text || "{}")).settings || {} } catch (error) {}
+        try {
+          var status = JSON.parse(String(text || "{}"))
+          root.recordSettings = status.settings || {}
+          root.recordAvailable = status.available !== false
+        } catch (error) {}
+      }
+    }
+  }
+
+  Process {
+    id: historyProc
+    command: ["neko-record", "history", "1"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var takes = JSON.parse(String(text || "[]"))
+          root.lastTake = takes.length > 0 ? takes[0] : null
+        } catch (error) {}
       }
     }
   }
@@ -119,10 +137,14 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      onActivateRequested: if (!Island.recordLive) root.capture("area")
+      onActivateRequested: {
+        if (Island.recordLive) return
+        if (root.recording) recordControls.key("a")
+        else root.screenshot("area")
+      }
       onCloseRequested: root.close()
-      onTabRequested: function(direction) { root.kind = root.recording ? "screenshot" : "record" }
-      onTextKey: function(text, modifiers) { if (!Island.recordLive) root.textKey(text) }
+      onTabRequested: function(direction) { if (!Island.recordLive) root.kind = root.recording ? "screenshot" : "record" }
+      onTextKey: function(text, modifiers) { root.textKey(text) }
 
       ColumnLayout {
         id: content
@@ -130,62 +152,16 @@ Panel {
         anchors.right: parent.right
         spacing: Style.space(14)
 
-        // ------------------------------------------------- a take running
-
-        ColumnLayout {
-          Layout.fillWidth: true
-          visible: Island.recordLive
-          spacing: Style.space(12)
-          Text {
-            Layout.alignment: Qt.AlignHCenter
-            text: Island.recordStatus === "countdown" ? "Starting in " + Island.recordCountdown : Island.clockText(Island.recordElapsed, false)
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.displayLarge
-            font.weight: Font.Bold
-            font.features: { "tnum": 1 }
-          }
-          Text {
-            Layout.alignment: Qt.AlignHCenter
-            text: (Island.recordStatus === "paused" ? "Paused · " : "Recording · ") + (Island.recordState.label || "")
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
-          RowLayout {
-            Layout.fillWidth: true
-            spacing: Style.space(8)
-            Button {
-              Layout.fillWidth: true
-              iconText: Island.recordStatus === "paused" ? "󰐊" : "󰏤"
-              text: Island.recordStatus === "paused" ? "Resume" : "Pause"
-              bordered: true
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              onClicked: Island.record(["toggle-pause"])
-            }
-            Button {
-              Layout.fillWidth: true
-              iconText: "󰓛"
-              text: "Stop and save"
-              selected: true
-              foreground: root.foreground
-              fontFamily: root.fontFamily
-              onClicked: { Island.record(["stop"]); root.close() }
-            }
-          }
-        }
-
         // ------------------------------------------------ what to capture
 
         ColumnLayout {
           Layout.fillWidth: true
-          visible: !Island.recordLive
           spacing: Style.space(14)
 
           // Screenshot or recording, as two halves of one switch
           Rectangle {
             Layout.fillWidth: true
+            visible: !Island.recordLive
             implicitHeight: Style.space(40)
             radius: height / 2
             color: root.soft
@@ -237,18 +213,40 @@ Panel {
             }
           }
 
+          // Recording, or a take running: the Recorder panel's own controls
+          Recorder.RecordControls {
+            id: recordControls
+            Layout.fillWidth: true
+            visible: root.recording || Island.recordLive
+            foreground: root.foreground
+            dim: root.dim
+            fontFamily: root.fontFamily
+            settings: root.recordSettings
+            available: root.recordAvailable
+            hasWebcam: root.hasWebcam
+            lastTake: root.lastTake
+            shown: root.opened
+            onRecord: function(args) { root.later(0, ["neko-record", "start"].concat(args)) }
+            onSetSetting: function(name, value) { root.setRecord(name, value) }
+            onOpenTake: function(entry) {
+              root.close()
+              Quickshell.execDetached(["xdg-open", entry.file])
+            }
+          }
+
           RowLayout {
             Layout.fillWidth: true
+            visible: !root.recording && !Island.recordLive
             spacing: Style.space(10)
-            Target { glyph: "󰩭"; title: "Area"; detail: "Drag, or click a window"; keyHint: "A"; onClicked: root.capture("area") }
-            Target { glyph: "󰖯"; title: "Window"; detail: root.recording ? "The one in focus" : "Click one"; keyHint: "W"; onClicked: root.capture("window") }
-            Target { glyph: "󰍹"; title: "Screen"; detail: "The one you're on"; keyHint: "S"; onClicked: root.capture("screen") }
+            Target { glyph: "󰩭"; title: "Area"; detail: "Drag, or click a window"; keyHint: "A"; onClicked: root.screenshot("area") }
+            Target { glyph: "󰖯"; title: "Window"; detail: "Click one"; keyHint: "W"; onClicked: root.screenshot("window") }
+            Target { glyph: "󰍹"; title: "Screen"; detail: "The one you're on"; keyHint: "S"; onClicked: root.screenshot("screen") }
           }
 
           // A screenshot's options
           ColumnLayout {
             Layout.fillWidth: true
-            visible: !root.recording
+            visible: !root.recording && !Island.recordLive
             spacing: Style.space(10)
             Option {
               title: "Then"
@@ -276,38 +274,12 @@ Panel {
             }
           }
 
-          // A recording's options, kept as the recorder's settings
-          ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.recording
-            spacing: Style.space(10)
-            Flow {
-              Layout.fillWidth: true
-              spacing: Style.space(6)
-              Chip { glyph: "󰕾"; label: "Desktop sound"; on: root.recordSettings.desktopAudio === "on"; onClicked: root.flip("desktopAudio") }
-              Chip { glyph: "󰍬"; label: "Microphone"; on: root.recordSettings.microphone === "on"; onClicked: root.flip("microphone") }
-              Chip { glyph: "󰆽"; label: "Pointer"; on: root.recordSettings.cursor === "on"; onClicked: root.flip("cursor") }
-              Chip { glyph: "󰖠"; label: "Webcam"; visible: root.hasWebcam; on: root.recordSettings.webcam === "on"; onClicked: root.flip("webcam") }
-            }
-            Option {
-              title: "Countdown"
-              ButtonGroup {
-                options: [{ value: "0", label: "None" }, { value: "3", label: "3 s" }, { value: "5", label: "5 s" }, { value: "10", label: "10 s" }]
-                value: root.recordSettings.countdown || "3"
-                foreground: root.foreground
-                fontFamily: root.fontFamily
-                fontSize: Style.font.bodySmall
-                focusable: false
-                onChanged: function(value) { root.setRecord("countdown", value) }
-              }
-            }
-          }
-
-          PanelSeparator { Layout.fillWidth: true }
+          PanelSeparator { Layout.fillWidth: true; visible: !Island.recordLive }
 
           // The screen's other tools
           RowLayout {
             Layout.fillWidth: true
+            visible: !Island.recordLive
             spacing: Style.space(6)
             Tool { glyph: "󰴑"; label: "Text"; keyHint: "T"; onClicked: root.tool("neko-capture-text") }
             Tool { glyph: "󰐲"; label: "QR code"; keyHint: "Q"; onClicked: root.tool("neko-capture-qr") }
@@ -403,47 +375,6 @@ Panel {
       id: holder
       implicitWidth: childrenRect.width
       implicitHeight: childrenRect.height
-    }
-  }
-
-  // Something to record along with the picture, on or off
-  component Chip: Rectangle {
-    id: chip
-    property string glyph: ""
-    property string label: ""
-    property bool on: false
-    signal clicked()
-    implicitWidth: chipRow.implicitWidth + Style.space(22)
-    implicitHeight: Style.space(32)
-    radius: height / 2
-    color: on ? Util.alpha(NekoColor.urgent, chipMouse.containsMouse ? 0.24 : 0.16) : chipMouse.containsMouse ? root.softer : root.soft
-    border.width: 1
-    border.color: on ? Util.alpha(NekoColor.urgent, 0.4) : Util.alpha(root.foreground, 0.08)
-    Row {
-      id: chipRow
-      anchors.centerIn: parent
-      spacing: Style.space(6)
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        text: chip.glyph
-        color: chip.on ? NekoColor.urgent : root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.icon
-      }
-      Text {
-        anchors.verticalCenter: parent.verticalCenter
-        text: chip.label
-        color: chip.on ? root.foreground : root.dim
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
-      }
-    }
-    MouseArea {
-      id: chipMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: chip.clicked()
     }
   }
 
