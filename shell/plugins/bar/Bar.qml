@@ -1406,6 +1406,20 @@ Item {
     }
   }
 
+  // The edge round a floating bar: the strip above it and its ends, out to
+  // the screen's corners, where a pointer flicked to the top lands
+  Variants {
+    model: Quickshell.screens
+
+    delegate: Component {
+      BarEdgePanel {
+        required property var modelData
+
+        screen: modelData
+      }
+    }
+  }
+
   Variants {
     model: Quickshell.screens
 
@@ -1649,6 +1663,65 @@ Item {
   }
 
   Component { id: emptyModuleComponent; Item { implicitWidth: 0; implicitHeight: 0; visible: false } }
+
+  // The bar button nearest a point on the screen, among those on this screen
+  function nearestButton(screen, screenX) {
+    var best = null, bestDistance = 1e9
+    for (var i = 0; i < root.clickTargets.length; i++) {
+      var target = root.clickTargets[i]
+      if (!target || !target.visible || target.width <= 0 || typeof target.triggerPress !== "function") continue
+      var window = target.QsWindow ? target.QsWindow.window : null
+      if (!window || window.screen !== screen) continue
+      var left = target.mapToItem(null, 0, 0).x + (window.margins ? window.margins.left : 0)
+      var right = left + target.width
+      var distance = screenX < left ? left - screenX : screenX > right ? screenX - right : 0
+      if (distance < bestDistance) {
+        best = target
+        bestDistance = distance
+      }
+    }
+    return best
+  }
+
+  // A floating bar keeps a gap to the screen's top and its corners, which
+  // isn't its window. This catches that gap: the strip above the bar and
+  // its two ends. A click there presses the bar button nearest it, so the
+  // corner opens the corner's widget; the wheel turns the brightness or the
+  // volume, as over the bar. Nothing is drawn.
+  component BarEdgePanel: PanelWindow {
+    id: edgeWindow
+    readonly property int gap: Style.bar.floatMargin
+    readonly property bool wanted: gap > 0 && root.position === "top" && !root.vertical && !root.barHidden && !root.centerTopAttached
+
+    visible: wanted
+    anchors { top: true; left: true; right: true }
+    implicitHeight: gap + root.barSize
+    exclusionMode: ExclusionMode.Ignore
+    color: "transparent"
+    surfaceFormat.opaque: false
+    WlrLayershell.namespace: "neko-bar-edge"
+    WlrLayershell.layer: WlrLayer.Top
+    mask: Region {
+      item: topStrip
+      Region { item: leftStrip }
+      Region { item: rightStrip }
+    }
+
+    Item { id: topStrip; x: 0; y: 0; width: edgeWindow.width; height: edgeWindow.gap }
+    Item { id: leftStrip; x: 0; y: 0; width: edgeWindow.gap; height: edgeWindow.height }
+    Item { id: rightStrip; x: edgeWindow.width - edgeWindow.gap; y: 0; width: edgeWindow.gap; height: edgeWindow.height }
+
+    MouseArea {
+      id: edgeArea
+      anchors.fill: parent
+      acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+      onClicked: function(mouse) {
+        var target = root.nearestButton(edgeWindow.screen, mouse.x)
+        if (target) target.triggerPress(mouse.button)
+      }
+      onWheel: function(wheel) { root.barWheel(edgeArea, wheel.x, wheel.y, wheel.angleDelta.y) }
+    }
+  }
 
   component DragGhostPanel: PanelWindow {
     id: ghostWindow
