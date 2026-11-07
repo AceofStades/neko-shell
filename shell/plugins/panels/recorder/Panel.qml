@@ -189,6 +189,17 @@ Panel {
     else if (text === "o") openFolder()
   }
 
+  // Open on a page: the capture panel's takes and settings buttons
+  ShellIpc {
+    target: "neko.recorder-page"
+    function show(page: string): string {
+      if (["main", "history", "settings"].indexOf(page) < 0) return "unknown page: " + page
+      root.open()
+      root.page = page
+      return "ok"
+    }
+  }
+
   Component {
     id: processComponent
     Process {

@@ -27,6 +27,11 @@ Panel {
   property bool hasWebcam: false
   property string after: "both"
   property int delay: 0
+  // main, or for screenshots their recent ones ("shots") and their settings
+  property string page: "main"
+  property var shots: []
+  property var shotSettings: ({ folder: "", after: "both" })
+  property string armedShot: ""
 
   readonly property color foreground: NekoColor.popups.text
   readonly property color dim: Util.alpha(foreground, 0.6)
@@ -43,7 +48,12 @@ Panel {
   visible: false
 
   onOpenedChanged: {
-    if (!opened) return
+    if (!opened) {
+      page = "main"
+      armedShot = ""
+      return
+    }
+    shotSettingsProc.running = true
     statusProc.running = true
     historyProc.running = true
     webcamCheck.running = true
@@ -73,7 +83,71 @@ Panel {
     Quickshell.execDetached(["neko-record", "set", name, value])
   }
 
+  // The takes, the folder and the settings: a recording's are the Recorder's
+  // own pages; a screenshot's are here
+  function openTakes() {
+    if (recording) {
+      close()
+      Quickshell.execDetached(["neko-shell", "neko.recorder-page", "show", "history"])
+    } else {
+      page = "shots"
+      loadShots()
+    }
+  }
+
+  function openSettings() {
+    if (recording) {
+      close()
+      Quickshell.execDetached(["neko-shell", "neko.recorder-page", "show", "settings"])
+    } else {
+      page = "settings"
+    }
+  }
+
+  function openFolder() {
+    var folder = recording ? (recordSettings.folder || Quickshell.env("HOME") + "/Videos") : shotSettings.folder
+    close()
+    Quickshell.execDetached(["xdg-open", folder])
+  }
+
+  function loadShots() {
+    if (!shotsProc.running) shotsProc.running = true
+  }
+
+  function setShotSetting(key, value) {
+    var next = Object.assign({}, shotSettings)
+    next[key] = value
+    shotSettings = next
+    if (key === "after") after = value
+    Quickshell.execDetached(["neko-capture-screenshot", "set", key, value])
+  }
+
+  function trashShot(file) {
+    if (armedShot !== file) {
+      armedShot = file
+      disarmShot.restart()
+      return
+    }
+    armedShot = ""
+    shots = shots.filter(function(other) { return other !== file })
+    Quickshell.execDetached(["gio", "trash", file])
+  }
+
+  function shortPath(path) {
+    var home = Quickshell.env("HOME")
+    path = String(path || "")
+    return home && path.indexOf(home) === 0 ? "~" + path.slice(home.length) : path
+  }
+
   function textKey(text) {
+    if (page !== "main") {
+      if (text === "h" || text === ",") page = "main"
+      else if (text === "o") openFolder()
+      return
+    }
+    if (text === "h") { openTakes(); return }
+    if (text === ",") { openSettings(); return }
+    if (text === "o") { openFolder(); return }
     if ((recording || Island.recordLive) && recordControls.key(text)) return
     if (Island.recordLive) return
     if (text === "1") kind = "screenshot"
@@ -84,6 +158,36 @@ Panel {
     else if (text === "t") tool("neko-capture-text")
     else if (text === "q") tool("neko-capture-qr")
     else if (text === "c") tool("hyprpicker -a")
+  }
+
+  Process {
+    id: shotSettingsProc
+    command: ["neko-capture-screenshot", "settings"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          root.shotSettings = JSON.parse(String(text || "{}"))
+          root.after = root.shotSettings.after || "both"
+        } catch (error) {}
+      }
+    }
+  }
+
+  // The newest screenshots in the folder
+  Process {
+    id: shotsProc
+    command: ["bash", "-c", "ls -t -- \"$1\"/*.png \"$1\"/*.jpg 2> /dev/null | head -n 24", "shots", root.shotSettings.folder]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.shots = String(text || "").split("\n").filter(function(line) { return line !== "" })
+    }
+  }
+
+  Timer {
+    id: disarmShot
+    interval: 3000
+    onTriggered: root.armedShot = ""
   }
 
   Process {
@@ -138,11 +242,15 @@ Panel {
       id: keyCatcher
       anchors.fill: parent
       onActivateRequested: {
-        if (Island.recordLive) return
+        if (Island.recordLive || root.page !== "main") return
         if (root.recording) recordControls.key("a")
         else root.screenshot("area")
       }
-      onCloseRequested: root.close()
+      onCloseRequested: {
+        if (root.page !== "main") root.page = "main"
+        else root.close()
+      }
+      blocked: shotFolderField.activeFocus
       onTabRequested: function(direction) { if (!Island.recordLive) root.kind = root.recording ? "screenshot" : "record" }
       onTextKey: function(text, modifiers) { root.textKey(text) }
 
@@ -152,10 +260,181 @@ Panel {
         anchors.right: parent.right
         spacing: Style.space(14)
 
+        // Where it is, and the way to the takes, the folder and the settings
+        RowLayout {
+          Layout.fillWidth: true
+          spacing: Style.space(6)
+          PanelActionButton {
+            visible: root.page !== "main"
+            iconText: "󰅁"
+            tooltipText: "Back"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onClicked: root.page = "main"
+          }
+          ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 0
+            Text {
+              text: root.page === "shots" ? "Screenshots" : root.page === "settings" ? "Screenshot settings" : "Capture"
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.title
+              font.weight: Font.DemiBold
+            }
+            Text {
+              Layout.fillWidth: true
+              text: "Saves to " + root.shortPath(root.recording && root.page === "main" ? root.recordSettings.folder : root.shotSettings.folder)
+              color: root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+            }
+          }
+          PanelActionButton {
+            visible: root.page === "main" && !Island.recordLive
+            iconText: "󰋚"
+            tooltipText: root.recording ? "Takes (h)" : "Recent screenshots (h)"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onClicked: root.openTakes()
+          }
+          PanelActionButton {
+            iconText: "󰉋"
+            tooltipText: "Open the folder (o)"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onClicked: root.openFolder()
+          }
+          PanelActionButton {
+            visible: root.page === "main" && !Island.recordLive
+            iconText: "󰒓"
+            tooltipText: root.recording ? "Recording settings (,)" : "Screenshot settings (,)"
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            onClicked: root.openSettings()
+          }
+        }
+
+        // ---------------------------------------------- recent screenshots
+
+        Text {
+          Layout.fillWidth: true
+          visible: root.page === "shots" && root.shots.length === 0
+          Layout.topMargin: Style.space(16)
+          Layout.bottomMargin: Style.space(16)
+          horizontalAlignment: Text.AlignHCenter
+          text: "No screenshots yet"
+          color: root.dim
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+        }
+
+        Flickable {
+          Layout.fillWidth: true
+          visible: root.page === "shots" && root.shots.length > 0
+          Layout.preferredHeight: Style.space(360)
+          contentHeight: shotGrid.implicitHeight
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+          Flow {
+            id: shotGrid
+            width: parent.width
+            spacing: Style.space(8)
+            Repeater {
+              model: root.shots
+              delegate: Rectangle {
+                id: shot
+                required property string modelData
+                readonly property bool armed: root.armedShot === modelData
+                width: (shotGrid.width - Style.space(16)) / 3
+                height: Math.round(width * 9 / 16)
+                radius: Style.space(10)
+                color: Util.alpha(root.foreground, 0.06)
+                clip: true
+                Image {
+                  anchors.fill: parent
+                  source: "file://" + shot.modelData
+                  fillMode: Image.PreserveAspectCrop
+                  asynchronous: true
+                  sourceSize.width: 320
+                }
+                MouseArea {
+                  id: shotMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: {
+                    root.close()
+                    Quickshell.execDetached(["xdg-open", shot.modelData])
+                  }
+                }
+                // Copy it, draw on it, or move it to the trash (twice)
+                Row {
+                  anchors.right: parent.right
+                  anchors.bottom: parent.bottom
+                  anchors.margins: Style.space(4)
+                  spacing: Style.space(2)
+                  visible: shotMouse.containsMouse || shot.armed || copyButton.hovered || drawButton.hovered || trashButton.hovered
+                  ShotButton { id: copyButton; glyph: "󰆏"; onClicked: Quickshell.execDetached(["bash", "-c", "wl-copy --type image/png < \"$1\"", "copy", shot.modelData]) }
+                  ShotButton {
+                    id: drawButton
+                    glyph: "󰏫"
+                    onClicked: {
+                      root.close()
+                      Quickshell.execDetached(["satty", "--filename", shot.modelData, "--output-filename", shot.modelData, "--copy-command", "wl-copy", "--early-exit"])
+                    }
+                  }
+                  ShotButton { id: trashButton; glyph: shot.armed ? "󰗨" : "󰆴"; warn: shot.armed; onClicked: root.trashShot(shot.modelData) }
+                }
+              }
+            }
+          }
+        }
+
+        // ---------------------------------------------- screenshot settings
+
+        ColumnLayout {
+          Layout.fillWidth: true
+          visible: root.page === "settings"
+          spacing: Style.space(12)
+          Option {
+            title: "By default, then"
+            ButtonGroup {
+              options: [{ value: "both", label: "Copy and save" }, { value: "copy", label: "Copy" }, { value: "save", label: "Save" }, { value: "edit", label: "Draw on it" }]
+              value: root.shotSettings.after || "both"
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              fontSize: Style.font.bodySmall
+              focusable: false
+              onChanged: function(value) { root.setShotSetting("after", value) }
+            }
+          }
+          Text {
+            text: "Folder"
+            color: root.dim
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
+          TextField {
+            id: shotFolderField
+            Layout.fillWidth: true
+            text: root.shortPath(root.shotSettings.folder)
+            foreground: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            onAccepted: {
+              root.setShotSetting("folder", text.trim().replace(/^~/, Quickshell.env("HOME")))
+              keyCatcher.forceActiveFocus()
+            }
+          }
+        }
+
         // ------------------------------------------------ what to capture
 
         ColumnLayout {
           Layout.fillWidth: true
+          visible: root.page === "main"
           spacing: Style.space(14)
 
           // Screenshot or recording, as two halves of one switch
@@ -375,6 +654,33 @@ Panel {
       id: holder
       implicitWidth: childrenRect.width
       implicitHeight: childrenRect.height
+    }
+  }
+
+  // A small round button over a screenshot's thumbnail
+  component ShotButton: Rectangle {
+    id: shotButton
+    property string glyph: ""
+    property bool warn: false
+    readonly property bool hovered: shotButtonMouse.containsMouse
+    signal clicked()
+    width: Style.space(26)
+    height: width
+    radius: width / 2
+    color: warn ? Util.alpha(NekoColor.urgent, 0.85) : shotButtonMouse.containsMouse ? Qt.rgba(0, 0, 0, 0.8) : Qt.rgba(0, 0, 0, 0.6)
+    Text {
+      anchors.centerIn: parent
+      text: shotButton.glyph
+      color: "#f2f2f2"
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption + 2
+    }
+    MouseArea {
+      id: shotButtonMouse
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: shotButton.clicked()
     }
   }
 
