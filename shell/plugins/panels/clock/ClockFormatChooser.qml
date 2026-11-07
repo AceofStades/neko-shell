@@ -25,6 +25,8 @@ Item {
 
   // The bar stands on its side: the stacked format is the one on show
   property bool vertical: false
+  // Only the one format: the island's clock has no sideways or second one
+  property bool formatOnly: false
 
   property color foreground: NekoColor.foreground
   property color accent: NekoColor.accent
@@ -172,6 +174,7 @@ Item {
 
     FieldRow {
       id: verticalField
+      visible: !root.formatOnly
       label: "Vertical format"
       hint: "One line per \\n. What the clock says when the bar is on the left or the right"
       value: root.verticalFormat
@@ -182,6 +185,7 @@ Item {
 
     FieldRow {
       id: altField
+      visible: !root.formatOnly
       label: "Second format"
       hint: "What the scroll wheel switches the clock to"
       value: root.altFormat

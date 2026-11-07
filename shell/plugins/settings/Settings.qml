@@ -52,7 +52,7 @@ Item {
   // clock's formats live in the layout entry, so a layout without the
   // clock has nothing to format yet.
   readonly property var clockEntry: findClockEntry()
-  readonly property string clockFormat: clockEntry ? String(entryValue(clockEntry.entry, "format") || "dddd HH:mm") : "dddd HH:mm"
+  readonly property string clockFormat: clockEntry ? String(entryValue(clockEntry.entry, "format") || (clockEntry.island ? "HH:mm" : "dddd HH:mm")) : "dddd HH:mm"
   readonly property string clockVerticalFormat: clockEntry ? String(entryValue(clockEntry.entry, "verticalFormat") || "HH\n—\nmm") : "HH\n—\nmm"
   readonly property string clockAltFormat: clockEntry ? String(entryValue(clockEntry.entry, "formatAlt") || "d MMMM 'W'ww yyyy") : "d MMMM 'W'ww yyyy"
   // The UniBar's own clock format, read out of the bar layouts, so the
@@ -161,14 +161,18 @@ Item {
   }
   // The clock's entry in the bar layout, with the section and index its
   // own options are written through
+  // The clock on the bar: the clock widget, else the island's own clock
   function findClockEntry() {
     var sections = ["left", "center", "right"]
+    var island = null
     for (var s = 0; s < sections.length; s++) {
       var list = root.bar.layout[sections[s]] || []
-      for (var i = 0; i < list.length; i++)
-        if (entryId(list[i]) === "neko.clock") return { section: sections[s], index: i, entry: list[i] }
+      for (var i = 0; i < list.length; i++) {
+        if (entryId(list[i]) === "neko.clock") return { section: sections[s], index: i, entry: list[i], island: false }
+        if (!island && entryId(list[i]) === "neko.unibar-center") island = { section: sections[s], index: i, entry: list[i], island: true }
+      }
     }
-    return null
+    return island
   }
   function onBar(id) {
     var sections = ["left", "center", "right"]
@@ -1213,6 +1217,15 @@ Item {
                 }
               }
 
+              Text {
+                Layout.fillWidth: true
+                visible: !!root.clockEntry && root.clockEntry.island
+                text: "The island's clock, between the workspaces"
+                color: root.dim
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+
               // The same chooser the clock's own popup opens on a right
               // click, so the two can never disagree
               ClockPlugin.ClockFormatChooser {
@@ -1222,7 +1235,8 @@ Item {
                 verticalFormat: root.clockVerticalFormat
                 altFormat: root.clockAltFormat
                 presets: root.clockPresets
-                vertical: root.clockVertical
+                vertical: root.clockVertical && !(root.clockEntry && root.clockEntry.island)
+                formatOnly: !!root.clockEntry && root.clockEntry.island
                 foreground: root.foreground
                 accent: root.accent
                 fontFamily: root.fontFamily
