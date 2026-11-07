@@ -11,7 +11,11 @@ BarWidget {
   id: root
   moduleName: "neko.tray"
 
-  property bool expanded: false
+  // Open while the pointer is on it, and while a menu opened from it is up:
+  // the menu takes the pointer, which would otherwise slide the drawer shut
+  // under it
+  property bool hovered: false
+  readonly property bool expanded: hovered || trayMenuOpen || managePopupOpen
   property bool managePopupOpen: false
   property bool trayMenuOpen: false
   property var activeTrayItem: null
@@ -248,7 +252,7 @@ BarWidget {
         visible: root.allItems.length > 0
 
         HoverHandler {
-          onHoveredChanged: root.expanded = hovered
+          onHoveredChanged: root.hovered = hovered
         }
 
         BarIconButton {
@@ -330,7 +334,7 @@ BarWidget {
         visible: root.allItems.length > 0
 
         HoverHandler {
-          onHoveredChanged: root.expanded = hovered
+          onHoveredChanged: root.hovered = hovered
         }
 
         BarIconButton {
