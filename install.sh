@@ -1105,7 +1105,8 @@ write_zshrc() {
 }
 
 # Vicinae, the launcher on Alt+Space: neko's look (blur, 60% opacity, rounded,
-# compact) as a config its settings import, so its own settings still win
+# compact, no tray icon) as a config its settings import, so its own settings
+# still win
 plan_vicinae() {
   command -v vicinae > /dev/null 2>&1 || [[ " ${AUR_PACKAGES[*]} " == *" vicinae-bin "* ]] || return 0
   grep -qF "$NEKO_PATH/default/vicinae/neko.json" "$HOME/.config/vicinae/settings.json" 2> /dev/null && return 0

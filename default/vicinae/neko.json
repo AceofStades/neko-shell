@@ -1,9 +1,12 @@
 {
   "$schema": "https://vicinae.com/schemas/config.json",
+  "telemetry": { "system_info": false },
+  "tray": { "enabled": false },
   "launcher_window": {
     "opacity": 0.6,
     "material": "blur",
-    "rounding": 16,
+    "rounding": 25,
+    "client_side_decorations": { "enabled": true },
     "compact_mode": { "enabled": true }
   }
 }

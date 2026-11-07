@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# neko:summary=Give Vicinae neko's look (blur, 60% opacity, rounded, compact) or neko's colors, or take them away
+# neko:summary=Give Vicinae neko's look (blur, 60% opacity, rounded, compact, no tray icon) or neko's colors, or take them away
 # neko:args=<look|theme> <on|off>
 # neko:examples=neko vicinae look on | neko vicinae theme off
 
